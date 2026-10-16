@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Hollow Loop</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0b16">
@@ -45,7 +45,10 @@ body {
   font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px; line-height: 1.4; overflow-x: hidden; font-variant-numeric: tabular-nums;
 }
-html, body { height: 100%; overflow: hidden; background: #0d0b16; }
+html, body { height: 100%; overflow: hidden; background: #0d0b16; touch-action: manipulation; -webkit-touch-callout: none; overscroll-behavior: none; }
+/* home screen app on iPhone: the normal full-height box stops short of the bottom edge, 100vh reaches it */
+html.standalone, html.standalone body { height: 100vh; }
+html.standalone .arena, html.standalone .sheet { bottom: auto; height: 100vh; }
 body.locked { overflow: hidden; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -97,10 +100,10 @@ body.noanim .menuDrop button { animation: none; }
   --ink: #ece8f7; --muted: #9a93b8; --line: #3a3358;
   --c0: #b9b5c9; --c1: #4fd3e4; --c2: #b48cff; --c3: #ff8463; --c4: #ffd04d;
   --hero: #7be0d0; --hurt: #ff6b6b; --coin: #ffc83d;
-  position: fixed; inset: 0; background: #120f1c; color: var(--ink); overflow: hidden;
+  position: fixed; inset: 0; background: #120f1c; color: var(--ink); overflow: hidden; touch-action: none;
   user-select: none; -webkit-user-select: none;
 }
-.scene { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: manipulation; cursor: crosshair; }
+.scene { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .scene g, .scene polygon, .scene path, .scene rect, .scene circle, .scene ellipse, .scene line { transform-origin: 0 0; }
 .tapHint { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 12px; color: #a9a2c9; pointer-events: none; white-space: nowrap; text-shadow: 0 1px 4px #000; }
 .bob { animation: bob 2.4s ease-in-out infinite; }
@@ -143,10 +146,9 @@ body.noanim .bladeOrbit2 { animation: none; }
 
 /* bars that float with each fighter */
 .tag { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; width: 160px; transform: translateX(-50%); }
-.foeTag { width: 150px; transform: translate(-50%, -100%); transition: opacity .2s; }
+.foeTag { width: 150px; transform: none; transition: opacity .18s; will-change: transform; }
 .foeTag .tagTxt { justify-content: center; gap: 8px; }
 .foeTag .tagTxt span:last-child b.tmT { color: #ffd04d; font-weight: 700; margin-left: 4px; }
-.foeTag.below { transform: translateX(-50%); }
 .tag .bar { height: 3px; border-radius: 0; background: rgba(255,255,255,.13); box-shadow: none; clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
 .tag .bar.tm { height: 2px; margin-top: 3px; }
 .tag .bar.mech { height: 2px; margin-top: 3px; }
@@ -511,6 +513,10 @@ body.perf .pulse { animation: none; }
 <script>
 (() => {
   const KEY = "hollow-loop-v4";
+  try { if (navigator.standalone || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches) document.documentElement.classList.add("standalone"); } catch (e) {}
+  // stop iPhone pinch and double-tap zoom from hijacking the game
+  document.addEventListener("gesturestart", e => e.preventDefault(), { passive: false });
+  document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
   const PACK_CAP = 20, POST_CD = 15 * 60000, REROLL_CD = 10 * 60000;
   const NS = "http://www.w3.org/2000/svg";
 
@@ -1159,7 +1165,8 @@ body.perf .pulse { animation: none; }
   function syncTarget() { if (enemy) { ENEMY_X = enemy.px; ENEMY_Y = enemy.py - enemy.cy; } }
   function setTarget(t) {
     if (enemy && enemy.el) { enemy.el.mini.style.display = ""; enemy.el.modMarks.style.display = ""; }
-    enemy = t; tagCache = "";
+    if (tagVis && t !== enemy) tagHold = .12;
+    enemy = t;
     buildReticle(t);
     if (!t) { eModel = eSwing = eBody = DUMMY; return; }
     eModel = t.el.model; eSwing = t.el.swing; eBody = t.el.body;
@@ -1172,7 +1179,10 @@ body.perf .pulse { animation: none; }
     let t = focus && !focus.dead && foes.includes(focus) && inView(focus) ? focus : null;
     if (!t) {
       focus = null; let bd = 1e9;
-      for (const f of foes) { if (f.dead || !inView(f)) continue; const d = Math.hypot(f.px - HERO_X, f.py - HERO_Y) + (f.px < 0 || f.px > VW || f.py < 0 || f.py > VH ? 400 : 0); if (d < bd) { bd = d; t = f; } }
+      const score = f => Math.hypot(f.px - HERO_X, f.py - HERO_Y) + (f.px < 0 || f.px > VW || f.py < 0 || f.py > VH ? 400 : 0);
+      for (const f of foes) { if (f.dead || !inView(f)) continue; const d = score(f); if (d < bd) { bd = d; t = f; } }
+      // stick with the current target unless another is clearly closer, so aim and labels don't flicker
+      if (t && enemy && t !== enemy && !enemy.dead && foes.includes(enemy) && inView(enemy) && score(enemy) < bd + 40) t = enemy;
     }
     if (t !== enemy) setTarget(t);
   }
@@ -1351,34 +1361,35 @@ body.perf .pulse { animation: none; }
     }
   }
   let tagCache = "", tagSide = null, tagFor = null;
-  function placeTags() {
+  let tagX = 0, tagY = 0, tagVis = false, tagHold = 0;
+  function placeTags(dt) {
     const ht = $("heroTag"), ft = $("foeTag");
-    const hx = HERO_X * SC, hy = (HERO_Y + RING_R - 8) * SC;
-    let fx2 = -999, fy = -999, below = false;
-    if (enemy) {
-      // the tag sits on the side of the foe facing away from the core so it never covers the core's readout
-      const w = ft.offsetWidth || 118, h = ft.offsetHeight || 40, out = (enemy.ringR || enemy.R + 15) + (enemy.boss ? 16 : 12);
-      fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, enemy.px * SC));
-      const up = Math.max((enemy.py - out) * SC, 150), dn = (enemy.py + out) * SC;
-      // pick above or below, whichever covers less of the core's ring and readout; prefer the side away from the core
-      const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + (ht.offsetHeight || 30) + 4 }, cr = (RING_R + 8) * SC, ccx = HERO_X * SC, ccy = HERO_Y * SC;
-      const ovl = top => {
-        const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
-        return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
-          + Math.max(0, Math.min(r, ccx + cr) - Math.max(l, ccx - cr)) * Math.max(0, Math.min(b, ccy + cr) - Math.max(top, ccy - cr));
-      };
-      const sUp = ovl(up - h), sDn = dn + h < SH - 100 ? ovl(dn) : 1e9;
-      if (tagSide === null || tagFor !== enemy) { tagFor = enemy; tagSide = enemy.py > HERO_Y + 10 ? sDn <= sUp : sDn < sUp; }
-      else if (tagSide && sUp + 60 < sDn) tagSide = false;
-      else if (!tagSide && sDn + 60 < sUp) tagSide = true;
-      below = tagSide;
-      fy = below ? dn : up;
-    }
-    const key = hx.toFixed(0) + "," + hy.toFixed(0) + "," + fx2.toFixed(0) + "," + fy.toFixed(0) + below;
-    if (key === tagCache) return;
-    tagCache = key;
-    ht.style.left = hx + "px"; ht.style.top = hy + "px";
-    if (enemy) { ft.style.left = fx2 + "px"; ft.style.top = fy + "px"; ft.classList.toggle("below", below); }
+    const hx = HERO_X * SC, hy = (HERO_Y + RING_R - 8) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
+    if (hk !== tagCache) { tagCache = hk; ht.style.left = hx + "px"; ht.style.top = hy + "px"; }
+    const e = enemy, m = e ? e.R * .35 : 0;
+    // only show the name once the enemy is actually (mostly) on screen
+    const vis = !!e && !e.dead && e.px > -m && e.px < VW + m && e.py > -m && e.py < VH + m;
+    if (tagHold > 0) tagHold -= dt || .016;
+    if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }
+    const w = ft.offsetWidth || 150, h = ft.offsetHeight || 40, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
+    const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, e.px * SC));
+    const up = (e.py - out) * SC - h, dn = (e.py + out) * SC, topLim = 112;
+    // above or below: whichever covers less of the core's ring and readout and stays clear of the top bar
+    const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + (ht.offsetHeight || 30) + 4 }, cr = (RING_R + 8) * SC, ccx = HERO_X * SC, ccy = HERO_Y * SC;
+    const ovl = top => {
+      const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
+      return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
+        + Math.max(0, Math.min(r, ccx + cr) - Math.max(l, ccx - cr)) * Math.max(0, Math.min(b, ccy + cr) - Math.max(top, ccy - cr));
+    };
+    const sUp = ovl(up) + (up < topLim ? 5e5 : 0), sDn = dn + h < SH - 100 ? ovl(dn) : 1e9;
+    if (tagSide === null || tagFor !== e) { tagFor = e; tagSide = e.py > HERO_Y + 10 ? sDn <= sUp : sDn < sUp; }
+    else if (tagSide && sUp + 60 < sDn) tagSide = false;
+    else if (!tagSide && sDn + 60 < sUp) tagSide = true;
+    const ty = Math.max(topLim, tagSide ? dn : up);
+    if (!tagVis) { tagX = fx2; tagY = ty; }
+    else { const k = 1 - Math.exp(-(dt || .016) * 16); tagX += (fx2 - tagX) * k; tagY += (ty - tagY) * k; }
+    ft.style.transform = "translate3d(" + (tagX - w / 2).toFixed(1) + "px," + tagY.toFixed(1) + "px,0)";
+    if (!tagVis) { tagVis = true; ft.style.opacity = 1; }
   }
   let lastFrame = 0;
   function frame(now) {
@@ -1387,7 +1398,8 @@ body.perf .pulse { animation: none; }
     for (const f of foes) poseFoe(f, paused ? 0 : dt);
     drawRing(dt);
     poseOrbitals(dt);
-    syncTarget(); placeTags(); placeReticle(dt);
+    stepShots(now);
+    syncTarget(); placeTags(dt); placeReticle(dt);
     requestAnimationFrame(frame);
   }
 
@@ -1561,7 +1573,54 @@ body.perf .pulse { animation: none; }
   }
   const enemyCY = () => ENEMY_Y + (enemy ? enemy.cy : -40);
   const wType = (slot = "weapon") => S.equip[slot] ? (HERO_WEAPON[noun(S.equip[slot])] ? noun(S.equip[slot]) : "Glaive") : "Mote";
-  const wDelay = (slot = "weapon") => WDELAY[wType(slot)] || 120;
+  // flight time from the orbital's muzzle to the target; the hit lands exactly when the shot arrives
+  const SHOT_SPD = { Drone: 900, Mote: 850, Swarm: 700, Hammer: 620, Glaive: 760 };
+  function wDelay(slot = "weapon") {
+    const t = wType(slot);
+    if (t === "Laser" || t === "Coil") return 60;
+    if (!enemy) return WDELAY[t] || 120;
+    const [ox, oy] = orbitPos(slot), d = Math.max(0, Math.hypot(enemy.px - ox, enemy.py - oy) - enemy.R * .35);
+    return Math.round(Math.max(70, Math.min(800, d / (SHOT_SPD[t] || 850) * 1000)));
+  }
+  // projectiles are moved every frame toward where their target is now, so they always connect
+  const shots = [];
+  function launch(el, x0, y0, tgt, ms, o) {
+    o = o || {}; fx.appendChild(el);
+    shots.push({ el, x0, y0, tgt, t0: performance.now() + (o.wait || 0), ms, o, lx: tgt.px, ly: tgt.py });
+    if (o.wait) el.style.visibility = "hidden";
+  }
+  function shotEnd(sh) {
+    const t = sh.tgt, pull = sh.o.pull != null ? sh.o.pull : t.R * .35;
+    const dx = sh.lx - sh.x0, dy = sh.ly - sh.y0, L = Math.hypot(dx, dy) || 1;
+    return [sh.lx - dx / L * pull + (sh.o.offx || 0), sh.ly - dy / L * pull + (sh.o.offy || 0)];
+  }
+  function stepShots(now) {
+    for (let i = shots.length - 1; i >= 0; i--) {
+      const sh = shots[i], o = sh.o;
+      if (now < sh.t0) continue;
+      sh.el.style.visibility = "";
+      if (sh.tgt && !sh.tgt.removed) { sh.lx = sh.tgt.px; sh.ly = sh.tgt.py; }
+      const el = (now - sh.t0) / sh.ms;
+      let x, y, rot = 0, done = false;
+      const [ex, ey] = shotEnd(sh);
+      if (o.glaive) {
+        // out to the target, a quick spin on it, then back to its spot in orbit
+        const O = ORB[o.glaive === "weapon2" ? 1 : 0], bx = HERO_X + O.x, by = HERO_Y + O.y;
+        if (el < 1) { const u = 1 - (1 - el) * (1 - el); x = sh.x0 + (ex - sh.x0) * u; y = sh.y0 + (ey - sh.y0) * u; }
+        else if (el < 1.4) { x = ex; y = ey; }
+        else { const u = Math.min(1, (el - 1.4) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
+        rot = (now - sh.t0) * (o.fast ? 1.6 : 1.1);
+      } else {
+        const u = Math.min(1, el), dx = ex - sh.x0, dy = ey - sh.y0, L = Math.hypot(dx, dy) || 1, bulge = (o.bulge || 0) * Math.sin(Math.PI * u);
+        x = sh.x0 + dx * u - dy / L * bulge; y = sh.y0 + dy * u + dx / L * bulge;
+        const c = (o.bulge || 0) * Math.PI * Math.cos(Math.PI * u), vx = dx - dy / L * c, vy = dy + dx / L * c;
+        rot = o.face != null ? Math.atan2(vy, vx) * 57.2958 + o.face : (o.spin || 0) * u;
+        done = u >= 1;
+      }
+      sh.el.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot.toFixed(0) + ")");
+      if (done) { sh.el.remove(); shots.splice(i, 1); if (o.done) o.done(x, y); }
+    }
+  }
   const slot2Open = () => S.peak >= SLOT2_AT;
   const has2 = () => slot2Open() && !!S.equip.weapon2;
   const orbitEl = slot => slot === "weapon2" ? $("hBladeOrbit2") : hBladeOrbit;
@@ -1618,29 +1677,21 @@ body.perf .pulse { animation: none; }
   function throwBlade(crit, idx, slot = "weapon") {
     if (slot === "weapon" && idx === undefined) sfx(wType(slot), 0, 200);
     anim($("hCore"), [{ transform: "scale(1)" }, { transform: "scale(1.35)" }, { transform: "scale(1)" }], 200);
-    if (reduce) return;
-    const hBladeOrbit = orbitEl(slot);
+    if (reduce || !enemy) return;
+    const hBladeOrbit = orbitEl(slot), tgt = enemy, T = wDelay(slot);
     const w = S.equip[slot], type = wType(slot), col = w ? ARENA_C[w.r] : "#effffc", glowC = w ? col : "#7be0d0";
     const off = idx ? ((idx % 3) - 1) * 14 : 0, [ox, oy] = orbitPos(slot), O = ORB[slot === "weapon2" ? 1 : 0];
-    let tx = ENEMY_X, ty = enemyCY() + off;
-    { const dd = Math.hypot(tx - ox, ty - oy) || 1, pull = enemy ? enemy.R * .35 : 6; tx -= (tx - ox) / dd * pull; ty -= (ty - oy) / dd * pull; }
-    const ang = Math.atan2(ty - oy, tx - ox) * 180 / Math.PI;
+    let tx = tgt.px, ty = tgt.py + off;
+    { const dd = Math.hypot(tx - ox, ty - oy) || 1, pull = tgt.R * .35; tx -= (tx - ox) / dd * pull; ty -= (ty - oy) / dd * pull; }
     if (type !== "Glaive" && type !== "Hammer") {
       anim($(slot === "weapon2" ? "hWeapon2" : "hWeapon"), [{ transform: "translate(0px,0px)" }, { transform: "translate(0px,3.5px)", offset: .25 }, { transform: "translate(0px,0px)" }], 160);
-      tempFx(svgEl("circle", { cx: ox, cy: oy, r: crit ? 5 : 3.5, fill: "#fff" }), [{ opacity: .95, transform: "scale(1)" }, { opacity: 0 }], 120);
+      tempFx(svgEl("circle", { cx: ox, cy: oy, r: crit ? 5 : 3.5, fill: "#fff" }), [{ opacity: .95 }, { opacity: 0 }], 120);
     }
     if (type === "Glaive") {
       const g = svgEl("g", {}); g.style.color = glowC;
-      const p = svgEl("path", { d: HERO_WEAPON.Glaive, fill: col, class: "glow" }, g);
-      if (crit) p.setAttribute("transform", "scale(1.4)");
-      if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, 380); }
-      fx.appendChild(g);
-      anim(g, [
-        { transform: "translate(" + ox + "px," + oy + "px) rotate(0deg)" },
-        { transform: "translate(" + tx + "px," + ty + "px) rotate(" + (crit ? 900 : 540) + "deg)", offset: .45 },
-        { transform: "translate(" + ox + "px," + oy + "px) rotate(" + (crit ? 1800 : 1080) + "deg)" }
-      ], { duration: 380, easing: "ease-in-out" });
-      setTimeout(() => g.remove(), 380);
+      svgEl("path", { d: HERO_WEAPON.Glaive, fill: col, class: "glow", transform: crit ? "scale(1.4)" : "" }, g);
+      if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, T * 2.4); }
+      launch(g, ox, oy, tgt, T, { glaive: slot, fast: crit, offy: off });
     } else if (type === "Laser") {
       const g = svgEl("g", {}); g.style.color = glowC;
       svgEl("line", { x1: ox, y1: oy, x2: tx, y2: ty, stroke: col, "stroke-width": crit ? 7 : 4.5, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
@@ -1656,26 +1707,24 @@ body.perf .pulse { animation: none; }
       svgEl("path", { d: zigzag(bx, by, bx + 14, by + 26, 3, 8), fill: "none", stroke: col, "stroke-width": 1.5 }, g);
       tempFx(g, [{ opacity: 1 }, { opacity: .3, offset: .3 }, { opacity: 1, offset: .5 }, { opacity: 0 }], 200);
     } else if (type === "Swarm") {
-      for (let i = 0; i < 3; i++) setTimeout(() => {
+      for (let i = 0; i < 3; i++) {
         const g = svgEl("g", {}); g.style.color = glowC;
         svgEl("polygon", { points: crit ? "0,-6 4,0 0,6 -4,0" : "0,-4.5 3,0 0,4.5 -3,0", fill: col, class: "glow" }, g);
-        moveFx(g, ox, oy, tx, ty + (i - 1) * 6, 190, [(ox + tx) / 2, (oy + ty) / 2 + (i - 1) * 26], 360);
-      }, i * 35);
+        launch(g, ox, oy, tgt, T, { bulge: (i - 1) * 24, face: 90, offy: off + (i - 1) * 4, wait: i * 30 });
+      }
     } else if (type === "Hammer") {
-      if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, 330); }
+      if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, T + 110); }
       const g = svgEl("g", {}); g.style.color = glowC;
       svgEl("path", { d: HERO_WEAPON.Hammer, fill: col, class: "glow", transform: "scale(" + (crit ? 1.9 : 1.5) + ")" }, g);
-      moveFx(g, ox, oy, tx, ty, 220, null, crit ? 720 : 540);
-      setTimeout(() => { ringFx(tx, ty, col, .8, 3.2, 300, 4); shake(crit ? 5 : 2, 140); }, 215);
+      launch(g, ox, oy, tgt, T, { spin: crit ? 720 : 540, offy: off, done: (x, y) => { ringFx(x, y, col, .8, 3.2, 300, 4); shake(crit ? 5 : 2, 140); } });
     } else {
       const n = type === "Drone" ? 2 : 1, px = -O.uy, py = O.ux;
-      for (let i = 0; i < n; i++) setTimeout(() => {
+      for (let i = 0; i < n; i++) {
         const g = svgEl("g", {}); g.style.color = glowC;
         const sd = n === 2 ? (i ? 8 : -8) : 0, sx = n === 2 ? HERO_X + O.x + px * sd + O.ux * 2 : ox, sy = n === 2 ? HERO_Y + O.y + py * sd + O.uy * 2 : oy;
-        svgEl("line", { x1: -7, y1: 0, x2: 7, y2: 0, stroke: col, "stroke-width": crit ? 4 : 3, "stroke-linecap": "round", class: "glow", transform: "rotate(" + ang.toFixed(1) + ")" }, g);
-        moveFx(g, sx, sy, tx + px * sd * .4, ty + py * sd * .4, 120);
-        svgEl("circle", { cx: 0, cy: 0, r: 0 });
-      }, i * 60);
+        svgEl("line", { x1: -7, y1: 0, x2: 7, y2: 0, stroke: col, "stroke-width": crit ? 4 : 3, "stroke-linecap": "round", class: "glow" }, g);
+        launch(g, sx, sy, tgt, T, { face: 0, offx: px * sd * .4, offy: off + py * sd * .4, wait: i * 50 });
+      }
     }
   }
   function sparks(x, y, n, col, dist) {
@@ -1686,22 +1735,22 @@ body.perf .pulse { animation: none; }
       tempFx(svgEl("circle", { cx: x, cy: y, r: 2, fill: col }), [{ transform: "translate(0px,0px)", opacity: 1 }, { transform: "translate(" + (Math.cos(a) * d).toFixed(1) + "px," + (Math.sin(a) * d).toFixed(1) + "px)", opacity: 0 }], 320);
     }
   }
-  function slash(crit, slot = "weapon") {
+  function slash(crit, slot = "weapon", t) {
     if (reduce) return;
-    const ty = wType(slot);
+    const ty = wType(slot), SX = t ? t.px : ENEMY_X, SY = t ? t.py : enemyCY();
     if (ty === "Laser" || ty === "Coil" || ty === "Drone" || ty === "Mote") {
       const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff";
-      sparks(ENEMY_X + F() * 8, enemyCY(), crit ? 9 : 5, crit ? "#ff8a3d" : col, crit ? 40 : 26);
-      if (crit || ty === "Laser") ringFx(ENEMY_X + F() * 8, enemyCY(), col, .4, crit ? 2.4 : 1.4, 220, 2);
+      sparks(SX, SY, crit ? 9 : 5, crit ? "#ff8a3d" : col, crit ? 40 : 26);
+      if (crit || ty === "Laser") ringFx(SX, SY, col, .4, crit ? 2.4 : 1.4, 220, 2);
       return;
     }
-    const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff", cy = enemyCY(), s = crit ? 1.35 : 1;
-    const g = svgEl("g", { transform: "translate(" + ENEMY_X + " " + cy + ") rotate(" + (Math.random() * 40 - 20).toFixed(0) + ")" });
+    const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff", cy = SY, s = crit ? 1.35 : 1;
+    const g = svgEl("g", { transform: "translate(" + SX + " " + cy + ") rotate(" + (Math.random() * 40 - 20).toFixed(0) + ")" });
     const d = "M" + (-20 * s) + " " + (-30 * s) + " Q" + (22 * s) + " 0 " + (-14 * s) + " " + (32 * s);
     svgEl("path", { d, fill: "none", stroke: col, "stroke-width": crit ? 7 : 5, "stroke-linecap": "round", opacity: .9 }, g);
     svgEl("path", { d, fill: "none", stroke: "#fff", "stroke-width": crit ? 2.5 : 1.5, "stroke-linecap": "round" }, g);
     tempFx(g, [{ opacity: 1 }, { opacity: 0 }], 220);
-    sparks(ENEMY_X + F() * 6, cy, crit ? 8 : 4, crit ? "#ff8a3d" : "#fff", crit ? 40 : 28);
+    sparks(SX, cy, crit ? 8 : 4, crit ? "#ff8a3d" : "#fff", crit ? 40 : 28);
   }
   function boltFx() {
     if (reduce || !enemy) return;
@@ -1904,10 +1953,16 @@ body.perf .pulse { animation: none; }
   }
 
   // ================= combat =================
+  // a hit is aimed now but only lands (health, effects, numbers) when the shot arrives
   function hit(base, delay, kind, slot) {
     if (!alive()) return;
+    const e = enemy;
+    if (delay && !document.hidden) setTimeout(() => land(e, base, kind, slot), delay); else land(e, base, kind, slot);
+  }
+  function land(e, base, kind, slot) {
+    if (heroDown || !e || e.dead || !foes.includes(e)) return;
     const wt = kind === "blade" ? wType(slot || "weapon") : null;
-    const e = enemy, forced = markT > 0;
+    const forced = markT > 0;
     const crit = forced || (!st("eclipse") && Math.random() < ST.crit);
     let dmg = base * (.9 + Math.random() * .2);
     if (crit) dmg *= ST.critDmg * (forced ? 1 + .1 * lvl("shatter") : 1);
@@ -1927,7 +1982,7 @@ body.perf .pulse { animation: none; }
         M.facets.n = Math.max(0, M.facets.n - (kind === "tap" ? 2 : kind === "nova" ? 4 : 1));
         if (kind !== "tap") dmg *= kind === "nova" ? .3 : .1;
         drawFacets(e);
-        if (M.facets.n === 0) { log("Facet shield shattered", "good"); ringFx(ENEMY_X, enemyCY(), "#4fd3e4", 2, 5, 350); }
+        if (M.facets.n === 0) { log("Facet shield shattered", "good"); ringFx(e.px, e.py, "#4fd3e4", 2, 5, 350); }
       }
       if (M.motes && M.motes.n > 0) {
         dmg *= 1 - .15 * M.motes.n;
@@ -1940,7 +1995,7 @@ body.perf .pulse { animation: none; }
     dpsLog.push([performance.now(), dmg]);
     if (wt === "Hammer" && dmg > 0 && e.hp > 0 && Math.random() < .2) {
       e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
-      setTimeout(() => floatText("Stunned", "info", e), delay || 0);
+      floatText("Stunned", "info", e);
     }
     if (e.m && e.m.mirror && e.m.mirror.on > 0 && dmg > 0) trueDamage(dmg * .25, "Mirror");
     if (ST.leech > 0) {
@@ -1950,8 +2005,8 @@ body.perf .pulse { animation: none; }
     }
     if (crit) { bump("crit", 1); if (has("blood", 4)) heal(ST.maxHp * .02); }
     const show = () => {
-      if (kind === "blade" || kind === "storm") slash(crit, slot || "weapon");
-      else if (kind === "tap") sparks(ENEMY_X + F() * 8, enemyCY(), crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
+      if (kind === "blade" || kind === "storm") slash(crit, slot || "weapon", e);
+      else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
       if (note) sfx("miss", 0, 120);
       else if (crit) sfx("crit", 0, 160);
       else if (kind !== "tap") sfx("hit", 0, 70);
@@ -1961,15 +2016,16 @@ body.perf .pulse { animation: none; }
       if (!e.dead && e.el) anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -5), filter: "brightness(2.4)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160);
       if (!note) knock(e, (kind === "tap" ? 7 : wt === "Hammer" ? 20 : wt === "Glaive" ? 9 : 12) * (crit ? 1.7 : 1));
     };
-    if (delay) setTimeout(show, delay); else show();
-    if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), (delay || 0) + 20); }
+    show();
+    if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
   }
   const effSpd = () => ST.spd * (odT > 0 ? 1.6 + .1 * (lvl("overdrive") - 1) : 1) * (st("gravity") ? .7 : 1);
   function fireOrbital(slot) {
     const t = wType(slot), tr = WTRAIT[t], base = slotAtk(slot) * tr.dmg;
+    const T = wDelay(slot);
     throwBlade(false, undefined, slot);
-    hit(base, wDelay(slot), "blade", slot);
-    if (t === "Glaive") setTimeout(() => { if (alive()) hit(base, 0, "blade", slot); }, 380);
+    hit(base, T, "blade", slot);
+    if (t === "Glaive") hit(base, Math.round(T * 1.4), "blade", slot);
     if (t === "Coil" && Math.random() < .3) setTimeout(() => { if (alive()) { throwBlade(false, 1, slot); hit(slotAtk(slot) * .6, wDelay(slot), "blade", slot); } }, 140);
   }
   const orbRate = slot => WTRAIT[wType(slot)].rate;
@@ -2913,7 +2969,6 @@ body.perf .pulse { animation: none; }
     $("mode").textContent = S.push ? "Pushing" : "Farming";
     $("hpTxt").textContent = fmt(Math.max(0, hp));
     $("mpTxt").textContent = fmt(Math.max(0, mp));
-    $("foeTag").style.opacity = enemy && !enemy.dead ? 1 : 0;
     const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
     $("menuDot").className = claim ? "dot" : "";
     $("dpsVal").textContent = fmt(dps());
