@@ -2170,8 +2170,9 @@ body.perf .pulse { animation: none; }
   // ================= economy, loot, bounties =================
   function addGold(n, counts) { S.gold += n; gAcc += n; if (counts) bump("gold", n); }
   const goldScale = () => lumenAt(Math.max(1, S.maxStage)) * (ST ? ST.gold : 1);
-  const shardAmt = st => 1 + Math.floor(st / 10);
-  const salvShards = it => it.r >= 2 ? (it.r - 1) * shardAmt(it.stage) : 0;
+  // shards are scarce: you can't max every skill at each cap, so pick favorites
+  const shardAmt = st => 1 + Math.floor(st / 12);
+  const salvShards = it => it.r >= 3 ? (it.r - 2) * shardAmt(it.stage) : 0;
   function addShards(n, float) { if (n <= 0) return; S.shards += n; markDirty("skills"); if (float) { floatText("+" + n + " shard" + (n > 1 ? "s" : ""), "shardf", float === true ? "enemy" : float); sfx("shard", 0, 120); } }
   function salvage(it) { addGold(salvValue(it), false); addShards(salvShards(it)); bump("salvage", 1); }
   function stash(it) {
@@ -2219,7 +2220,7 @@ body.perf .pulse { animation: none; }
     return {
       type: t.type, n, prog: 0, tier, poster: pick(POSTERS),
       eff: t.type === "gold" ? n / (lumenAt(S.maxStage) * (ST ? ST.gold : 1)) : EFFORT[t.type](n),
-      item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: (4 + 5 * tier) * shardAmt(S.maxStage)
+      item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: (3 + 3 * tier) * shardAmt(S.maxStage)
     };
   }
   const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenAt(S.maxStage) * 2 * (1 + .8 * b.tier) * (1 + .2 * T("f6")) * ST.gold) : (b.gold || 0);
@@ -2689,7 +2690,7 @@ body.perf .pulse { animation: none; }
     if (e.mods.includes("volatile")) setTimeout(() => { burst(e.px, e.py, "#ff8463", 12); shake(6, 300); trueDamage(ST.maxHp * .25 * modPow(), "Blast"); }, 150);
     const g = Math.ceil(lumenAt(S.stage) * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
     addGold(g, true); S.totalKills++;
-    if (!e.child) { const sa = shardAmt(S.stage); if (boss) addShards(6 * sa, e); else if (elite) addShards(3 * sa, e); else if (Math.random() < .15) addShards(sa, e); }
+    if (!e.child) { const sa = shardAmt(S.stage); if (boss) addShards(4 * sa, e); else if (elite) addShards(2 * sa, e); else if (Math.random() < .08) addShards(sa, e); }
     bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
     const fam = FAM[e.sides], kk = boss ? "b" : elite ? "e" : "n";
     if (fam) {
@@ -2843,7 +2844,7 @@ body.perf .pulse { animation: none; }
     if (sk.id === "dash") return "Dash " + Math.round(dashDist(L)) + " units, untouchable for " + dashI(L).toFixed(2) + "s, slicing foes in your path for " + fmt(dashDmg(L)) + " and clearing statuses";
     return "Every hit crits for " + shatterT(L).toFixed(1) + "s with +" + Math.round(shatterCd(L) * 100) + "% crit damage";
   }
-  const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
+  const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.2, lvl(sk.id) - 1));
 
   const skEls = {};
   function buildSkillbar() {
@@ -3407,7 +3408,7 @@ body.perf .pulse { animation: none; }
       <p>Rarity goes Common, Magic, Rare, Epic, Legendary. Higher rarity means much more power: Magic 1.5x, Rare 2.3x, Epic 3.5x, Legendary 5.5x. Magic rolls 1 bonus stat, Rare and Epic roll 2, and Legendary rolls 3. Item power also grows 13% per stage, so drops from deeper stages quickly beat old gear. Each item card shows exactly what it gives and how it compares to what you wear, in percent.</p>
       <p><b>Sets</b> drop at Rare or better: Voidforged, Sunwake, Tidecaller, Bloodglass and Gilded Choir. Wearing 2 or 4 pieces of one set gives bonuses and an aura around your core.</p>
       <p>Better items equip themselves. The rest go to your Pack, where you can equip or salvage them for lumen. Auto-salvage clears low-rarity junk for you.</p>`],
-    ["Currencies", `<ul><li><b>Lumen</b>: scattered light from every shape you destroy. Spend it in Train. It also comes from salvage and bounties.</li><li><b>Shards</b>: crystal fragments of shattered shapes. Spend them on skill upgrades. Normal enemies drop them 15% of the time, elites always drop 3 portions and bosses 6. Salvaging Rare or better gear and finishing bounties also gives shards. Each portion grows every 10 stages.</li><li><b>Echoes</b>: earned by ascending and from Gold seal bounties. Spend them on the permanent web.</li></ul>
+    ["Currencies", `<ul><li><b>Lumen</b>: scattered light from every shape you destroy. Spend it in Train. It also comes from salvage and bounties.</li><li><b>Shards</b>: crystal fragments of shattered shapes. Spend them on skill upgrades. Normal enemies drop them 8% of the time, elites always drop 2 portions and bosses 4. Salvaging Epic or Legendary gear and finishing bounties also gives shards. Each portion grows every 12 stages. Shards are scarce on purpose: you won't be able to max every skill at each level cap, so choose which ones to push.</li><li><b>Echoes</b>: earned by ascending and from Gold seal bounties. Spend them on the permanent web.</li></ul>
       <p>Lumen and shards reset when you ascend, along with training and skills. Echoes never do.</p>`],
     ["Training", `<p>Train spends lumen on upgrades that last for the current run. Each level costs more than the last. New training unlocks as you reach deeper stages, and ascending locks it all again and resets the levels.</p>
       <p><b>Might</b> and <b>Vigor</b> double at levels 25, 50 and 100, then every 50 levels after that. <b>Greed</b> gets x1.25 at the same levels. The other upgrades have a level cap. Use the x1, x10 and Max buttons at the top to buy in bulk.</p>
@@ -3838,7 +3839,7 @@ body.perf .pulse { animation: none; }
     sec = Math.min(sec, OFF_CAP);
     const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * OFF_EFF, st = Math.max(1, S.stage);
     const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
-    const shards = Math.floor(kills * .15 * shardAmt(st) + kills / 8 * .1 * 3 * shardAmt(st));
+    const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
     const items = Math.min(3, Math.floor(kills * ST.drop / 40));
     return { sec, kills: Math.floor(kills), gold, shards, items };
   }
