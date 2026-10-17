@@ -198,6 +198,10 @@ body.noanim .bladeOrbit2 { animation: none; }
 .introCard { width: 100%; max-width: 420px; background: linear-gradient(180deg, rgba(34,27,60,.86), rgba(13,10,24,.9)); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 2px solid var(--accent); border-radius: 18px; padding: 20px 18px 16px; }
 .introCard h2 { font-family: "Syne", Impact, sans-serif; font-weight: 800; font-size: 24px; margin: 4px 0 8px; }
 .introCard p { margin: 0 0 16px; line-height: 1.55; }
+.awayList { display: grid; gap: 6px; margin: 0 0 16px; }
+.awayList div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.05); font-size: 14px; }
+.awayList span { color: var(--muted); }
+.awayList b.g { color: #ffd04d; } .awayList b.s { color: #4fd3e4; }
 .introStep { font-size: 12px; font-weight: 700; color: var(--accent); }
 .introNav { display: flex; gap: 8px; align-items: center; }
 .introNav .dots { flex: 1; display: flex; gap: 5px; justify-content: center; }
@@ -623,6 +627,15 @@ body.perf .pulse { animation: none; }
   </div>
 </div>
 
+<div class="intro" id="away" hidden>
+  <div class="introCard awayCard" role="dialog" aria-modal="true" aria-labelledby="awayTitle">
+    <div class="introStep">Welcome back</div>
+    <h2 id="awayTitle">While you were away</h2>
+    <p id="awayText"></p>
+    <div class="awayList" id="awayList"></div>
+    <div class="introNav"><span style="flex:1"></span><button class="btn go" id="awayOk" type="button">Collect</button></div>
+  </div>
+</div>
 <div class="intro" id="intro" hidden>
   <div class="introCard" role="dialog" aria-modal="true" aria-labelledby="introTitle">
     <div class="introStep" id="introStep"></div>
@@ -1677,6 +1690,7 @@ body.perf .pulse { animation: none; }
     const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
     stepHero(dt);
     if (!paused && !heroDown) moveFoes(dt);
+    if (!paused) stepEShots(dt);
     for (const f of foes) poseFoe(f, paused ? 0 : dt);
     drawRing(dt);
     poseOrbitals(dt);
@@ -2369,19 +2383,121 @@ body.perf .pulse { animation: none; }
   function enemyAttack(e) {
     // shots fired while still closing in are long-range and hit softer
     const heavy = !!(e.v.crit && Math.random() < e.v.crit), dmg = e.dmg * (e.enraged ? 2 : 1) * (heavy ? 2 : 1) * (.9 + Math.random() * .2) * (e.arrived ? 1 : FAR_DMG) * DMG_SCALE;
-    const t = enemyAttackFx(e, heavy);
-    const land = () => {
+    let statusDone = false;
+    const land = (mult) => {
       if (heroDown) return;
-      const landed = hurt(dmg, false, e);
+      const landed = hurt(dmg * (mult || 1), false, e);
       if (e.boss) shake(3, 160);
       if (!landed || heroDown) return;
       if (heavy) { shake(5, 200); floatText("Heavy blow", "hurt", "hero"); }
       if (e.v.burn) mp = Math.max(0, mp - ST.maxMp * e.v.burn);
       if (e.mods.includes("vampiric") && !e.dead) e.hp = Math.min(e.max, e.hp + e.max * .04 * modPow());
+      if (statusDone) return; statusDone = true;
       if (e.mods.includes("draining")) applyStatus(pick(ZONE_STATUS), 5, false, e);
       e.statuses.list.forEach(id => { if (Math.random() < e.statuses.chance) applyStatus(id, 5, false, e); });
     };
-    if (t > 0 && !document.hidden) setTimeout(land, t); else land();
+    // on screen, shots are real projectiles you can sidestep; from off screen they still land on their own
+    const mx = e.wx != null ? e.wx : e.px, my = e.wy != null ? e.wy : e.py;
+    if (!document.hidden && mx > VX0 - 30 && mx < VX1() + 30 && my > VY0 - 30 && my < VY1() + 30) { fireShot(e, heavy, land); return; }
+    const t = enemyAttackFx(e, heavy);
+    if (t > 0 && !document.hidden) setTimeout(() => land(), t); else land();
+  }
+  // ---- enemy projectiles ----
+  const eshots = [];
+  const SHOT_SPEC = {
+    pale: { spd: 400, r: 4.5 },      // twin darts: quick and small
+    crimson: { spd: 320, r: 10 },    // saw: medium and wide
+    bastion: { spd: 230, r: 8 },     // mortar shell: slow, bursts where you stood
+    umbral: { spd: 0, r: 0 }         // lance: telegraphed beam
+  };
+  function aimFrom(e) {
+    const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = HERO_X - ax, dy = HERO_Y - ay, l = Math.hypot(dx, dy) || 1, L = MUZZLE[e.v.id] || 22;
+    return { x: ax + dx / l * L, y: ay + dy / l * L, ux: dx / l, uy: dy / l, d: l, deg: Math.atan2(dy, dx) * 57.2958 };
+  }
+  function kick(e, px, ms) {
+    if (!e.el) return;
+    anim(e.el.weapon, [{ transform: "translate(0px,0px)" }, { transform: "translate(0px," + px + "px)", offset: .2 }, { transform: "translate(0px,0px)" }], ms);
+  }
+  function addShot(o) { o.t = 0; eshots.push(o); placeShot(o); return o; }
+  function placeShot(o) { if (o.g) o.g.setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ")" + (o.spin ? " rotate(" + (o.t * o.spin).toFixed(0) + ")" : o.deg != null ? " rotate(" + o.deg.toFixed(1) + ")" : "")); }
+  function killShot(o, burst) {
+    const i = eshots.indexOf(o); if (i >= 0) eshots.splice(i, 1);
+    if (o.mark) o.mark.remove();
+    if (!o.g) return;
+    if (burst) { anim(o.g, [{ opacity: 1 }, { opacity: 0 }], 160); setTimeout(() => o.g.remove(), 150); } else o.g.remove();
+  }
+  function fireShot(e, heavy, land) {
+    const id = e.v.id, tc = ARENA_C[e.tier], sp = SHOT_SPEC[id] || SHOT_SPEC.pale;
+    if (id === "pale") {
+      [0, 1].forEach(i => setTimeout(() => {
+        if (e.dead || heroDown) return;
+        kick(e, 4, 120);
+        const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
+        svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
+        svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
+        addShot({ g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc });
+      }, i * 110));
+      return;
+    }
+    if (id === "crimson") {
+      kick(e, 6, 200);
+      if (e.el && e.el.saw) anim(e.el.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
+      const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
+      svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
+      svgEl("circle", { r: 3, fill: "#120f1c" }, g);
+      addShot({ g, x: a.x, y: a.y, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: heavy ? 12 : sp.r, spin: 900, life: (a.d + 260) / sp.spd, hit: () => land(), col: "#ffb36b" });
+      return;
+    }
+    if (id === "bastion") {
+      // mortar: lobs a shell at the spot you're standing on, marked on the ground, and bursts there
+      const a0 = aimFrom(e), tx = HERO_X, ty = HERO_Y, R = heavy ? 44 : 36;
+      const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
+      const C = 170;
+      setTimeout(() => {
+        if (e.dead || heroDown) { mark.remove(); return; }
+        kick(e, 8, 260);
+        const a = aimFrom(e), sx = a.x, sy = a.y, d = Math.hypot(tx - sx, ty - sy) || 1, T = Math.max(.35, d / sp.spd);
+        const g = svgEl("g", {}, fx); g.style.color = tc;
+        svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
+        svgEl("circle", { r: 2.2, fill: "#fff" }, g);
+        addShot({ g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
+      }, C);
+      void a0;
+      return;
+    }
+    // umbral lance: locks onto where you are, shows a thin aim line, then fires down that line
+    const a = aimFrom(e), len = a.d + 140, ex = a.x + a.ux * len, ey = a.y + a.uy * len, C = 480;
+    const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
+    if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    setTimeout(() => {
+      tel.remove();
+      if (e.dead || heroDown) return;
+      kick(e, 3, 160);
+      const g = svgEl("g", {}, fx); g.style.color = "#b48cff";
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#b48cff", "stroke-width": heavy ? 9 : 6, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#1a0f2e", "stroke-width": 2 }, g);
+      tempFx(g, [{ opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }], 260);
+      // distance from the core to the beam's line segment
+      const vx = ex - a.x, vy = ey - a.y, t = Math.max(0, Math.min(1, ((HERO_X - a.x) * vx + (HERO_Y - a.y) * vy) / (vx * vx + vy * vy))), px = a.x + vx * t, py = a.y + vy * t;
+      if (Math.hypot(HERO_X - px, HERO_Y - py) < (heavy ? 22 : 17) + 10) { land(); ringFx(HERO_X, HERO_Y, "#b48cff", 1.2, .5, 240, 3); }
+    }, C);
+  }
+  const HERO_HIT = 15;
+  function stepEShots(dt) {
+    for (let i = eshots.length - 1; i >= 0; i--) {
+      const o = eshots[i]; if (!o) continue;
+      o.t += dt; o.x += o.vx * dt; o.y += o.vy * dt; placeShot(o);
+      if (o.lob) {
+        if (o.t >= o.life) {
+          ringFx(o.lob.tx, o.lob.ty, o.col, .5, o.lob.R / 9, 300, 4); sparks(o.lob.tx, o.lob.ty, 6, o.col, 24);
+          if (Math.hypot(HERO_X - o.lob.tx, HERO_Y - o.lob.ty) < o.lob.R + 8 && !(dashIT > 0)) o.hit();
+          killShot(o, false);
+        }
+        continue;
+      }
+      if (!(dashIT > 0) && !heroDown && Math.hypot(HERO_X - o.x, HERO_Y - o.y) < o.r + HERO_HIT) { sparks(o.x, o.y, 4, o.col, 16); o.hit(); killShot(o, false); continue; }
+      if (o.t >= o.life) killShot(o, true);
+    }
   }
   function enemyAttackFx(e, heavy) {
     const id = e.v.id, tc = ARENA_C[e.tier], E = e.el, L = MUZZLE[id] || 22;
@@ -3241,6 +3357,8 @@ body.perf .pulse { animation: none; }
       <p>The DPS number at the top of the screen is your damage over the last 5 seconds. Floating numbers show each hit: white for normal, cyan for taps, lumen with a ! for crits.</p>
       <p>The Pushing button controls progress. Pushing moves to the next stage after each clear. Farming repeats the current stage, which is handy for lumen and loot when you're stuck.</p>
       <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
+      <p><b>Dodging</b>: enemy shots you can see on screen are real projectiles. Step aside from darts and saws, walk out of a mortar's red ground circle before the shell lands, and leave the dashed aim line before a Lance beam fires. Dash makes you untouchable for a moment. Shots fired from off screen still land, softer.</p>
+      <p><b>Offline</b>: while the game is closed or in the background, your core keeps farming your current stage at half speed, for up to 8 hours. You collect lumen, shards and a few items when you come back.</p>
       <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The plane is endless, so roam as far as you like; the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
     ["Health and mana", `<p><b>Health</b> (green bar) is your life. It regenerates 1% per second, and each kill heals 5%. If it hits zero your core collapses, you drop back one stage and switch to Farming.</p>
@@ -3682,12 +3800,32 @@ body.perf .pulse { animation: none; }
   addEventListener("resize", () => { layout(); tagCache = ""; });
   requestAnimationFrame(frame);
   buildSkillbar();
-  const away = Math.min((Date.now() - S.last) / 1000, 7200);
-  if (away > 30 && S.gps > 0) {
-    const gain = S.gps * away * .5;
-    addGold(gain, false);
-    setTimeout(() => log("Away for " + Math.round(away / 60) + " min: earned " + fmt(gain) + " lumen", "good"), 300);
+  // ---- offline progress: your core keeps farming at half speed while you're away (up to 8 hours) ----
+  const OFF_CAP = 8 * 3600, OFF_EFF = .5;
+  function offlineGains(sec) {
+    sec = Math.min(sec, OFF_CAP);
+    const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * OFF_EFF, st = Math.max(1, S.stage);
+    const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
+    const shards = Math.floor(kills * .15 * shardAmt(st) + kills / 8 * .1 * 3 * shardAmt(st));
+    const items = Math.min(3, Math.floor(kills * ST.drop / 40));
+    return { sec, kills: Math.floor(kills), gold, shards, items };
   }
+  function showOffline(sec) {
+    if (sec < 60 || !ST) return;
+    const g = offlineGains(sec);
+    if (g.gold <= 0 && g.shards <= 0) return;
+    addGold(g.gold, false); if (g.shards) addShards(g.shards);
+    const found = []; for (let i = 0; i < g.items; i++) { const it = makeItem(S.stage, false, 1); found.push(RARITY[it.r].name); receive(it, true); }
+    S.totalKills += g.kills;
+    const h = Math.floor(g.sec / 3600), m = Math.floor(g.sec % 3600 / 60), t = (h ? h + "h " : "") + m + "m";
+    $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > OFF_CAP ? " (the most it can store is 8 hours)" : "") + ".";
+    $("awayList").innerHTML = '<div><span>Shapes destroyed</span><b>' + fmt(g.kills) + '</b></div><div><span>Lumen</span><b class="g">+' + fmt(g.gold) + '</b></div>' +
+      (g.shards ? '<div><span>Shards</span><b class="s">+' + fmt(g.shards) + "</b></div>" : "") + (found.length ? "<div><span>Items</span><b>" + found.join(", ") + "</b></div>" : "");
+    $("away").hidden = false; paused = true;
+    log("Away for " + t + ": earned " + fmt(g.gold) + " lumen" + (g.shards ? " and " + g.shards + " shards" : ""), "good");
+    save();
+  }
+  $("awayOk").addEventListener("click", () => { $("away").hidden = true; if ($("intro").hidden) paused = false; updateUI(); });
   log("The loop begins.", "r0");
   let introPage = 0, paused = false;
   function drawIntro() {
@@ -3704,21 +3842,29 @@ body.perf .pulse { animation: none; }
   $("introBack").addEventListener("click", () => { if (introPage > 0) { introPage--; drawIntro(); } });
   $("introSkip").addEventListener("click", endIntro);
   if (!S.seenIntro) showIntro();
+  else setTimeout(() => showOffline((Date.now() - S.last) / 1000), 400);
   updateUI();
 
-  let prev = Date.now(), boardT = 0;
+  let prev = Date.now(), boardT = 0, kLast = -1, hiddenAt = 0;
   setInterval(() => {
     const now = Date.now(), dt = Math.min((now - prev) / 1000, .25);
     prev = now;
     if (!paused) step(dt);
     gTimer += dt; saveT += dt; uiT += dt; lightT += dt; boardT += dt;
-    if (gTimer >= 2) { S.gps = S.gps * .8 + (gAcc / gTimer) * .2; gAcc = 0; gTimer = 0; }
+    if (gTimer >= 2) {
+      S.gps = S.gps * .8 + (gAcc / gTimer) * .2; gAcc = 0;
+      if (!paused && !heroDown) { const k = S.totalKills - (kLast < 0 ? S.totalKills : kLast); S.kps = (S.kps || .3) * .95 + (k / gTimer) * .05; }
+      kLast = S.totalKills; gTimer = 0;
+    }
     if (uiT >= .1) { uiT = 0; updateUI(); }
     if (lightT >= .5) { lightT = 0; lightRefresh(); }
     if (boardT >= 1) { boardT = 0; ensureBoard(); }
     if (saveT >= 5) { saveT = 0; save(); }
   }, 50);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) save(); else prev = Date.now(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); save(); }
+    else { prev = Date.now(); if (hiddenAt && $("away").hidden) showOffline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; }
+  });
   window.addEventListener("pagehide", save);
 })();
 </script>
