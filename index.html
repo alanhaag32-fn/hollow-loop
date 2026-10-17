@@ -3427,7 +3427,7 @@ body.perf .pulse { animation: none; }
     ["Index", `<p>There are 6 enemy families, one per shape: Triad (3 sides), Quadrant (4), Pentad (5), Hexen (6), Heptarch (7) and Octave (8). Each 10-stage zone uses the next family in order, and the cycle repeats after stage 60. Every family comes in three forms: normal, Elite (horns and a red ring, from stage 11) and Grand boss (crowned, every 10th stage).</p>
       <p>The Index window records every kill. Each of the 18 entries has three milestone tiers, and each tier adds a permanent bonus themed to that family. Index progress and its bonuses are never reset, not even by ascending.</p>`],
     ["Bounty board", `<p>The Board holds 3 bounties, like destroying shapes or landing crits. Finish one and claim it for lumen. The payout is set when you claim: it matches how long the bounty takes and grows with your best stage this run. Rare notices pay more and add a Rare+ item, and Gold seals add an Epic+ item and an echo.</p>
-      <p>A claimed bounty leaves an empty pin, and a new one is posted 5 minutes later. You can reroll unfinished bounties for lumen, once every 10 minutes. A dot on the Board button means something is ready to claim.</p>`],
+      <p>A claimed bounty leaves an empty pin, and a new one is posted 5 minutes later. You can reroll unfinished bounties for lumen, once every 10 minutes. A dot on the Board button means something is ready to claim. When you ascend, finished bounties stay on the board for you to claim in the new run, and the rest are reposted with rewards sized for the new run.</p>`],
     ["Ascension and the web", `<p>From stage 20 you can <b>ascend</b> in the Tree window. You restart at stage 1 and lose lumen, gear, training and skills. In return you earn <b>echoes</b> based on the highest stage you reached. Echoes and the web are permanent.</p>
       <p>Spend echoes on the web. You can only learn a node connected to one you already own, starting from the Core. The four branches are Edge (damage), Ward (survival), Drive (speed and skills) and Fortune (loot and lumen). Bridge nodes link neighboring branches.</p>
       <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>`],
@@ -3805,15 +3805,17 @@ body.perf .pulse { animation: none; }
       if (S.maxStage < 20 || g < 1) return;
       if (!ascArmed) { ascArmed = true; markDirty("tree"); setTimeout(() => { ascArmed = false; markDirty("tree"); }, 3000); updateUI(); return; }
       ascArmed = false;
+      // finished bounties stay on the board to claim in the new run; everything else is reposted at the new run's scale
+      const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
       const keep = {
         echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, tree: S.tree, peak: S.peak, auto: S.auto, salv: S.salv,
-        autoEquip: S.autoEquip, anim: S.anim, perf: S.perf, sound: S.sound, vol: S.vol, music: S.music, mvol: S.mvol, ascensions: (S.ascensions || 0) + 1, bestiary: S.bestiary, bounties: S.bounties, bountyDone: S.bountyDone, rerollAt: S.rerollAt, nextId: S.nextId, totalKills: S.totalKills
+        autoEquip: S.autoEquip, anim: S.anim, perf: S.perf, sound: S.sound, vol: S.vol, music: S.music, mvol: S.mvol, ascensions: (S.ascensions || 0) + 1, bestiary: S.bestiary, bounties: doneB, bountyDone: S.bountyDone, rerollAt: 0, nextId: S.nextId, totalKills: S.totalKills
       };
       S = Object.assign(fresh(), keep);
       S.stage = S.maxStage = 1 + 5 * T("f7");
       clearFoes(false); spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
       shield = 0; odT = 0; markT = 0; heroModel.classList.remove("od");
-      ST = null; recalc(); markDirty(...Object.keys(RENDER)); buildSkillbar();
+      ST = null; recalc(); S.bounties.forEach(b => { b.shards = (3 + 3 * b.tier) * shardAmt(S.maxStage); }); ensureBoard(); markDirty(...Object.keys(RENDER)); buildSkillbar();
       burst(HERO_X, HERO_Y, "#ffd04d", 14); equipFlash(4);
       log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
       log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");
