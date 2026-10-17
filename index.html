@@ -290,7 +290,27 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 .sheetHd .wallet { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 2px; font-size: 12px; line-height: 1.3; color: var(--muted); }
 .sheetHd .wallet b { color: var(--coin); }
 .sheetHd .wallet em { color: var(--c2); font-style: normal; font-weight: 600; }
-.sheetBody { position: relative; z-index: 1; flex: 1; overflow-y: auto; padding: 14px 14px calc(28px + env(safe-area-inset-bottom, 0px)); overscroll-behavior: contain; }
+.sheetBody { position: relative; z-index: 1; flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 16px; overscroll-behavior: contain; scrollbar-width: none; }
+.sheetBody::-webkit-scrollbar { display: none; }
+.panel .wsub:not(.on) { display: none; }
+/* tabs along the bottom of every window */
+.winTabs { position: relative; z-index: 1; display: flex; align-items: stretch; gap: 6px; padding: 8px 10px 10px; border-top: 1px solid rgba(255,255,255,.08); background: linear-gradient(180deg, rgba(8,6,16,.2), rgba(8,6,16,.5)); }
+.winTabs .tabs { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.winTabs .tabs::-webkit-scrollbar { display: none; }
+.wt { --cut: 9px; --edge: rgba(255,255,255,.14); --fill: rgba(22,18,40,.85); flex: 1 0 54px; min-width: 54px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 6px; color: #a49dc4; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.wt svg { width: 20px; height: 20px; flex: none; }
+.wt.on { --edge: rgba(79,211,228,.9); --fill: linear-gradient(180deg, rgba(26,58,70,.95), rgba(13,10,24,.88)); color: #ece8f7; }
+.wt.on svg { color: #4fd3e4; filter: drop-shadow(0 0 4px rgba(79,211,228,.5)); }
+.wx { --cut: 9px; --edge: rgba(255,107,107,.55); --fill: rgba(58,14,24,.88); width: 54px; height: 54px; flex: none; display: grid; place-items: center; color: #ffb3b3; padding: 0; }
+.wx svg { width: 18px; height: 18px; }
+/* the web tab fills the window: no page scrolling, the map takes the space */
+.sheetInner.fill .sheetBody { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
+.sheetInner.fill #panels, .sheetInner.fill .panel:not([hidden]), .sheetInner.fill .wsub.on { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.wsub[data-sub="web"] .webWrap { flex: 1; height: auto; min-height: 180px; }
+.wsub[data-sub="web"] #nodeCard { flex: none; margin-top: 10px; }
+.wsub[data-sub="web"] .nodeCard { padding: 10px 12px; }
+.wsub[data-sub="web"] .nodeCard .ef { font-size: 13px; }
+.wsub[data-sub="web"] .nodeCard .st { font-size: 12px; }
 .panel[hidden] { display: none; }
 .list { display: grid; gap: 10px; }
 .note { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
@@ -348,7 +368,7 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 .pline { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 6px; align-items: center; }
 
 .ascTop { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; margin-bottom: 12px; }
-.webWrap { position: relative; height: clamp(340px, 56vh, 680px); overflow: hidden; border: 2px solid var(--line); border-radius: 14px; background: var(--panel); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.webWrap { position: relative; height: 420px; overflow: hidden; border: 2px solid var(--line); border-radius: 14px; background: var(--panel); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .webWrap.drag { cursor: grabbing; }
 .web { display: block; width: 100%; height: 100%; }
 .webZoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -465,23 +485,27 @@ body.perf .pulse { animation: none; }
 <nav class="menuDrop" id="menuDrop" hidden aria-label="Game menu"></nav>
 
 <div class="sheet" id="sheet" hidden>
-  <div class="sheetInner" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheetInner" id="sheetInner" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheetHd">
       <span class="winIcon" id="sheetIcon"></span>
       <div class="winTitle"><h2 id="sheetTitle">Stats</h2><div class="wallet"><span><b id="wGold">0</b> lumen</span><span><i id="wShard">0</i> shards</span><span><em id="wEcho">0</em> echoes</span></div></div>
-      <button class="xBtn" id="sheetClose" type="button" aria-label="Close window"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sheetBody" id="sheetBody">
       <div id="panels">
         <section class="panel" id="p-stats" hidden><div id="statsBody"></div></section>
-        <section class="panel" id="p-gear" hidden><div class="list" id="gearBody"></div></section>
+        <section class="panel" id="p-gear" hidden><div id="gearBody"></div></section>
         <section class="panel" id="p-pack" hidden>
-          <div class="ctrls">
-            <button class="btn" data-act="autoEq" id="autoEq" type="button"></button>
-            <button class="btn" data-act="autoSv" id="autoSv" type="button"></button>
-            <button class="btn" data-act="salvAll" type="button">Salvage all</button>
+          <div class="wsub" data-sub="items"><div class="list" id="packList"></div></div>
+          <div class="wsub" data-sub="opts">
+            <div class="sgroup"><h3>Pack options</h3>
+              <p class="note">Auto-equip puts on anything better than what you're wearing. Auto-salvage breaks down new drops at or below the chosen rarity for lumen and shards.</p>
+              <div class="ctrls">
+                <button class="btn" data-act="autoEq" id="autoEq" type="button"></button>
+                <button class="btn" data-act="autoSv" id="autoSv" type="button"></button>
+                <button class="btn" data-act="salvAll" type="button">Salvage all</button>
+              </div>
+            </div>
           </div>
-          <div class="list" id="packList"></div>
         </section>
         <section class="panel" id="p-skills" hidden>
           <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on.</p>
@@ -489,20 +513,24 @@ body.perf .pulse { animation: none; }
         </section>
         <section class="panel" id="p-train" hidden>
           <p class="note">Lumen upgrades for this run. New ones unlock as you push deeper, and ascending locks them again and resets their levels.</p>
-          <div class="list" id="trainBody"></div>
+          <div id="trainBody"></div>
         </section>
         <section class="panel" id="p-index" hidden><p class="note">Every enemy type you defeat is recorded here. Each type has three milestones, and every milestone gives a permanent bonus that survives ascension.</p><div id="indexBody"></div></section>
         <section class="panel" id="p-board" hidden><div id="boardBody"></div></section>
         <section class="panel" id="p-log" hidden><p class="note">Everything that happened recently, newest first.</p><div class="feed" id="feed"></div></section>
         <section class="panel" id="p-guide" hidden><div id="guideBody"></div></section>
         <section class="panel" id="p-tree" hidden>
-          <div id="ascTop"></div>
-          <div id="nodeCard"></div>
-          <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom</div></div>
+          <div class="wsub" data-sub="asc"><div id="ascTop"></div>
           <div class="legend"><span><i style="background:var(--c3)"></i>Edge</span><span><i style="background:var(--c1)"></i>Ward</span><span><i style="background:var(--c2)"></i>Drive</span><span><i style="background:var(--c4)"></i>Fortune</span><span><i style="background:var(--hero)"></i>Bridge</span></div>
+          <p class="note">The web keeps every node you learn through ascensions. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
+          <div class="wsub" data-sub="web">
+          <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom</div></div>
+          <div id="nodeCard"></div>
+          </div>
         </section>
       </div>
     </div>
+    <nav class="winTabs" aria-label="Window sections"><div class="tabs" id="winTabs" role="tablist"></div><button class="wx chf" id="sheetClose" type="button" aria-label="Close window"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></nav>
   </div>
 </div>
 
@@ -2691,13 +2719,13 @@ body.perf .pulse { animation: none; }
     return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + " power " + it.power + cmp + "</div>" + traitL + setl + affs + acts + "</div>";
   }
   function renderStats() {
-    const G = (title, rows) => '<div class="sgroup"><h3>' + title + "</h3>" + rows.map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div>";
+    const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
     $("statsBody").innerHTML =
-      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]]) +
-      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks 70% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]]) +
-      G("Mana and skills", [["Mana", fmt(Math.max(0, mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]]) +
-      G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]]) +
-      G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]]);
+      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks 70% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
+      G("Mana and skills", [["Mana", fmt(Math.max(0, mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
+      G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
+      G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
   }
   function renderGear() {
     let h = SLOTS.map(s => {
@@ -2710,11 +2738,12 @@ body.perf .pulse { animation: none; }
       }
       return c;
     }).join("");
+    h = '<div class="wsub list" data-sub="equip">' + h + "</div>";
     const sc = ST.sets, ids = Object.keys(sc);
-    h += '<div class="setsum">' + (ids.length ? ids.map(id => {
+    h += '<div class="wsub" data-sub="sets"><div class="setsum">' + (ids.length ? ids.map(id => {
       const s = SET[id], n = sc[id];
       return '<div><b style="color:' + s.cv + '">' + s.name + " " + n + '/4</b></div><div class="' + (n >= 2 ? "" : "off") + '">2 pieces: ' + s.b2 + '</div><div class="' + (n >= 4 ? "" : "off") + '">4 pieces: ' + s.b4 + "</div>";
-    }).join('<div style="height:8px"></div>') : '<span class="off">Set items drop at Rare or better. Wear 2 or 4 pieces of one set for bonuses.</span>') + "</div>";
+    }).join('<div style="height:8px"></div>') : '<span class="off">Set items drop at Rare or better. Wear 2 or 4 pieces of one set for bonuses.</span>') + "</div></div>";
     $("gearBody").innerHTML = h;
   }
   function renderPack() {
@@ -2723,13 +2752,14 @@ body.perf .pulse { animation: none; }
     $("autoSv").textContent = "Auto-salvage: " + SALV_LABEL[S.salv];
   }
   const trainCost = t => Math.ceil(t.base * Math.pow(t.g, S.train[t.id]));
+  const TRAIN_CAT = { might: "off", focus: "off", haste: "off", ferocity: "off", precision: "off", vigor: "def", agility: "def", guard: "def", leech: "def", clarity: "def", essence: "mana", flow: "mana", insight: "mana", greed: "fort", fortune: "fort" };
   function renderTrain() {
-    $("trainBody").innerHTML = TRAIN.map(t => {
+    $("trainBody").innerHTML = ["off", "def", "mana", "fort"].map(cat => '<div class="wsub list" data-sub="' + cat + '">' + TRAIN.filter(t => (TRAIN_CAT[t.id] || "off") === cat).map(t => {
       if (S.maxStage < t.unlock) return '<div class="row lock"><span class="n">' + t.name + '</span><span class="d">' + t.desc + ' per level. Unlocks at stage ' + t.unlock + "</span></div>";
       const L = S.train[t.id], maxed = t.max && L >= t.max;
       return '<div class="row"><span class="n">' + t.name + " (level " + L + (t.max ? " of " + t.max : "") + ')</span><span class="d">' + t.desc + ' per level</span><div class="side">' +
         (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-cost="' + trainCost(t) + '">' + fmt(trainCost(t)) + " lumen</button>") + "</div></div>";
-    }).join("");
+    }).join("") + "</div>").join("");
   }
   function renderSkills() {
     $("skillsBody").innerHTML = SKILLS.map(sk => {
@@ -2937,27 +2967,27 @@ body.perf .pulse { animation: none; }
   ];
   function renderGuide() {
     const A = { auto: "Auto", on: "On", off: "Off" }[S.anim || "auto"];
-    $("guideBody").innerHTML = '<div class="sgroup"><h3>Settings</h3>' +
+    $("guideBody").innerHTML = '<div class="wsub" data-sub="set"><div class="sgroup"><h3>Settings</h3>' +
       '<div class="setRow"><div><b>Animations: ' + A + '</b><div class="d">Auto follows your device\'s reduce-motion setting' + (sysReduce ? ", which is on right now, so Auto turns most animations off" : "") + '. On always shows them.</div></div><button class="btn go" data-act="animMode">Change</button></div>' +
       '<div class="setRow"><div><b>Performance mode: ' + (S.perf ? "On" : "Off") + '</b><div class="d">Removes glow effects and trims particles. Try it if the game stutters on your computer.</div></div><button class="btn go" data-act="perfMode">' + (S.perf ? "Turn off" : "Turn on") + "</button></div>" +
       '<div class="setRow"><div><b>Sound: ' + (S.sound === false ? "Off" : "On") + '</b><div class="d">Soft, glassy tones for crits, kills, bosses, loot and your orbital.</div></div><button class="btn go" data-act="sndToggle">' + (S.sound === false ? "Turn on" : "Turn off") + "</button></div>" +
       '<div class="setRow"><div><b>Effects volume: ' + { low: "Low", med: "Medium", high: "High" }[S.vol || "med"] + '</b></div><button class="btn go" data-act="sndVol">Change</button></div>' +
       '<div class="setRow"><div><b>Music: ' + (S.music === false ? "Off" : "On") + '</b><div class="d">Ambient, ever-changing music. Each zone plays in its own key, and bosses add a pulse.</div></div><button class="btn go" data-act="musToggle">' + (S.music === false ? "Turn on" : "Turn off") + "</button></div>" +
       '<div class="setRow"><div><b>Music volume: ' + { low: "Low", med: "Medium", high: "High" }[S.mvol || "med"] + '</b></div><button class="btn go" data-act="musVol">Change</button></div></div>' +
-      '<div class="sgroup"><h3>Move your save</h3><p class="note">Copy a save code here, then paste it into another copy of the game, like the home screen app, to carry your progress over. It also works as a backup.</p>' +
+      '<div class="ctrls" style="margin-top:14px"><button class="btn go" data-act="intro">Replay intro</button><button class="btn" data-act="wipe">Start over</button></div><p class="note">Start over erases this save completely.</p></div>' +
+      '<div class="wsub" data-sub="save"><div class="sgroup"><h3>Move your save</h3><p class="note">Copy a save code here, then paste it into another copy of the game, like the home screen app, to carry your progress over. It also works as a backup.</p>' +
       '<div class="ctrls"><button class="btn go" data-act="saveCopy">Copy save code</button></div>' +
       '<textarea id="saveBox" class="saveBox" rows="3" placeholder="Paste a save code here" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>' +
-      '<div class="ctrls"><button class="btn" data-act="saveLoad">Load pasted code</button></div><p class="note" id="saveMsg"></p></div>' +
-      '<div class="guide">' + GUIDE.map((g, i) => "<details" + (i === 0 ? " open" : "") + "><summary>" + g[0] + '</summary><div class="gbody">' + g[1] + "</div></details>").join("") +
-      '</div><div class="ctrls" style="margin-top:14px"><button class="btn go" data-act="intro">Replay intro</button><button class="btn" data-act="wipe">Start over</button></div><p class="note">Start over erases this save completely.</p>';
+      '<div class="ctrls"><button class="btn" data-act="saveLoad">Load pasted code</button></div><p class="note" id="saveMsg"></p></div></div>' +
+      '<div class="wsub" data-sub="help"><div class="guide">' + GUIDE.map((g, i) => "<details" + (i === 0 ? " open" : "") + "><summary>" + g[0] + '</summary><div class="gbody">' + g[1] + "</div></details>").join("") + "</div></div>";
   }
   function renderIndex() {
     const roman = ["", "I", "II", "III"], active = [];
     FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t = IT(f.key, k); if (t) active.push("+" + +(f[k][0] * t).toFixed(1) + f[k][1]); }));
-    let h = '<div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div>";
+    let h = '<div class="wsub" data-sub="bonus"><div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div></div>";
     FAMILIES.forEach(f => {
       const hue = (f.idx * 53 + 200) % 360, found = ["n", "e", "b"].some(k => idxKills(f.key, k) > 0);
-      h += '<div class="idxCard"><div class="idxHd"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="note" style="margin:0">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";
+      h += '<div class="wsub" data-sub="f' + f.sides + '"><div class="idxCard"><div class="idxHd"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="note" style="margin:0">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";
       const vk = (S.bestiary[f.key] && S.bestiary[f.key].v) || {};
       h += VARIANTS.map(v => { const c = vk[v.id] || 0; return '<div class="idxVar" style="--vc:' + (c ? vFill(v) : "var(--line)") + '"><i></i><b>' + (c ? v.name + " " + f.name + " · " + v.role : "??? variant") + '</b><span class="meta">' + (c ? fmt(c) : "") + '</span><span class="d">' + (c ? v.desc : "Appears from stage " + Math.max(v.from, 10 * f.idx + 1)) + "</span></div>"; }).join("");
       ["n", "e", "b"].forEach(k => {
@@ -2969,14 +2999,68 @@ body.perf .pulse { animation: none; }
           (next ? '<div class="pbar"><i style="width:' + Math.min(100, c / next * 100) + '%"></i></div>' : "") +
           '<div class="aff">+' + f[k][0] + f[k][1] + " per tier" + (t ? ". Now +" + +(f[k][0] * t).toFixed(1) + f[k][1] + " (tier " + roman[t] + ")" : "") + "</div></div>";
       });
-      h += "</div>";
+      h += "</div></div>";
     });
     $("indexBody").innerHTML = h;
   }
+  // ----- tabs inside each window -----
+  const TI = {
+    off: "M12 2 L21.5 20 L2.5 20 Z M12 8.5 L16.6 17 L7.4 17 Z",
+    def: "M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z M12 6.3 L17.3 9.3 L17.3 14.7 L12 17.7 L6.7 14.7 L6.7 9.3 Z",
+    mana: "M12 2 Q20 12 18 16 A6 6 0 1 1 6 16 Q4 12 12 2 Z",
+    fort: "M12 2.5 A9.5 9.5 0 1 1 11.99 2.5 Z M12 6.5 L16.5 12 L12 17.5 L7.5 12 Z",
+    jour: "M5 2 L7 2 L7 22 L5 22 Z M7 3 L19.5 3 L16 7.5 L19.5 12 L7 12 Z",
+    equip: "M12 2 L16 14 L12 22 L8 14 Z",
+    sets: "M7 2.5 L11 7.5 L7 12.5 L3 7.5 Z M17 2.5 L21 7.5 L17 12.5 L13 7.5 Z M12 11 L16 16.5 L12 22 L8 16.5 Z",
+    items: "M4 8 L20 8 L19 21 L5 21 Z M8 8 Q8 3 12 3 Q16 3 16 8 L14 8 Q14 5 12 5 Q10 5 10 8 Z",
+    opts: "M4 6.5 L12 2 L20 6.5 L20 11 L17 11 L17 8.3 L12 5.5 L7 8.3 L7 15.7 L12 18.5 L17 15.7 L17 13 L20 13 L20 17.5 L12 22 L4 17.5 Z",
+    web: "M12 10 A2.5 2.5 0 1 1 11.99 10 Z M4 4 A2 2 0 1 1 3.99 4 Z M20 4 A2 2 0 1 1 19.99 4 Z M4 18 A2 2 0 1 1 3.99 18 Z M20 18 A2 2 0 1 1 19.99 18 Z M5 5.5 L11 11 L10 12 L4.5 6.5 Z M19 5.5 L13 11 L14 12 L19.5 6.5 Z M5 18.5 L11 13 L10 12 L4.5 17.5 Z M19 18.5 L13 13 L14 12 L19.5 17.5 Z",
+    asc: "M12 2.5 L20.5 11 L17 11 L12 6 L7 11 L3.5 11 Z M12 11 L20.5 19.5 L17 19.5 L12 14.5 L7 19.5 L3.5 19.5 Z",
+    set: "M3 5.5 L21 5.5 L21 7.5 L3 7.5 Z M3 16.5 L21 16.5 L21 18.5 L3 18.5 Z M6.5 3 L10.5 3 L10.5 10 L6.5 10 Z M13.5 14 L17.5 14 L17.5 21 L13.5 21 Z",
+    save: "M11 2.5 L13 2.5 L13 12.5 L16.6 9 L18 10.4 L12 16.4 L6 10.4 L7.4 9 L11 12.5 Z M4 19 L20 19 L20 21.5 L4 21.5 Z",
+    help: "M3 4 L11 5.5 L11 21 L3 19.5 Z M13 5.5 L21 4 L21 19.5 L13 21 Z",
+    bonus: "M12 1.5 L14.6 9 L22.5 9.2 L16.2 14 L18.5 21.6 L12 17.1 L5.5 21.6 L7.8 14 L1.5 9.2 L9.4 9 Z"
+  };
+  const SUBS = {
+    stats: [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"], ["jour", "Journey"]],
+    gear: [["equip", "Equipped"], ["sets", "Sets"]],
+    pack: [["items", "Items"], ["opts", "Options"]],
+    train: [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"]],
+    tree: [["web", "Web"], ["asc", "Ascend"]],
+    guide: [["set", "Settings"], ["save", "Save"], ["help", "Guide"]],
+    index: null
+  };
+  const subList = win => win === "index" ? [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) : SUBS[win];
+  const curSub = {};
+  const subIcon = (id, sides) => sides ? '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="' + polyPts(sides, 9.5, 0, 12, 12.5) + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (TI[id] || TI.equip) + '" fill="currentColor" fill-rule="evenodd"/></svg>';
+  function buildWinTabs(win) {
+    const list = subList(win) || [];
+    if (!curSub[win] && list.length) curSub[win] = list[0][0];
+    $("winTabs").innerHTML = list.length > 1 ? list.map(([id, name, sides]) => '<button type="button" role="tab" class="wt chf' + (curSub[win] === id ? " on" : "") + '" data-sub="' + id + '" aria-selected="' + (curSub[win] === id) + '">' + subIcon(id, sides) + "<span>" + name + "</span></button>").join("") : "";
+  }
+  function applySub(win) {
+    if (!win) return;
+    const list = subList(win), cur = curSub[win];
+    $("p-" + win).querySelectorAll(".wsub").forEach(el => el.classList.toggle("on", !list || list.length < 2 || el.dataset.sub === cur));
+    $("sheetInner").classList.toggle("fill", win === "tree" && cur === "web");
+  }
+  $("winTabs").addEventListener("click", e => {
+    const b = e.target.closest("[data-sub]"); if (!b || !tab) return;
+    curSub[tab] = b.dataset.sub;
+    $("winTabs").querySelectorAll(".wt").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); });
+    $("sheetBody").scrollTop = 0;
+    applySub(tab);
+    if (tab === "tree") requestAnimationFrame(centerWeb);
+  });
   const RENDER = { stats: renderStats, gear: renderGear, pack: renderPack, skills: renderSkills, train: renderTrain, board: renderBoard, tree: renderTree, guide: renderGuide, log: renderLog, index: renderIndex };
   let tab = null;
   function lightRefresh() {
     if (!tab) return;
+    lightRefresh2();
+    applySub(tab);
+  }
+  function lightRefresh2() {
     const panel = $("p-" + tab);
     panel.querySelectorAll("[data-cost]").forEach(b => {
       const have = b.dataset.cur === "echo" ? S.echoes : b.dataset.cur === "shard" ? S.shards : S.gold;
@@ -3006,13 +3090,14 @@ body.perf .pulse { animation: none; }
     $("sheetIcon").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + w.icon + '" fill="currentColor" fill-rule="evenodd"/></svg>';
     document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.toggle("on", b.dataset.win === id));
     Object.keys(RENDER).forEach(n => { $("p-" + n).hidden = n !== id; });
+    buildWinTabs(id);
     $("sheet").hidden = false; document.body.classList.add("locked");
     $("sheetBody").scrollTop = 0;
     dirty[id] = false; RENDER[id](); lightRefresh();
     if (id === "tree") requestAnimationFrame(centerWeb);
     $("sheetClose").focus();
   }
-  function closeWindow() { $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
+  function closeWindow() { $("sheetInner").classList.remove("fill"); $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
   const MENU_ORDER = ["stats", "gear", "pack", "skills", "train", "index", "board", "tree", "-", "log", "guide"];
   (function buildMenu() {
     let bi = 0;
