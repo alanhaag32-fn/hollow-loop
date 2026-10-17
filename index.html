@@ -248,6 +248,43 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 .mechTxt { font-size: 10px; color: #ffd04d; margin-top: 3px; font-weight: 600; line-height: 1.25; text-align: center; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
 .bar.mech { height: 5px; margin-top: 4px; }
 .bar.mech i { background: #b48cff; transition: none; }
+/* index family page: sized to fit the window without scrolling */
+.idxPage { display: flex; flex-direction: column; gap: 7px; background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px 12px; }
+.idxHd2 { display: flex; gap: 10px; align-items: center; }
+.idxHd2 .idxPic { width: 36px; height: 36px; }
+.idxT { min-width: 0; }
+.idxT .n { font-family: "Syne", Impact, sans-serif; font-weight: 700; font-size: 16px; line-height: 1.2; }
+.idxT .lore { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.idxSec { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.idxVars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.idxTile { min-width: 0; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-left: 3px solid var(--vc); border-radius: 8px; padding: 6px 8px; }
+.idxTile .tt { display: flex; align-items: baseline; gap: 5px; font-size: 12.5px; min-width: 0; }
+.idxTile .tt b { white-space: nowrap; }
+.idxTile .tt span { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idxTile .tt em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--muted); }
+.idxTile .td { font-size: 11px; line-height: 1.3; color: var(--muted); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.idxMs { display: grid; gap: 8px; }
+.idxM .mt { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.idxM .pips i { width: 8px; height: 8px; border-width: 1.5px; }
+.idxM .pbar { height: 5px; margin: 4px 0 3px; }
+.idxM .pbar i { background: var(--c4); }
+.idxM .mm { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); }
+.idxM .mm span:first-child { white-space: nowrap; flex: none; }
+.idxM .mm span:last-child { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.idxT .lore { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-height: 760px) {
+  .idxTile .td { -webkit-line-clamp: 1; }
+  .idxT .lore { -webkit-line-clamp: 1; }
+  .idxPage { gap: 6px; }
+}
+@media (max-height: 640px) {
+  .idxPage { gap: 5px; padding: 8px 10px 9px; }
+  .idxT .lore, .idxSec { display: none; }
+  .idxHd2 .idxPic { width: 28px; height: 28px; }
+  .idxM .pbar { margin: 3px 0 2px; }
+  .idxTile .td { -webkit-line-clamp: 1; }
+  .idxMs { gap: 5px; }
+}
 .idxCard { background: var(--panel); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
 .idxHd { display: flex; gap: 12px; align-items: center; margin-bottom: 4px; }
 .idxHd .n { font-family: "Syne", Impact, sans-serif; font-weight: 700; font-size: 17px; }
@@ -557,7 +594,7 @@ body.perf .pulse { animation: none; }
           <p class="note">Lumen upgrades for this run. New ones unlock as you push deeper, and ascending locks them again and resets their levels.</p>
           <div id="trainBody"></div>
         </section>
-        <section class="panel" id="p-index" hidden><p class="note">Every enemy type you defeat is recorded here. Each type has three milestones, and every milestone gives a permanent bonus that survives ascension.</p><div id="indexBody"></div></section>
+        <section class="panel" id="p-index" hidden><div id="indexBody"></div></section>
         <section class="panel" id="p-board" hidden><div id="boardBody"></div></section>
         <section class="panel" id="p-log" hidden><p class="note">Everything that happened recently, newest first.</p><div class="feed" id="feed"></div></section>
         <section class="panel" id="p-guide" hidden><div id="guideBody"></div></section>
@@ -3034,20 +3071,23 @@ body.perf .pulse { animation: none; }
   function renderIndex() {
     const roman = ["", "I", "II", "III"], active = [];
     FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t = IT(f.key, k); if (t) active.push("+" + +(f[k][0] * t).toFixed(1) + f[k][1]); }));
-    let h = '<div class="wsub" data-sub="bonus"><div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div></div>";
+    let h = '<div class="wsub" data-sub="bonus"><p class="note">Every enemy type you defeat is recorded here. Each type has three milestones, and every milestone gives a permanent bonus that survives ascension. Pick a shape below to see its page.</p><div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div></div>";
+    // one compact page per shape family: header, a 2x2 grid of variants, then the three milestones
     FAMILIES.forEach(f => {
       const hue = (f.idx * 53 + 200) % 360, found = ["n", "e", "b"].some(k => idxKills(f.key, k) > 0);
-      h += '<div class="wsub" data-sub="f' + f.sides + '"><div class="idxCard"><div class="idxHd"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="note" style="margin:0">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";
+      h += '<div class="wsub idxPage" data-sub="f' + f.sides + '"><div class="idxHd2"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div class="idxT"><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="lore">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";
       const vk = (S.bestiary[f.key] && S.bestiary[f.key].v) || {};
-      h += VARIANTS.map(v => { const c = vk[v.id] || 0; return '<div class="idxVar" style="--vc:' + (c ? vFill(v) : "var(--line)") + '"><i></i><b>' + (c ? v.name + " " + f.name + " · " + v.role : "??? variant") + '</b><span class="meta">' + (c ? fmt(c) : "") + '</span><span class="d">' + (c ? v.desc : "Appears from stage " + Math.max(v.from, 10 * f.idx + 1)) + "</span></div>"; }).join("");
+      h += '<div class="idxSec">Variants</div><div class="idxVars">' + VARIANTS.map(v => {
+        const c = vk[v.id] || 0;
+        return '<div class="idxTile" style="--vc:' + (c ? vFill(v) : "var(--line)") + '"><div class="tt"><b>' + (c ? v.name : "???") + "</b>" + (c ? "<span>" + v.role + "</span><em>" + fmt(c) + "</em>" : "") + '</div><div class="td">' + (c ? v.desc : "Appears from stage " + Math.max(v.from, 10 * f.idx + 1)) + "</div></div>";
+      }).join("") + '</div><div class="idxSec">Milestones</div><div class="idxMs">';
       ["n", "e", "b"].forEach(k => {
         const c = idxKills(f.key, k), t = IT(f.key, k), next = IDX_TIERS[k][t];
         const label = (k === "e" ? "Elite " : k === "b" ? "Grand " : "") + f.name;
         const first = k === "b" ? 10 * (f.idx + 1) : k === "e" ? (f.idx === 0 ? 61 : 10 * f.idx + 1) : 10 * f.idx + 1;
-        h += '<div class="idxRow"><div class="idxTop"><b>' + (c ? label : "??? " + (k === "e" ? "elite" : k === "b" ? "boss" : "")) + '</b><span class="pips" aria-label="Tier ' + t + ' of 3">' + [1, 2, 3].map(i => '<i class="' + (i <= t ? "on" : "") + '"></i>').join("") + "</span></div>" +
-          '<div class="meta">' + (c ? fmt(c) + " defeated" + (next ? ", next tier at " + fmt(next) : ", all tiers complete") : "First appears around stage " + first) + "</div>" +
-          (next ? '<div class="pbar"><i style="width:' + Math.min(100, c / next * 100) + '%"></i></div>' : "") +
-          '<div class="aff">+' + f[k][0] + f[k][1] + " per tier" + (t ? ". Now +" + +(f[k][0] * t).toFixed(1) + f[k][1] + " (tier " + roman[t] + ")" : "") + "</div></div>";
+        h += '<div class="idxM"><div class="mt"><b>' + (c ? label : "??? " + (k === "e" ? "elite" : k === "b" ? "boss" : "shape")) + '</b><span class="pips" aria-label="Tier ' + t + ' of 3">' + [1, 2, 3].map(i => '<i class="' + (i <= t ? "on" : "") + '"></i>').join("") + "</span></div>" +
+          '<div class="pbar"><i style="width:' + (next ? Math.min(100, c / next * 100) : 100) + '%"></i></div>' +
+          '<div class="mm"><span>' + (c ? fmt(c) + (next ? " / " + fmt(next) : ", complete") : "First around stage " + first) + "</span><span>" + (t ? "+" + +(f[k][0] * t).toFixed(1) + f[k][1] + " · +" + f[k][0] + "%/tier" : "+" + f[k][0] + f[k][1] + " per tier") + "</span></div></div>";
       });
       h += "</div></div>";
     });
