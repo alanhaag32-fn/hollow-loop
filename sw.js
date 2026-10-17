@@ -1,5 +1,5 @@
 // Hollow Loop offline cache. The page is fetched fresh when online so new versions show up on the next launch.
-const CACHE = "hollow-loop-" + "202610171816";
+const CACHE = "hollow-loop-" + "202610171831";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

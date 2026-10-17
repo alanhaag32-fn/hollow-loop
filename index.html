@@ -2405,11 +2405,19 @@ body.perf .pulse { animation: none; }
   // ---- enemy projectiles ----
   const eshots = [];
   const SHOT_SPEC = {
-    pale: { spd: 400, r: 4.5 },      // twin darts: quick and small
-    crimson: { spd: 320, r: 10 },    // saw: medium and wide
-    bastion: { spd: 230, r: 8 },     // mortar shell: slow, bursts where you stood
-    umbral: { spd: 0, r: 0 }         // lance: telegraphed beam
+    pale: { spd: 560, r: 4.5 },      // twin darts: fast, aimed ahead of you, slight homing
+    crimson: { spd: 290, r: 10 },    // saw: homes in on you and curves after you
+    bastion: { spd: 240, r: 8 },     // mortar shell: aimed where you're heading, wide burst
+    umbral: { spd: 0, r: 0 }         // lance: tracks you, locks at the last moment, instant beam
   };
+  // tougher the deeper you go, and from elites and bosses
+  const shotSkill = e => Math.min(1.6, .55 + S.stage / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
+  // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
+  function leadPt(fromX, fromY, spd, f) {
+    const d = Math.hypot(HERO_X - fromX, HERO_Y - fromY), t = spd > 0 ? d / spd : .4;
+    return [HERO_X + hvx * t * f, HERO_Y + hvy * t * f];
+  }
+  function steer(o, x, y) { const l = Math.hypot(x - o.x, y - o.y) || 1, sp = Math.hypot(o.vx, o.vy); o.vx = (x - o.x) / l * sp; o.vy = (y - o.y) / l * sp; o.deg = Math.atan2(o.vy, o.vx) * 57.2958; }
   function aimFrom(e) {
     const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = HERO_X - ax, dy = HERO_Y - ay, l = Math.hypot(dx, dy) || 1, L = MUZZLE[e.v.id] || 22;
     return { x: ax + dx / l * L, y: ay + dy / l * L, ux: dx / l, uy: dy / l, d: l, deg: Math.atan2(dy, dx) * 57.2958 };
@@ -2435,7 +2443,8 @@ body.perf .pulse { animation: none; }
         const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
         svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
         svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
-        addShot({ g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc });
+        const o = addShot({ g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
+        const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
       }, i * 110));
       return;
     }
@@ -2445,12 +2454,12 @@ body.perf .pulse { animation: none; }
       const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
       svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
       svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-      addShot({ g, x: a.x, y: a.y, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: heavy ? 12 : sp.r, spin: 900, life: (a.d + 260) / sp.spd, hit: () => land(), col: "#ffb36b" });
+      addShot({ g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
       return;
     }
     if (id === "bastion") {
       // mortar: lobs a shell at the spot you're standing on, marked on the ground, and bursts there
-      const a0 = aimFrom(e), tx = HERO_X, ty = HERO_Y, R = heavy ? 44 : 36;
+      const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
       const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
       const C = 170;
       setTimeout(() => {
@@ -2466,9 +2475,20 @@ body.perf .pulse { animation: none; }
       return;
     }
     // umbral lance: locks onto where you are, shows a thin aim line, then fires down that line
-    const a = aimFrom(e), len = a.d + 140, ex = a.x + a.ux * len, ey = a.y + a.uy * len, C = 480;
+    const C = Math.max(380, 560 - 80 * shotSkill(e)), LOCK = Math.max(120, 230 - 50 * shotSkill(e));
+    let a = aimFrom(e), len = a.d + 160, ex = a.x + a.ux * len, ey = a.y + a.uy * len;
     const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
     if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    // the aim line follows you, then locks (turns solid) a moment before the beam
+    const t0 = performance.now();
+    const track = () => {
+      const el = performance.now() - t0;
+      if (el >= C - LOCK || e.dead) { tel.setAttribute("stroke-dasharray", "none"); tel.setAttribute("stroke-width", 2.2); tel.setAttribute("opacity", 1); return; }
+      a = aimFrom(e); len = a.d + 160; ex = a.x + a.ux * len; ey = a.y + a.uy * len;
+      tel.setAttribute("x1", a.x.toFixed(1)); tel.setAttribute("y1", a.y.toFixed(1)); tel.setAttribute("x2", ex.toFixed(1)); tel.setAttribute("y2", ey.toFixed(1));
+      requestAnimationFrame(track);
+    };
+    requestAnimationFrame(track);
     setTimeout(() => {
       tel.remove();
       if (e.dead || heroDown) return;
@@ -2486,7 +2506,14 @@ body.perf .pulse { animation: none; }
   function stepEShots(dt) {
     for (let i = eshots.length - 1; i >= 0; i--) {
       const o = eshots[i]; if (!o) continue;
-      o.t += dt; o.x += o.vx * dt; o.y += o.vy * dt; placeShot(o);
+      o.t += dt;
+      if (o.home && o.t < o.homeT && !heroDown) {
+        // turn toward the core, limited by the shot's turn rate
+        const want = Math.atan2(HERO_Y - o.y, HERO_X - o.x), cur = Math.atan2(o.vy, o.vx), sp = Math.hypot(o.vx, o.vy);
+        let dA = ((want - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dA = Math.max(-o.home * dt, Math.min(o.home * dt, dA));
+        o.vx = Math.cos(cur + dA) * sp; o.vy = Math.sin(cur + dA) * sp; if (!o.spin) o.deg = (cur + dA) * 57.2958;
+      }
+      o.x += o.vx * dt; o.y += o.vy * dt; placeShot(o);
       if (o.lob) {
         if (o.t >= o.life) {
           ringFx(o.lob.tx, o.lob.ty, o.col, .5, o.lob.R / 9, 300, 4); sparks(o.lob.tx, o.lob.ty, 6, o.col, 24);
@@ -3357,7 +3384,7 @@ body.perf .pulse { animation: none; }
       <p>The DPS number at the top of the screen is your damage over the last 5 seconds. Floating numbers show each hit: white for normal, cyan for taps, lumen with a ! for crits.</p>
       <p>The Pushing button controls progress. Pushing moves to the next stage after each clear. Farming repeats the current stage, which is handy for lumen and loot when you're stuck.</p>
       <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
-      <p><b>Dodging</b>: enemy shots you can see on screen are real projectiles. Step aside from darts and saws, walk out of a mortar's red ground circle before the shell lands, and leave the dashed aim line before a Lance beam fires. Dash makes you untouchable for a moment. Shots fired from off screen still land, softer.</p>
+      <p><b>Dodging</b>: enemy shots you can see on screen are real projectiles. Darts are fast and aim where you're heading, saws curve after you, mortars land where you're about to be, and a Lance's aim line follows you then locks solid just before the beam fires, so change direction at the right moment. Deeper stages, elites and bosses aim and track better. Dash makes you untouchable for a moment. Shots fired from off screen still land, softer.</p>
       <p><b>Offline</b>: while the game is closed or in the background, your core keeps farming your current stage at half speed, for up to 8 hours. You collect lumen, shards and a few items when you come back.</p>
       <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The plane is endless, so roam as far as you like; the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
