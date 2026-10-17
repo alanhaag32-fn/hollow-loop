@@ -105,6 +105,9 @@ body.noanim .menuDrop button { animation: none; }
 }
 .scene { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .scene g, .scene polygon, .scene path, .scene rect, .scene circle, .scene ellipse, .scene line { transform-origin: 0 0; }
+.joy { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 1.5px solid rgba(159,243,230,.35); background: radial-gradient(circle, rgba(159,243,230,.10), rgba(159,243,230,.02) 70%); pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 3; }
+.joy.on { opacity: 1; }
+.joyKnob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(159,243,230,.28); border: 1.5px solid rgba(159,243,230,.7); box-shadow: 0 0 14px rgba(159,243,230,.35); }
 .tapHint { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); font-size: 12px; color: #a9a2c9; pointer-events: none; white-space: nowrap; text-shadow: 0 1px 4px #000; }
 .bob { animation: bob 2.4s ease-in-out infinite; }
 .hover { animation: hover 2s ease-in-out infinite; }
@@ -498,6 +501,8 @@ body.perf .pulse { animation: none; }
       </defs>
       <g id="world">
         <rect id="skyR" x="-40" y="-40" width="440" height="860" fill="url(#sky)"/>
+        <g id="cam">
+        <rect id="mapEdge" x="0" y="0" width="10" height="10" rx="40" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-dasharray="14 12"/>
         <g id="stars"></g>
         <g class="drift" id="farShapes"></g>
         <g id="heroPos" transform="translate(180 340)">
@@ -533,6 +538,7 @@ body.perf .pulse { animation: none; }
         <g id="inds"></g>
         <g id="reticle" style="display:none"></g>
         <g id="fx"></g>
+        </g>
       </g>
     </svg>
 
@@ -560,7 +566,8 @@ body.perf .pulse { animation: none; }
     <div class="tagTxt"><span class="nm2" id="eName">Enemy</span><span id="eTxt"></span></div>
     <div class="mechTxt" id="mechTxt"></div>
   </div>
-  <div class="tapHint" id="tapHint">Tap anywhere to strike</div>
+  <div class="tapHint" id="tapHint">Tap to strike, drag to move</div>
+  <div class="joy" id="joy" aria-hidden="true"><div class="joyKnob" id="joyKnob"></div></div>
   <div class="skillbar" id="skillbar"></div>
 </div>
 
@@ -1200,10 +1207,10 @@ body.perf .pulse { animation: none; }
   // ================= scenery =================
   function buildStars() {
     const g = $("stars"); g.innerHTML = "";
-    const n = Math.round(VW * VH / 4200);
+    const n = Math.round(MAP_W * MAP_H / 6000);
     for (let i = 0; i < n; i++) {
-      const tw = Math.random() < .25;
-      svgEl("circle", { cx: (Math.random() * VW).toFixed(1), cy: (Math.random() * VH).toFixed(1), r: (.4 + Math.random() * 1.1).toFixed(2), fill: "#fff", opacity: (.15 + Math.random() * .5).toFixed(2), class: tw ? "twinkle" : "", style: tw ? "animation-delay:-" + (Math.random() * 3).toFixed(1) + "s" : "" }, g);
+      const tw = Math.random() < .2;
+      svgEl("circle", { cx: (Math.random() * MAP_W).toFixed(1), cy: (Math.random() * MAP_H).toFixed(1), r: (.4 + Math.random() * 1.1).toFixed(2), fill: "#fff", opacity: (.15 + Math.random() * .5).toFixed(2), class: tw ? "twinkle" : "", style: tw ? "animation-delay:-" + (Math.random() * 3).toFixed(1) + "s" : "" }, g);
     }
   }
   let lastZone = -1;
@@ -1215,23 +1222,31 @@ body.perf .pulse { animation: none; }
     $("skyTop").setAttribute("stop-color", "hsl(" + h + " 40% 16%)");
     $("skyBot").setAttribute("stop-color", "hsl(" + h + " 35% 6%)");
     const far = $("farShapes"); far.innerHTML = "";
-    const n = Math.max(8, Math.round(VW * VH / 26000)), sides = 3 + zone % 6;
+    const n = Math.max(8, Math.round(MAP_W * MAP_H / 45000)), sides = 3 + zone % 6;
     for (let i = 0; i < n; i++) {
       let x, y, k = 0;
-      do { x = Math.random() * VW; y = Math.random() * VH; k++; } while (k < 8 && Math.hypot(x - HERO_X, y - HERO_Y) < ENGAGE * 1.3);
+      do { x = Math.random() * MAP_W; y = Math.random() * MAP_H; k++; } while (k < 8 && Math.hypot(x - HERO_X, y - HERO_Y) < ENGAGE * 1.3);
       const r = 10 + Math.random() * 40, outline = Math.random() < .45, op = (outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1).toFixed(2);
       svgEl("polygon", { points: polyPts(sides, r, Math.random() * 6, x, y), fill: outline ? "none" : "hsl(" + h + " 60% 60%)", stroke: outline ? "hsl(" + h + " 70% 70%)" : "none", "stroke-width": 1.2, opacity: op, class: "farSpin", style: "animation-duration:" + (40 + Math.random() * 70).toFixed(0) + "s;animation-direction:" + (Math.random() < .5 ? "normal" : "reverse") }, far);
     }
   }
 
   let GROUND = 382, ARENA_T = 60, ARENA_B = 700;
+  // the map is bigger than the screen; the camera follows your core. VX0/VY0 is the top-left of the view in map units
+  let MAP_W = 1400, MAP_H = 1800, CAMX = 0, CAMY = 0, VX0 = 0, VY0 = 0, mapReady = false;
+  const VX1 = () => VX0 + VW, VY1 = () => VY0 + VH;
   function layout() {
     const ohx = HERO_X, ohy = HERO_Y;
     SW = arena.clientWidth || innerWidth; SH = arena.clientHeight || innerHeight;
     SC = Math.max(.5, Math.min(SW / 470, SH / 760, 1.4));
     VW = SW / SC; VH = SH / SC;
     $("scene").setAttribute("viewBox", "0 0 " + VW.toFixed(1) + " " + VH.toFixed(1));
-    HERO_X = VW / 2; HERO_Y = VH * .49; GROUND = HERO_Y + 40;
+    MAP_W = Math.max(1400, Math.round(VW * 3)); MAP_H = Math.max(1800, Math.round(VH * 2.3));
+    if (!mapReady) { mapReady = true; HERO_X = MAP_W / 2; HERO_Y = MAP_H / 2; }
+    HERO_X = Math.max(60, Math.min(MAP_W - 60, HERO_X)); HERO_Y = Math.max(60, Math.min(MAP_H - 60, HERO_Y));
+    GROUND = HERO_Y + 40;
+    CAMX = HERO_X - VW / 2; CAMY = HERO_Y - VH * .49; VX0 = CAMX; VY0 = CAMY; applyCam();
+    const me = $("mapEdge"); me.setAttribute("width", MAP_W); me.setAttribute("height", MAP_H);
     ENGAGE = Math.min(145, Math.max(104, Math.min(VW, VH) * .25));
     // the open play area between the top HUD and the skill bar, in scene units
     const ar = arena.getBoundingClientRect(), hb = document.querySelector(".hudStage"), sb = $("skillbar");
@@ -1241,7 +1256,6 @@ body.perf .pulse { animation: none; }
     if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
     $("skyR").setAttribute("width", VW + 80); $("skyR").setAttribute("height", VH + 80);
     $("heroPos").setAttribute("transform", "translate(" + HERO_X.toFixed(1) + " " + HERO_Y.toFixed(1) + ")");
-    foes.forEach(f => { f.px += HERO_X - ohx; f.py += HERO_Y - ohy; setFoePos(f); });
     syncTarget();
     buildStars();
     setZone(S.stage, true);
@@ -1299,11 +1313,11 @@ body.perf .pulse { animation: none; }
     const ex = ux * e.R * .2, ey = cy + uy * e.R * .2;
     E.eye.setAttribute("cx", ex.toFixed(1)); E.eye.setAttribute("cy", ey.toFixed(1));
     E.pupil.setAttribute("cx", (ex + ux * 2).toFixed(1)); E.pupil.setAttribute("cy", (ey + uy * 2).toFixed(1));
-    const off = e.px < -4 || e.px > VW + 4 || e.py < -4 || e.py > VH + 4;
+    const off = e.px < VX0 - 4 || e.px > VX1() + 4 || e.py < VY0 - 4 || e.py > VY1() + 4;
     if (off !== e.offShown) { e.offShown = off; E.ind.style.display = off ? "" : "none"; }
     if (off) {
-      const top = 128 / SC, bot = VH - 96 / SC;
-      const ix = Math.max(12, Math.min(VW - 12, e.px)), iy = Math.max(top, Math.min(bot, e.py));
+      const top = VY0 + 128 / SC, bot = VY1() - 96 / SC;
+      const ix = Math.max(VX0 + 12, Math.min(VX1() - 12, e.px)), iy = Math.max(top, Math.min(bot, e.py));
       E.ind.setAttribute("transform", "translate(" + ix.toFixed(1) + " " + iy.toFixed(1) + ") rotate(" + (Math.atan2(e.py - iy, e.px - ix) * 57.2958).toFixed(0) + ")");
     }
     if (e.v.id === "pale") E.trail.setAttribute("transform", "rotate(" + (Math.atan2(-uy, -ux) * 57.2958).toFixed(1) + " 0 " + cy.toFixed(1) + ")");
@@ -1316,7 +1330,7 @@ body.perf .pulse { animation: none; }
     e.orb = (16 + Math.random() * 14) * (MOVE[e.v.id] || 1) * (e.boss ? .5 : 1) * pace() * (Math.random() < .5 ? -1 : 1);
     e.rf = .4 + Math.random() * .4; e.jT = .8 + Math.random() * 2;
   }
-  const inView = f => { const m = f.R + 60; return f.px > -m && f.px < VW + m && f.py > -m && f.py < VH + m; };
+  const inView = f => { const m = f.R + 60; return f.px > VX0 - m && f.px < VX1() + m && f.py > VY0 - m && f.py < VY1() + m; };
   function syncTarget() { if (enemy) { ENEMY_X = enemy.px; ENEMY_Y = enemy.py - enemy.cy; } }
   function setTarget(t) {
     if (enemy && enemy.el) { enemy.el.mini.style.display = ""; enemy.el.modMarks.style.display = ""; }
@@ -1334,7 +1348,7 @@ body.perf .pulse { animation: none; }
     let t = focus && !focus.dead && foes.includes(focus) && inView(focus) ? focus : null;
     if (!t) {
       focus = null; let bd = 1e9;
-      const score = f => Math.hypot(f.px - HERO_X, f.py - HERO_Y) + (f.px < 0 || f.px > VW || f.py < 0 || f.py > VH ? 400 : 0);
+      const score = f => Math.hypot(f.px - HERO_X, f.py - HERO_Y) + (f.px < VX0 || f.px > VX1() || f.py < VY0 || f.py > VY1() ? 400 : 0);
       for (const f of foes) { if (f.dead || !inView(f)) continue; const d = score(f); if (d < bd) { bd = d; t = f; } }
       // stick with the current target unless another is clearly closer, so aim and labels don't flicker
       if (t && enemy && t !== enemy && !enemy.dead && foes.includes(enemy) && inView(enemy) && score(enemy) < bd + 40) t = enemy;
@@ -1362,7 +1376,7 @@ body.perf .pulse { animation: none; }
       const need = killsNeeded(), elite = S.stage > 10 && S.stage % 10 !== 0 && stageSpawned === need - 1;
       e = makeEnemy(S.stage, elite); stageSpawned++;
       const ang = angIn == null ? pickSpawnAngle() : angIn, c = Math.cos(ang), sn = Math.sin(ang);
-      const tx = c > 0 ? (VW - HERO_X) / c : c < 0 ? -HERO_X / c : 1e9, ty = sn > 0 ? (VH - HERO_Y) / sn : sn < 0 ? -HERO_Y / sn : 1e9;
+      const tx = c > 0 ? (VX1() - HERO_X) / c : c < 0 ? (VX0 - HERO_X) / c : 1e9, ty = sn > 0 ? (VY1() - HERO_Y) / sn : sn < 0 ? (VY0 - HERO_Y) / sn : 1e9;
       const dist = Math.min(tx, ty) + e.R + 45 + (extra || 0);
       e.px = HERO_X + c * dist; e.py = HERO_Y + sn * dist;
       e.stopR = ENGAGE + (e.boss ? 36 : e.elite ? 10 : 0) + Math.random() * 14 - 4;
@@ -1391,7 +1405,7 @@ body.perf .pulse { animation: none; }
   }
   function newWaypoint(e, first) {
     const { lo, hi } = roamR(e), cur = Math.atan2(e.py - HERO_Y, e.px - HERO_X);
-    const m = e.R + 12, x0 = m, x1 = VW - m, y0 = ARENA_T + m, y1 = ARENA_B - m;
+    const m = e.R + 12, x0 = Math.max(m, VX0 + m), x1 = Math.min(MAP_W - m, VX1() - m), y0 = Math.max(m, VY0 + ARENA_T + m), y1 = Math.min(MAP_H - m, VY0 + ARENA_B - m);
     for (let k = 0; k < 6; k++) {
       const a = cur + (Math.random() * 2 - 1) * (first ? .45 : 1.5), c = Math.cos(a), sn = Math.sin(a);
       // how far the visible arena reaches from the core in this direction, so waypoints spread across the screen
@@ -1421,20 +1435,25 @@ body.perf .pulse { animation: none; }
       if (!(e.stun > 0)) {
         if (e.gx == null) newWaypoint(e, !e.arrived);
         let wx = e.gx - e.px, wy = e.gy - e.py, wd = Math.hypot(wx, wy) || 1;
-        if (e.arrived) e.wT -= dt;
+        if (e.arrived) {
+          e.wT -= dt;
+          if (Math.hypot(e.gx - HERO_X, e.gy - HERO_Y) > roamR(e).hi + 140) e.wT = 0;
+        }
         if (wd < 16 || e.wT <= 0 || (!e.arrived && e.age > 7)) {
           if (!e.arrived) arrive(e);
           newWaypoint(e); wx = e.gx - e.px; wy = e.gy - e.py; wd = Math.hypot(wx, wy) || 1;
         }
         // head for the waypoint on a gently curving path, easing off as it gets close
-        const sp = (e.arrived ? e.cruise : e.speed) * Math.max(.35, Math.min(1, wd / 60));
+        const hd0 = Math.hypot(e.px - HERO_X, e.py - HERO_Y);
+        const sp = (e.arrived ? e.cruise : e.speed) * Math.max(.35, Math.min(1, wd / 60)) * (1 + Math.min(1.5, Math.max(0, hd0 - 260) / 220));
         const curl = (e.curl + (reduce ? 0 : Math.sin(moveT * .7 + e.ph) * .25)) * Math.min(1, wd / 120);
         const c = Math.cos(curl), sn = Math.sin(curl), ux = wx / wd, uy = wy / wd;
         tx = (ux * c - uy * sn) * sp; ty = (ux * sn + uy * c) * sp;
         if (e.arrived) {
           const m = e.R + 6;
-          if (e.px < m) tx += (m - e.px) * 3; else if (e.px > VW - m) tx -= (e.px - VW + m) * 3;
-          if (e.py < ARENA_T + m) ty += (ARENA_T + m - e.py) * 3; else if (e.py > ARENA_B - m) ty -= (e.py - ARENA_B + m) * 3;
+          const L = VX0 + m, R = VX1() - m, Tp = VY0 + ARENA_T + m, B = VY0 + ARENA_B - m, cap = 90;
+          if (e.px < L) tx += Math.min(cap, (L - e.px) * 3); else if (e.px > R) tx -= Math.min(cap, (e.px - R) * 3);
+          if (e.py < Tp) ty += Math.min(cap, (Tp - e.py) * 3); else if (e.py > B) ty -= Math.min(cap, (e.py - B) * 3);
         }
         // sporadic jinks
         if (!reduce) {
@@ -1453,7 +1472,7 @@ body.perf .pulse { animation: none; }
         const push = e.kb * Math.min(1, dt * 6); e.kb -= push;
         const hx = e.px - HERO_X, hy = e.py - HERO_Y, hd = Math.hypot(hx, hy) || 1, nx = e.px + hx / hd * push, ny = e.py + hy / hd * push, mm = e.R + 6;
         // never push a foe into the screen edge, where the wall would shove it straight back
-        if (!e.arrived || (nx > mm && nx < VW - mm && ny > ARENA_T + mm && ny < ARENA_B - mm)) { e.px = nx; e.py = ny; } else e.kb = 0;
+        if (!e.arrived || (nx > VX0 + mm && nx < VX1() - mm && ny > VY0 + ARENA_T + mm && ny < VY0 + ARENA_B - mm)) { e.px = nx; e.py = ny; } else e.kb = 0;
       }
     }
     // bumps: foes bounce off each other and off the core's ring
@@ -1555,18 +1574,18 @@ body.perf .pulse { animation: none; }
   let tagX = 0, tagY = 0, tagVis = false, tagHold = 0;
   function placeTags(dt) {
     const ht = $("heroTag"), ft = $("foeTag");
-    const hx = HERO_X * SC, hy = (HERO_Y + RING_R - 8) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
+    const hx = (HERO_X - VX0) * SC, hy = (HERO_Y + RING_R - 8 - VY0) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
     if (hk !== tagCache) { tagCache = hk; ht.style.left = hx + "px"; ht.style.top = hy + "px"; }
     const e = enemy, m = e ? e.R * .35 : 0;
     // only show the name once the enemy is actually (mostly) on screen
-    const vis = !!e && !e.dead && e.px > -m && e.px < VW + m && e.py > -m && e.py < VH + m;
+    const vis = !!e && !e.dead && e.px > VX0 - m && e.px < VX1() + m && e.py > VY0 - m && e.py < VY1() + m;
     if (tagHold > 0) tagHold -= dt || .016;
     if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }
     const w = ft.offsetWidth || 150, h = ft.offsetHeight || 40, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
-    const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, e.px * SC));
-    const up = (e.py - out) * SC - h, dn = (e.py + out) * SC, topLim = 112;
+    const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, (e.px - VX0) * SC));
+    const up = (e.py - out - VY0) * SC - h, dn = (e.py + out - VY0) * SC, topLim = 112;
     // above or below: whichever covers less of the core's ring and readout and stays clear of the top bar
-    const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + (ht.offsetHeight || 30) + 4 }, cr = (RING_R + 8) * SC, ccx = HERO_X * SC, ccy = HERO_Y * SC;
+    const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + (ht.offsetHeight || 30) + 4 }, cr = (RING_R + 8) * SC, ccx = (HERO_X - VX0) * SC, ccy = (HERO_Y - VY0) * SC;
     const ovl = top => {
       const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
       return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
@@ -1583,8 +1602,36 @@ body.perf .pulse { animation: none; }
     if (!tagVis) { tagVis = true; ft.style.opacity = 1; }
   }
   let lastFrame = 0;
+  const HERO_SPD = 125;
+  let hvx = 0, hvy = 0, joyX = 0, joyY = 0;
+  const keys = {};
+  function applyCam() {
+    $("cam").setAttribute("transform", "translate(" + (-CAMX).toFixed(2) + " " + (-CAMY).toFixed(2) + ")");
+    $("heroPos").setAttribute("transform", "translate(" + HERO_X.toFixed(1) + " " + HERO_Y.toFixed(1) + ")");
+  }
+  function stepHero(dt) {
+    let ix = joyX, iy = joyY;
+    const kx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+    if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
+    if (heroDown || paused) { ix = 0; iy = 0; }
+    // smooth acceleration toward the stick direction
+    const k = 1 - Math.exp(-dt * 9);
+    hvx += (ix * HERO_SPD - hvx) * k; hvy += (iy * HERO_SPD - hvy) * k;
+    if (Math.abs(hvx) + Math.abs(hvy) > .5) {
+      HERO_X = Math.max(60, Math.min(MAP_W - 60, HERO_X + hvx * dt));
+      HERO_Y = Math.max(60, Math.min(MAP_H - 60, HERO_Y + hvy * dt));
+      GROUND = HERO_Y + 40;
+    } else { hvx = 0; hvy = 0; }
+    // the camera glides after the core
+    const tx = HERO_X - VW / 2, ty = HERO_Y - VH * .49, c = 1 - Math.exp(-dt * 7);
+    CAMX += (tx - CAMX) * c; CAMY += (ty - CAMY) * c;
+    if (Math.abs(tx - CAMX) < .05 && Math.abs(ty - CAMY) < .05) { CAMX = tx; CAMY = ty; }
+    VX0 = CAMX; VY0 = CAMY;
+    applyCam();
+  }
   function frame(now) {
     const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
+    stepHero(dt);
     if (!paused && !heroDown) moveFoes(dt);
     for (const f of foes) poseFoe(f, paused ? 0 : dt);
     drawRing(dt);
@@ -2007,7 +2054,7 @@ body.perf .pulse { animation: none; }
     for (let i = 0; i < 5; i++) tempFx(svgEl("circle", { cx, cy, r: 2.5, fill: ARENA_C[4] }), [
       { transform: "translate(0px,0px)", opacity: 1 },
       { transform: "translate(" + (Math.random() * 30 - 15).toFixed(0) + "px,-30px)", opacity: 1, offset: .35 },
-      { transform: "translate(" + (VW - 40 - cx).toFixed(0) + "px," + (20 - cy).toFixed(0) + "px)", opacity: 0 }
+      { transform: "translate(" + (VX1() - 40 - cx).toFixed(0) + "px," + (VY0 + 20 - cy).toFixed(0) + "px)", opacity: 0 }
     ], 700 + i * 60);
     if (e.boss || e.elite) shake(e.boss ? 8 : 5, 450);
   }
@@ -2042,8 +2089,8 @@ body.perf .pulse { animation: none; }
     const R = fe ? fe.R : 25, loot = cls === "gold" || cls === "shardf";
     const x = fe ? fe.px + (Math.random() * 24 - 12) : side === "enemy" ? HERO_X + 60 : HERO_X + (Math.random() * 20 - 10);
     const y = fe ? fe.py + (loot ? R * .5 : -R * .45) + Math.random() * 12 - 6 : HERO_Y - 34 - Math.random() * 12;
-    el.style.left = (x * SC).toFixed(0) + "px";
-    el.style.top = (y * SC).toFixed(0) + "px";
+    el.style.left = ((x - VX0) * SC).toFixed(0) + "px";
+    el.style.top = ((y - VY0) * SC).toFixed(0) + "px";
     arena.appendChild(el);
     const all = arena.querySelectorAll(".float");
     if (all.length > 16) all[0].remove();
@@ -2424,7 +2471,10 @@ body.perf .pulse { animation: none; }
   function crush(e) {
     e.el.model.classList.remove("tele");
     anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
-    shake(9, 450); log("Crush!", "bad"); sfx("crush");
+    shake(9, 450); sfx("crush");
+    // the Crush lands where the warning ring was: move out of it to dodge
+    if (e.crX != null && Math.hypot(HERO_X - e.crX, HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringFx(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
+    log("Crush!", "bad");
     hurt(ST.maxHp * .45 * (1 - .08 * T("w5")), true, e);
   }
   function bossEscape() {
@@ -2865,7 +2915,7 @@ body.perf .pulse { animation: none; }
           if (e.tele <= 0) { crush(e); if (heroDown) return; }
         } else {
           e.specT -= dt;
-          if (e.specT <= 0) { e.specT = 6.5; e.tele = 1.3; e.el.model.classList.add("tele"); warnRing(1.3); sfx("warn"); floatText("Crush incoming", "hurt", e); }
+          if (e.specT <= 0) { e.specT = 6.5; e.tele = 1.3; e.crX = HERO_X; e.crY = HERO_Y; e.el.model.classList.add("tele"); warnRing(1.3); sfx("warn"); floatText("Crush incoming", "hurt", e); }
         }
         runMechs(e, dt);
         if (heroDown || e.dead) return;
@@ -3133,13 +3183,14 @@ body.perf .pulse { animation: none; }
       <p>The DPS number at the top of the screen is your damage over the last 5 seconds. Floating numbers show each hit: white for normal, cyan for taps, lumen with a ! for crits.</p>
       <p>The Pushing button controls progress. Pushing moves to the next stage after each clear. Farming repeats the current stage, which is handy for lumen and loot when you're stuck.</p>
       <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
+      <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The map is much bigger than the screen and the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
     ["Health and mana", `<p><b>Health</b> (green bar) is your life. It regenerates 1% per second, and each kill heals 5%. If it hits zero your core collapses, you drop back one stage and switch to Farming.</p>
       <p><b>Mana</b> (blue bar) only pays for skills. It regenerates 3% per second before bonuses, so you can't keep every skill going at once. Essence training lowers skill costs and Flow speeds up regen.</p>
       <p>Shields from Barrier show as a striped overlay on the health bar and absorb damage first.</p>`],
     ["Stages, elites and bosses", `<p>Each stage has 8 enemies. Every 10 stages the zone changes: new colors, and enemies with more sides and heavier armor.</p>
       <p><b>Elites</b> appear from stage 11 as the 8th enemy of a stage. They have horns and a red ring, 4x health and harder hits, and always drop an item plus 4x lumen. Bosses give 12x lumen.</p>
-      <p><b>Bosses</b> are every 10th stage. You have 30 seconds. At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Barrier blocks it. If the timer runs out, the boss escapes and you drop back.</p>`],
+      <p><b>Bosses</b> are every 10th stage. You have 30 seconds. At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Move out of the ring before it closes to dodge it, or let Barrier absorb it. If the timer runs out, the boss escapes and you drop back.</p>`],
     ["Skills", `<p>Skills sit in the row along the bottom of the screen. Tap one to cast it. A dot means auto-cast is on, and you can toggle it in the Skills window. Skills cost mana, and upgrading them with shards makes them stronger. Each level adds 6% power and cuts that skill's cooldown by 1%. Levels go to 40, but the level you can buy is capped by your best stage this run: the cap rises by 1 every 3 stages. Tempo training and the Drive branch of the web shorten every cooldown.</p>
       <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Siphon</b> (stage 30): restores mana and some health, and clears statuses.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
@@ -3400,7 +3451,7 @@ body.perf .pulse { animation: none; }
   // ================= input =================
   let lastTapFx = 0, tapCount = 0, combo = 0, lastTapT = 0;
   $("scene").addEventListener("pointerdown", e => {
-    const rc = arena.getBoundingClientRect(), lx = (e.clientX - rc.left) / SC, ly = (e.clientY - rc.top) / SC;
+    const rc = arena.getBoundingClientRect(), lx = (e.clientX - rc.left) / SC + VX0, ly = (e.clientY - rc.top) / SC + VY0;
     let near = null, nd = 1e9;
     foes.forEach(f => { if (f.dead || !inView(f)) return; const d = Math.hypot(f.px - lx, f.py - ly); if (d < f.R + 26 && d < nd) { nd = d; near = f; } });
     if (near && near !== focus) { focus = near; pickTarget(); }
@@ -3423,6 +3474,39 @@ body.perf .pulse { animation: none; }
     if (now - lastTapFx > 70) { lastTapFx = now; boltFx(); }
     $("tapHint").style.display = "none";
   });
+  // floating joystick: press anywhere and drag. A quick tap still strikes
+  (() => {
+    const sc = $("scene"), joy = $("joy"), knob = $("joyKnob"), R = 52;
+    let jid = null, sx = 0, sy = 0, cand = null;
+    sc.addEventListener("pointerdown", e => {
+      if (jid !== null) return;
+      cand = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      try { sc.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    sc.addEventListener("pointermove", e => {
+      if (jid === null && cand && cand.id === e.pointerId && Math.hypot(e.clientX - cand.x, e.clientY - cand.y) > 12) {
+        jid = e.pointerId; sx = cand.x; sy = cand.y; cand = null;
+        const rc = arena.getBoundingClientRect();
+        joy.style.transform = "translate(" + (sx - rc.left) + "px," + (sy - rc.top) + "px)"; joy.classList.add("on");
+        $("tapHint").style.display = "none";
+      }
+      if (e.pointerId !== jid) return;
+      let dx = e.clientX - sx, dy = e.clientY - sy; const d = Math.hypot(dx, dy);
+      if (d > R) { dx *= R / d; dy *= R / d; }
+      knob.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+      const m = Math.min(1, d / R), l = Math.hypot(dx, dy) || 1, g = m < .15 ? 0 : m;
+      joyX = dx / l * g; joyY = dy / l * g;
+    });
+    const end = e => {
+      if (cand && cand.id === e.pointerId) cand = null;
+      if (e.pointerId !== jid) return;
+      jid = null; joyX = joyY = 0; joy.classList.remove("on"); knob.style.transform = "";
+    };
+    sc.addEventListener("pointerup", end); sc.addEventListener("pointercancel", end); sc.addEventListener("lostpointercapture", end);
+    document.addEventListener("keydown", e => { const k = e.key.toLowerCase(); if (/^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright)$/.test(k) && !tab) { keys[k] = true; e.preventDefault(); } });
+    document.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+    addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+  })();
   $("mode").addEventListener("click", () => { S.push = !S.push; updateUI(); save(); });
   $("panels").addEventListener("click", e => {
     const b = e.target.closest("[data-act]");
