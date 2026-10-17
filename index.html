@@ -105,6 +105,7 @@ body.noanim .menuDrop button { animation: none; }
 }
 .scene { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .scene g, .scene polygon, .scene path, .scene rect, .scene circle, .scene ellipse, .scene line { transform-origin: 0 0; }
+#heroModel.dashing { opacity: .55; filter: drop-shadow(0 0 10px #9ff3e6); }
 .joy { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 1.5px solid rgba(159,243,230,.35); background: radial-gradient(circle, rgba(159,243,230,.10), rgba(159,243,230,.02) 70%); pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 3; }
 .joy.on { opacity: 1; }
 .joyKnob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(159,243,230,.28); border: 1.5px solid rgba(159,243,230,.7); box-shadow: 0 0 14px rgba(159,243,230,.35); }
@@ -173,9 +174,9 @@ body.noanim .bladeOrbit2 { animation: none; }
 .bar-l { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
 .bar-l span:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.skillbar { position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: repeat(6, 58px); gap: 8px; }
+.skillbar { touch-action: none; -webkit-user-select: none; user-select: none; position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: repeat(6, 58px); gap: 8px; }
 @media (max-width: 440px) { .skillbar { left: 12px; right: 12px; transform: none; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; } }
-.sk { --cut: 11px; position: relative; border: 0; background: rgba(16,12,28,.66); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #ece8f7; padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; min-height: 58px; }
+.sk { touch-action: none; -webkit-touch-callout: none; --cut: 11px; position: relative; border: 0; background: rgba(16,12,28,.66); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #ece8f7; padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; min-height: 58px; }
 .sk svg { width: 24px; height: 24px; }
 .sk .lb { font-size: 10.5px; font-weight: 600; line-height: 1.1; text-align: center; }
 .sk .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(10,8,20,.55); pointer-events: none; }
@@ -751,7 +752,7 @@ body.perf .pulse { animation: none; }
     { id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z" },
     { id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .2, foe: true, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z" },
     { id: "storm", name: "Storm", unlock: 20, cd: 10, cost: .22, foe: true, icon: "M12 1 L14.5 10 L12 12.5 L9.5 10 Z M2.5 18.5 L10 12.8 L12 15 L10.5 17.5 Z M21.5 18.5 L13.5 17.5 L12 15 L14 12.8 Z" },
-    { id: "siphon", name: "Siphon", unlock: 30, cd: 18, cost: 0, foe: false, icon: "M12 2 Q20 12 18 16 A6 6 0 1 1 6 16 Q4 12 12 2 Z" },
+    { id: "dash", name: "Dash", unlock: 30, cd: 6, cost: .08, foe: false, icon: "M9 4 L20 12 L9 20 L12 12 Z M2 8 H8 V9.6 H2 Z M1 11.2 H9 V12.8 H1 Z M2 14.4 H8 V16 H2 Z" },
     { id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .25, foe: true, icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z" }
   ];
   const SK = {}; SKILLS.forEach(s => SK[s.id] = s);
@@ -842,7 +843,7 @@ body.perf .pulse { animation: none; }
     { id: "e13", br: "edge", x: 60, y: -350, s: "Opener", name: "Opening Strike", max: 5, c: 3, desc: "+50% damage per rank on your first hit against each enemy" },
     { id: "k1", br: "edge", x: 0, y: -392, s: "Avatar", name: "Avatar of Light", max: 1, c: 25, cap: true, key: true, desc: "Keystone. Every 5th tap also fires your orbital for full attack damage" },
     { id: "w11", br: "ward", x: 320, y: -110, s: "Barrier+", name: "Barrier Attunement", max: 3, c: 4, att: "barrier", desc: "Rank 1 unlocks Barrier from stage 1. Each rank after starts it 3 levels higher" },
-    { id: "w12", br: "ward", x: 320, y: 110, s: "Siphon+", name: "Siphon Attunement", max: 3, c: 4, att: "siphon", desc: "Rank 1 unlocks Siphon from stage 1. Each rank after starts it 3 levels higher" },
+    { id: "w12", br: "ward", x: 320, y: 110, s: "Dash+", name: "Dash Attunement", max: 3, c: 4, att: "dash", desc: "Rank 1 unlocks Dash from stage 1. Each rank after starts it 3 levels higher" },
     { id: "w13", br: "ward", x: 350, y: -60, s: "Thorns", name: "Thorns", max: 10, c: 2, desc: "Reflect 10% of damage taken back at the attacker per rank" },
     { id: "w14", br: "ward", x: 350, y: 60, s: "Fortress", name: "Fortress", max: 10, c: 2, desc: "+1% block chance and +3% health per rank" },
     { id: "k2", br: "ward", x: 392, y: 0, s: "Undying", name: "Undying", max: 1, c: 25, cap: true, key: true, desc: "Keystone. Survive a fatal hit every 30s, returning with 60% health" },
@@ -913,7 +914,7 @@ body.perf .pulse { animation: none; }
     v: 4, eco: 6, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
     echoes: 0, echoesTotal: 0, tree: {},
     train: Object.fromEntries(TRAIN.map(t => [t.id, 0])),
-    skill: {}, auto: { nova: true, barrier: true, overdrive: true, storm: true, siphon: true, shatter: true },
+    skill: {}, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
     equip: {}, inv: [], nextId: 1, salv: 1, autoEquip: true,
     bounties: [], bountyDone: 0, rerollAt: 0,
     gps: 0, totalKills: 0, last: Date.now()
@@ -979,6 +980,8 @@ body.perf .pulse { animation: none; }
   }
   // old saves: rescale gear to the exponential curve and repost bounties with the new rewards
   function migrateEco() {
+    if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
+    if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
     if ((S.eco || 0) >= 6) return;
     // v6 retune: training caps changed, so trim anything above the new maximums
     if (S.eco === 5) { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); S.eco = 6; return; }
@@ -1603,7 +1606,24 @@ body.perf .pulse { animation: none; }
   }
   let lastFrame = 0;
   const HERO_SPD = 125;
-  let hvx = 0, hvy = 0, joyX = 0, joyY = 0;
+  let hvx = 0, hvy = 0, joyX = 0, joyY = 0, dashT = 0, dashIT = 0, dashVX = 0, dashVY = 0, dashHit = null, dashD = 0;
+  const DASH_TIME = .2;
+  function startDash(L) {
+    // direction: where you're steering, else where you're drifting, else straight away from the nearest foe
+    let dx = joyX, dy = joyY;
+    const kx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+    if (kx || ky) { dx = kx; dy = ky; }
+    if (Math.hypot(dx, dy) < .15) { dx = hvx; dy = hvy; }
+    if (Math.hypot(dx, dy) < 5) {
+      let best = null, bd = 1e9; for (const f of foes) { if (f.dead) continue; const d = Math.hypot(f.px - HERO_X, f.py - HERO_Y); if (d < bd) { bd = d; best = f; } }
+      if (best) { dx = HERO_X - best.px; dy = HERO_Y - best.py; } else { dx = 0; dy = -1; }
+    }
+    const l = Math.hypot(dx, dy) || 1, v = dashDist(L) / DASH_TIME;
+    dashVX = dx / l * v; dashVY = dy / l * v; dashT = DASH_TIME; dashIT = dashI(L); dashHit = new Set(); dashD = dashDmg(L);
+    const x0 = HERO_X, y0 = HERO_Y;
+    dashFx(x0, y0, Math.max(60, Math.min(MAP_W - 60, x0 + dashVX * DASH_TIME)), Math.max(60, Math.min(MAP_H - 60, y0 + dashVY * DASH_TIME)));
+    heroModel.classList.add("dashing");
+  }
   const keys = {};
   function applyCam() {
     $("cam").setAttribute("transform", "translate(" + (-CAMX).toFixed(2) + " " + (-CAMY).toFixed(2) + ")");
@@ -1613,11 +1633,18 @@ body.perf .pulse { animation: none; }
     let ix = joyX, iy = joyY;
     const kx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
     if (kx || ky) { const l = Math.hypot(kx, ky); ix = kx / l; iy = ky / l; }
-    if (heroDown || paused) { ix = 0; iy = 0; }
+    if (heroDown || paused) { ix = 0; iy = 0; dashT = 0; }
+    if (dashIT > 0) { dashIT -= dt; if (dashIT <= 0) heroModel.classList.remove("dashing"); }
+    if (dashT > 0) {
+      const st2 = Math.min(dt, dashT); dashT -= st2;
+      HERO_X = Math.max(60, Math.min(MAP_W - 60, HERO_X + dashVX * st2)); HERO_Y = Math.max(60, Math.min(MAP_H - 60, HERO_Y + dashVY * st2));
+      hvx = dashVX * .25; hvy = dashVY * .25; GROUND = HERO_Y + 40;
+      for (const f of foes) if (!f.dead && !dashHit.has(f) && Math.hypot(f.px - HERO_X, f.py - HERO_Y) < f.R + 34) { dashHit.add(f); land(f, dashD, "storm"); }
+    }
     // smooth acceleration toward the stick direction
     const k = 1 - Math.exp(-dt * 9);
     hvx += (ix * HERO_SPD - hvx) * k; hvy += (iy * HERO_SPD - hvy) * k;
-    if (Math.abs(hvx) + Math.abs(hvy) > .5) {
+    if (dashT > 0) {} else if (Math.abs(hvx) + Math.abs(hvy) > .5) {
       HERO_X = Math.max(60, Math.min(MAP_W - 60, HERO_X + hvx * dt));
       HERO_Y = Math.max(60, Math.min(MAP_H - 60, HERO_Y + hvy * dt));
       GROUND = HERO_Y + 40;
@@ -1654,7 +1681,7 @@ body.perf .pulse { animation: none; }
   let HERO_X = 180, HERO_Y = 340, ENEMY_X = 290, ENEMY_Y = 382, VW = 360, VH = 780, SC = 1, ENGAGE = 105, SW = 390, SH = 844;
   const F = () => fdir(enemy);
   const alive = () => !!enemy && !enemy.dead && !heroDown;
-  const ATT = { nova: "e11", storm: "e12", barrier: "w11", siphon: "w12", overdrive: "d10", shatter: "d11" };
+  const ATT = { nova: "e11", storm: "e12", barrier: "w11", dash: "w12", overdrive: "d10", shatter: "d11" };
   const attRank = id => T(ATT[id]);
   const baseLvl = id => Math.min(40, id === "nova" ? 1 + 3 * attRank(id) : 1 + 3 * Math.max(0, attRank(id) - 1));
   const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
@@ -2015,6 +2042,13 @@ body.perf .pulse { animation: none; }
     ringFx(HERO_X, HERO_Y, "#7be0d0", .6, 15, 360, 8);
     setTimeout(() => { if (enemy) burst(ENEMY_X, enemyCY(), "#effffc", 10); }, 220);
   }
+  function dashFx(x0, y0, x1, y1) {
+    if (reduce) return;
+    for (let i = 0; i < 5; i++) {
+      const t = i / 4, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 20, fill: "none", stroke: "#9ff3e6", "stroke-width": 2 }), [{ opacity: 0 }, { opacity: .55 - t * .3, offset: .2 }, { opacity: 0 }], 380, i * 40);
+    }
+  }
   function siphonFx() {
     if (reduce) return;
     const sx = enemy ? ENEMY_X : HERO_X + 110, sy = enemy ? enemyCY() : HERO_Y - 40;
@@ -2293,6 +2327,7 @@ body.perf .pulse { animation: none; }
   }
   function hurt(d, noEvade, from) {
     const dir = from ? fdir(from) : F();
+    if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
     if (!noEvade && !st("gravity") && Math.random() < evadeChance()) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); return false; }
     let blocked = false;
     if (!st("fracture") && Math.random() < ST.block) { d *= .3; blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120); }
@@ -2580,7 +2615,9 @@ body.perf .pulse { animation: none; }
   const stormDmg = L => ST.atk * .45 * skMult(L) * ST.skillPow;
   const barrierAmt = L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * (1 + .2 * T("w7"));
   const surgePct = L => 50 + 2.5 * (L - 1), surgeT = L => 6 + .1 * (L - 1) + T("d4");
-  const siphonMp = L => Math.min(1, (.35 + .01 * (L - 1)) * ST.skillPow), siphonHp = L => .1 + .0025 * L;
+  // Dash: a quick burst in the direction you're moving (or away from danger), untouchable while it lasts,
+  // slicing every foe it passes through and shaking off statuses
+  const dashDist = L => 150 + 3 * (L - 1), dashI = L => .4 + .01 * (L - 1), dashDmg = L => ST.atk * 1.5 * skMult(L) * ST.skillPow;
   const shatterT = L => 5 + .15 * (L - 1), shatterCd = L => .05 * L;
   const canCast = sk => unlocked(sk.id) && !(cds[sk.id] > 0) && !heroDown && mp >= skillCost(sk) && (!sk.foe || alive());
   function cast(id, manual) {
@@ -2607,8 +2644,8 @@ body.perf .pulse { animation: none; }
     } else if (id === "storm") {
       const n = stormN(L), d = stormDmg(L);
       for (let i = 0; i < n; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(d, wDelay(), "storm"); } }, i * 170);
-    } else if (id === "siphon") {
-      mp = Math.min(ST.maxMp, mp + ST.maxMp * siphonMp(L)); heal(ST.maxHp * siphonHp(L)); siphonFx();
+    } else if (id === "dash") {
+      startDash(L);
       for (const k in stT) stT[k] = 0;
     } else if (id === "shatter") { markT = shatterT(L); crackFx(); }
     bump("cast", 1);
@@ -2622,7 +2659,8 @@ body.perf .pulse { animation: none; }
       if (!S.auto[sk.id] || !canCast(sk)) continue;
       let go;
       if (sk.id === "barrier") go = foe && (enemy.tele > 0 || hpPct < .6);
-      else if (sk.id === "siphon") go = mp / ST.maxMp < .35 || hpPct < .4;
+      // auto-dash only to escape: out of a boss Crush, or away when health is low
+      else if (sk.id === "dash") go = !!foes.find(f => !f.dead && f.tele > 0 && f.tele < .7) || (hpPct < .35 && foe);
       else {
         go = foe;
         if (saveForBarrier && mp - skillCost(sk) < skillCost(SK.barrier)) go = false;
@@ -2636,7 +2674,7 @@ body.perf .pulse { animation: none; }
     if (sk.id === "barrier") return "Shield absorbs " + fmt(barrierAmt(L)) + " damage for " + (8 + .1 * (L - 1)).toFixed(1) + "s";
     if (sk.id === "overdrive") return "+" + surgePct(L) + "% attack speed for " + surgeT(L).toFixed(1) + "s";
     if (sk.id === "storm") return stormN(L) + " blades for " + fmt(stormDmg(L)) + " each";
-    if (sk.id === "siphon") return "Restore " + Math.round(siphonMp(L) * 100) + "% mana and " + Math.round(siphonHp(L) * 100) + "% health, and clear all statuses";
+    if (sk.id === "dash") return "Dash " + Math.round(dashDist(L)) + " units, untouchable for " + dashI(L).toFixed(2) + "s, slicing foes in your path for " + fmt(dashDmg(L)) + " and clearing statuses";
     return "Every hit crits for " + shatterT(L).toFixed(1) + "s with +" + Math.round(shatterCd(L) * 100) + "% crit damage";
   }
   const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
@@ -2650,7 +2688,9 @@ body.perf .pulse { animation: none; }
       b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + sk.icon + '" fill="currentColor" fill-rule="evenodd"/></svg><span class="lb">' + (open ? sk.name : "Stage " + sk.unlock) + '</span><span class="au"></span><span class="cd"></span><span class="ct"></span>';
       b.setAttribute("aria-label", open ? "Cast " + sk.name : sk.name + " unlocks at stage " + sk.unlock);
       if (!open) { b.classList.add("locked"); b.querySelector(".au").style.display = "none"; }
-      b.addEventListener("click", () => { if (unlocked(sk.id)) cast(sk.id, true); });
+      // fire on press: iOS won't send a click while another finger is down (the joystick)
+      b.addEventListener("pointerdown", e => { e.preventDefault(); if (unlocked(sk.id)) cast(sk.id, true); });
+      b.addEventListener("click", e => { if (e.detail === 0 && unlocked(sk.id)) cast(sk.id, true); });
       bar.appendChild(b);
       skEls[sk.id] = { b, cd: b.querySelector(".cd"), ct: b.querySelector(".ct"), au: b.querySelector(".au") };
     });
@@ -2754,7 +2794,7 @@ body.perf .pulse { animation: none; }
     barrier: () => { tone("sine", 523.3, 523.3, .8, .025, 0, .15); tone("sine", 784, 784, .8, .02, .05, .15); },
     overdrive: () => [7, 8, 10, 12].forEach((n, i) => tone("triangle", NOTE[n], NOTE[n], .12, .018, i * .045)),
     storm: () => air(500, 2200, .5, .028),
-    siphon: () => [12, 10, 8, 7].forEach((n, i) => bell(NOTE[n], .02, i * .07, .35)),
+    dash: () => [7, 9, 12].forEach((n, i) => bell(NOTE[n], .018, i * .035, .2)),
     shatterSkill: () => [13, 12, 14].forEach((n, i) => bell(NOTE[n], .022, i * .05, .5))
   };
   // ================= music: generative ambient, same scale as the effects =================
@@ -3192,7 +3232,7 @@ body.perf .pulse { animation: none; }
       <p><b>Elites</b> appear from stage 11 as the 8th enemy of a stage. They have horns and a red ring, 4x health and harder hits, and always drop an item plus 4x lumen. Bosses give 12x lumen.</p>
       <p><b>Bosses</b> are every 10th stage. You have 30 seconds. At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Move out of the ring before it closes to dodge it, or let Barrier absorb it. If the timer runs out, the boss escapes and you drop back.</p>`],
     ["Skills", `<p>Skills sit in the row along the bottom of the screen. Tap one to cast it. A dot means auto-cast is on, and you can toggle it in the Skills window. Skills cost mana, and upgrading them with shards makes them stronger. Each level adds 6% power and cuts that skill's cooldown by 1%. Levels go to 40, but the level you can buy is capped by your best stage this run: the cap rises by 1 every 3 stages. Tempo training and the Drive branch of the web shorten every cooldown.</p>
-      <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Siphon</b> (stage 30): restores mana and some health, and clears statuses.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
+      <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Dash</b> (stage 30): a quick burst in the direction you're moving (or away from the nearest enemy). You're untouchable while it lasts, it slices every enemy you pass through, and it shakes off all statuses. On auto-cast it only fires to escape a boss Crush or when your health is low.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
     ["Gear and loot", `<p>Your core has four slots, each shown on the core itself:</p>
       <ul><li><b>Orbital</b>: attack. A weapon that circles your core and fires on its own. Each type attacks differently and has its own trait:<ul><li><b>Drone</b> (Rapid): twin bolts, 30% faster at 80% damage.</li><li><b>Glaive</b> (Returning): thrown and spins back, hitting twice for 55% each.</li><li><b>Laser</b> (Piercing): instant beam that ignores Shielded and Armored.</li><li><b>Swarm</b> (Seeking): three homing shards that Umbrals can't dodge, and they pop boss motes.</li><li><b>Hammer</b> (Crushing): drops from above, slower but 160% damage, with a 20% chance to stun.</li><li><b>Coil</b> (Chaining): lightning with a 30% chance to arc a second strike.</li></ul>From stage 25 you permanently unlock a <b>second orbital</b> slot. It orbits the other way, fires on its own timer at 60% damage, and auto-equip fills it with your second-best orbital. Mix traits, like a Laser for armored foes and a Swarm for Umbrals.</li><li><b>Shell</b>: health. A spinning barrier around the core.</li><li><b>Corona</b>: attack speed and evasion rating. A ring of light.</li><li><b>Lens</b>: crit chance. A small satellite.</li></ul>
@@ -3208,7 +3248,7 @@ body.perf .pulse { animation: none; }
       <p>Stats shows your exact numbers, including your evade chance at the current stage.</p>`],
     ["Status effects", `<p>From stage 6, enemies carry random statuses, shown as colored tags under their health bar. Deeper stages stack more of them: 1 per enemy until stage 19, then 2 from stage 20, 3 from stage 40 and 4 from stage 60. Elites and bosses carry one extra. Every status an enemy carries has its own chance to land on each hit, so a deep enemy can stack several on you at once. Your active statuses show as chips under your mana bar and change how your core looks.</p>
       <ul><li><b>Dim</b>: your light fades. Healing from regen, kills and life steal is cut by 60%.</li><li><b>Fracture</b>: your shell cracks. No block, and 20% more damage taken.</li><li><b>Static</b>: interference. No mana regen, and skills cost 50% more.</li><li><b>Gravity</b>: you're weighed down. 30% slower attacks and no evasion.</li><li><b>Eclipse</b>: your light is covered. Your attacks can't crit, though Shatter still forces crits.</li></ul>
-      <p>Counters: an active Barrier stops new statuses, Siphon clears them all, and Clarity training shortens them.</p>`],
+      <p>Counters: an active Barrier stops new statuses, Dash clears them all, and Clarity training shortens them.</p>`],
     ["Boss mechanics", `<p>Every boss uses Crush. From stage 20, each zone's boss adds a signature mechanic. From stage 60, bosses combine two. The line under the boss's health bar tells you what's happening.</p>
       <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and 25% of the damage you deal reflects back at you. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
     ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +10% echoes.</p>
