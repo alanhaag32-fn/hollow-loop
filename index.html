@@ -591,7 +591,7 @@ body.perf .pulse { animation: none; }
           </div>
         </section>
         <section class="panel" id="p-skills" hidden>
-          <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on.</p>
+          <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on. The level cap rises by 1 every 3 stages you reach this run.</p>
           <div class="list" id="skillsBody"></div>
         </section>
         <section class="panel" id="p-train" hidden>
@@ -679,7 +679,7 @@ body.perf .pulse { animation: none; }
   // enemy health and lumen grow 33% per stage, gear power 15% per stage, training compounds with milestone doublings
   const HPG = 1.35;
   const stageHp = st => 20 * Math.pow(HPG, st - 1);
-  const stageDmg = st => .9 * Math.pow(HPG, st - 1);
+  const stageDmg = st => .9 * Math.pow(1.27, st - 1);
   const itemPow = st => 6 * Math.pow(1.13, st - 1);
   const MILES = [25, 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
   const milesAt = L => MILES.filter(m => L >= m).length;
@@ -722,30 +722,30 @@ body.perf .pulse { animation: none; }
   const TRAIN = [
     { unlock: 1, id: "might", name: "Might", cat: "off", base: 10, g: 1.18, mode: "mult", stat: "attack", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)) },
     { unlock: 1, id: "vigor", name: "Vigor", cat: "def", base: 10, g: 1.18, mode: "mult", stat: "health", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)) },
-    { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.2, max: 150, mode: "pct", stat: "tap damage", eff: L => 1 + .02 * L },
+    { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.2, max: 100, mode: "pct", stat: "tap damage", eff: L => 1 + .015 * L },
     { unlock: 2, id: "greed", name: "Greed", cat: "fort", base: 40, g: 1.25, mode: "mult", stat: "lumen", mile: 1.25, eff: L => (1 + .05 * L) * Math.pow(1.25, milesAt(L)) },
     { unlock: 3, id: "haste", name: "Haste", cat: "off", base: 50, g: 1.22, max: 120, mode: "pct", stat: "attack speed", eff: L => 1 + .01 * L },
-    { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.22, max: 90, mode: "less", stat: "mana costs", eff: L => 1 - .005 * L },
+    { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.22, max: 60, mode: "less", stat: "mana costs", eff: L => 1 - .005 * L },
     { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.3, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L },
-    { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.22, max: 80, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L },
-    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.2, max: 125, mode: "pct", stat: "crit damage", eff: L => 1 + .04 * L },
+    { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.22, max: 50, mode: "pct", stat: "mana regen", eff: L => 1 + .02 * L },
+    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.2, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .015 * L },
     { unlock: 12, id: "agility", name: "Agility", cat: "def", base: 60, g: 1.22, mode: "pct", stat: "evasion rating", eff: L => 1 + .05 * L },
     { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.3, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L },
     { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.25, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L },
     { unlock: 18, id: "precision", name: "Precision", cat: "off", base: 150, g: 1.22, max: 80, mode: "add", stat: "crit chance", eff: L => .0025 * L },
-    { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.2, max: 120, mode: "pct", stat: "skill power", eff: L => 1 + .025 * L },
+    { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.2, max: 100, mode: "pct", stat: "skill power", eff: L => 1 + .01 * L },
     { unlock: 25, id: "leech", name: "Leech", cat: "def", base: 150, g: 1.4, max: 20, mode: "add", stat: "life steal", eff: L => .001 * L },
     { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.25, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L }
   ];
   const TRN = {}; TRAIN.forEach(t => TRN[t.id] = t);
   const tm = id => TRN[id].eff((S.train && S.train[id]) || 0);
   const SKILLS = [
-    { id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .12, foe: true, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z" },
-    { id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .15, foe: false, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z" },
-    { id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .15, foe: true, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z" },
-    { id: "storm", name: "Storm", unlock: 20, cd: 10, cost: .18, foe: true, icon: "M12 1 L14.5 10 L12 12.5 L9.5 10 Z M2.5 18.5 L10 12.8 L12 15 L10.5 17.5 Z M21.5 18.5 L13.5 17.5 L12 15 L14 12.8 Z" },
+    { id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z" },
+    { id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z" },
+    { id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .2, foe: true, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z" },
+    { id: "storm", name: "Storm", unlock: 20, cd: 10, cost: .22, foe: true, icon: "M12 1 L14.5 10 L12 12.5 L9.5 10 Z M2.5 18.5 L10 12.8 L12 15 L10.5 17.5 Z M21.5 18.5 L13.5 17.5 L12 15 L14 12.8 Z" },
     { id: "siphon", name: "Siphon", unlock: 30, cd: 18, cost: 0, foe: false, icon: "M12 2 Q20 12 18 16 A6 6 0 1 1 6 16 Q4 12 12 2 Z" },
-    { id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .18, foe: true, icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z" }
+    { id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .25, foe: true, icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z" }
   ];
   const SK = {}; SKILLS.forEach(s => SK[s.id] = s);
   const STATUS = {
@@ -784,7 +784,7 @@ body.perf .pulse { animation: none; }
   const BR_NAME = { core: "Core", edge: "Edge", ward: "Ward", drive: "Drive", fortune: "Fortune", bridge: "Bridge" };
   const TREE = [
     { id: "core", br: "core", x: 0, y: 0, s: "Core", name: "The Core", max: 1, c: 0, desc: "Your starting point. Every path grows outward from here." },
-    { id: "e1", br: "edge", x: 0, y: -70, s: "Sharpen", name: "Sharpened Light", max: 20, c: 1, desc: "x1.15 attack per rank, compounding" },
+    { id: "e1", br: "edge", x: 0, y: -70, s: "Sharpen", name: "Sharpened Light", max: 20, c: 1, desc: "x1.10 attack per rank, compounding" },
     { id: "e2", br: "edge", x: -45, y: -130, s: "Keen", name: "Keen Mind", max: 10, c: 2, desc: "+2% crit chance per rank" },
     { id: "e4", br: "edge", x: 45, y: -130, s: "Hand", name: "Hand of Light", max: 10, c: 1, desc: "+25% tap damage per rank" },
     { id: "e3", br: "edge", x: -75, y: -190, s: "Cruelty", name: "Cruelty", max: 10, c: 2, desc: "+15% crit damage per rank" },
@@ -793,7 +793,7 @@ body.perf .pulse { animation: none; }
     { id: "e6", br: "edge", x: -60, y: -250, s: "Execute", name: "Execute", max: 5, c: 3, desc: "+10% damage per rank to enemies under 30% health" },
     { id: "e7", br: "edge", x: 60, y: -250, s: "Slayer", name: "Giant Slayer", max: 10, c: 3, desc: "+10% damage per rank to bosses" },
     { id: "e8", br: "edge", x: 0, y: -290, s: "Supernova", name: "Supernova", max: 1, c: 15, cap: true, desc: "Nova strikes twice" },
-    { id: "w1", br: "ward", x: 70, y: 0, s: "Vital", name: "Vital Core", max: 20, c: 1, desc: "x1.15 health per rank, compounding" },
+    { id: "w1", br: "ward", x: 70, y: 0, s: "Vital", name: "Vital Core", max: 20, c: 1, desc: "x1.10 health per rank, compounding" },
     { id: "w2", br: "ward", x: 130, y: -45, s: "Spring", name: "Mana Spring", max: 10, c: 2, desc: "+10% max mana and mana regen per rank" },
     { id: "w3", br: "ward", x: 130, y: 45, s: "Thick", name: "Thick Shell", max: 10, c: 2, desc: "-3% damage taken per rank" },
     { id: "w4", br: "ward", x: 190, y: -75, s: "Leech", name: "Leech Lord", max: 10, c: 2, desc: "+0.5% life steal per rank" },
@@ -812,7 +812,7 @@ body.perf .pulse { animation: none; }
     { id: "d5", br: "drive", x: -60, y: 250, s: "Amplify", name: "Amplify", max: 10, c: 3, desc: "+8% skill power per rank" },
     { id: "d7", br: "drive", x: 60, y: 250, s: "Time fold", name: "Time Fold", max: 5, c: 3, desc: "+3s on boss timers per rank" },
     { id: "d8", br: "drive", x: 0, y: 290, s: "Eternal", name: "Storm Eternal", max: 1, c: 15, cap: true, desc: "Storm throws 3 more blades" },
-    { id: "f1", br: "fortune", x: -70, y: 0, s: "Greed", name: "Greed", max: 20, c: 1, desc: "x1.15 lumen per rank, compounding" },
+    { id: "f1", br: "fortune", x: -70, y: 0, s: "Greed", name: "Greed", max: 20, c: 1, desc: "x1.10 lumen per rank, compounding" },
     { id: "f2", br: "fortune", x: -130, y: -45, s: "Scavenge", name: "Scavenger", max: 10, c: 2, desc: "+5% loot drop chance per rank" },
     { id: "f4", br: "fortune", x: -130, y: 45, s: "Salvager", name: "Salvager", max: 10, c: 1, desc: "+20% salvage lumen per rank" },
     { id: "f3", br: "fortune", x: -190, y: -75, s: "Lucky", name: "Lucky Star", max: 10, c: 2, desc: "+10% chance per rank for Rare or better" },
@@ -903,7 +903,7 @@ body.perf .pulse { animation: none; }
   ];
 
   const fresh = () => ({
-    v: 4, eco: 5, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
+    v: 4, eco: 6, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
     echoes: 0, echoesTotal: 0, tree: {},
     train: Object.fromEntries(TRAIN.map(t => [t.id, 0])),
     skill: {}, auto: { nova: true, barrier: true, overdrive: true, storm: true, siphon: true, shatter: true },
@@ -972,7 +972,9 @@ body.perf .pulse { animation: none; }
   }
   // old saves: rescale gear to the exponential curve and repost bounties with the new rewards
   function migrateEco() {
-    if (S.eco === 5) return;
+    if ((S.eco || 0) >= 6) return;
+    // v6 retune: training caps changed, so trim anything above the new maximums
+    if (S.eco === 5) { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); S.eco = 6; return; }
     const fix = it => {
       if (!it) return; const r = RARITY[it.r] || RARITY[0];
       it.power = Math.max(1, Math.round(itemPow(it.stage || 1) * r.mult * (.95 + Math.random() * .1)));
@@ -982,7 +984,7 @@ body.perf .pulse { animation: none; }
     TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; });
     // keep posted bounties (and their progress), just switch them to the new payout
     S.bounties.forEach(b => { if (!b.empty && !b.eff) { b.eff = b.type === "gold" ? b.n / lumenAt(S.maxStage) : EFFORT[b.type] ? EFFORT[b.type](b.n) : b.n; delete b.gold; } });
-    S.eco = 5;
+    S.eco = 6;
   }
   function load() {
     try {
@@ -1036,24 +1038,24 @@ body.perf .pulse { animation: none; }
     const evaR = bp * tm("agility") * (1 + sum.eva / 100) * (1 + .03 * IT("hepta", "e")) * (1 + .10 * T("w10")) * (1 + .08 * T("o2"));
     return {
       sets: sc, evaR,
-      atk: (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.15, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
-      maxHp: (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.15, T("w1")) * (1 + .05 * T("b1")),
+      atk: (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
+      maxHp: (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")),
       hpRegen: .01 * (1 + .10 * T("b2")),
       maxMp: 50 * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
-      mpRegen: .045 * tm("flow") * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
+      mpRegen: .03 * tm("flow") * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
       spd: (1 + .12 * bq) * tm("haste") * (1 + .015 * IT("hepta", "n")) * (1 + .02 * T("x3")) * (1 + sum.spd / 100) * (1 + .04 * T("d1")) * (1 + .02 * T("o2")) * (hs("sun", 2) ? 1.2 : 1),
       crit: Math.min(.9, .05 + .035 * cq + tm("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10")),
       critDmg: 2 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
       tap: .5 * tm("focus") * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")),
       leech: Math.min(.15, sum.leech / 100 + tm("leech") + (.3 * IT("octa", "e") + .5 * T("e9") + .5 * T("w4")) / 100),
       block: Math.min(.5, (sum.block + IT("quad", "e") + 2 * T("w9") + T("w14")) / 100 + tm("guard")),
-      gold: tm("greed") * (1 + .03 * IT("hex", "n")) * (1 + sum.gold / 100) * Math.pow(1.15, T("f1")) * (1 + .03 * T("o3")) * (hs("choir", 2) ? 1.4 : 1),
+      gold: tm("greed") * (1 + .03 * IT("hex", "n")) * (1 + sum.gold / 100) * Math.pow(1.1, T("f1")) * (1 + .03 * T("o3")) * (hs("choir", 2) ? 1.4 : 1),
       drop: Math.min(.95, .3 * tm("fortune") * (1 + .02 * IT("hex", "e")) * (1 + .05 * T("f2")) * (1 + .03 * T("b4")) * (hs("choir", 4) ? 1.5 : 1)),
       luck: 1 + .1 * T("f3") + .05 * T("o4"),
       setChance: .2 * (1 + .1 * T("f5")),
       skillPow: tm("insight") * (1 + .03 * IT("penta", "e")) * (1 + .08 * T("d5")) * (1 + .04 * T("b3")),
       cdr: Math.max(.3, tm("tempo") * (1 - .05 * T("d2")) * (1 - .02 * IT("penta", "b"))),
-      costMult: Math.max(.3, tm("essence") * (1 - .05 * T("d3") - .03 * T("o3"))),
+      costMult: Math.max(.5, tm("essence") * (1 - .05 * T("d3") - .03 * T("o3"))),
       dmgTaken: 1 - Math.min(.45, .03 * T("w3") + .02 * IT("quad", "b")),
       statusDur: Math.max(.4, tm("clarity") * (1 - .03 * IT("hepta", "b"))),
       salv: 1 + .2 * T("f4") + .1 * T("b3") + .03 * IT("hex", "b"),
@@ -1077,7 +1079,7 @@ body.perf .pulse { animation: none; }
   const score = it => it.power * (1 + affSum(it) / 100) * (it.set ? 1.1 : 1);
   // lumen per normal kill at a stage: 15% of that stage's enemy health
   const lumenAt = st => 3 * Math.pow(HPG, st - 1);
-  const salvValue = it => Math.ceil(2 * lumenAt(it.stage) * (1 + it.r * it.r) * ST.salv);
+  const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
   function rollRarity(boss, minR, stage) {
     // higher tiers get more common the deeper you go, up to a cap
     const w = RARITY.map((r, i) => i < minR ? 0 : r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
@@ -1222,7 +1224,7 @@ body.perf .pulse { animation: none; }
     }
   }
 
-  let GROUND = 382;
+  let GROUND = 382, ARENA_T = 60, ARENA_B = 700;
   function layout() {
     const ohx = HERO_X, ohy = HERO_Y;
     SW = arena.clientWidth || innerWidth; SH = arena.clientHeight || innerHeight;
@@ -1231,6 +1233,12 @@ body.perf .pulse { animation: none; }
     $("scene").setAttribute("viewBox", "0 0 " + VW.toFixed(1) + " " + VH.toFixed(1));
     HERO_X = VW / 2; HERO_Y = VH * .49; GROUND = HERO_Y + 40;
     ENGAGE = Math.min(145, Math.max(104, Math.min(VW, VH) * .25));
+    // the open play area between the top HUD and the skill bar, in scene units
+    const ar = arena.getBoundingClientRect(), hb = document.querySelector(".hudStage"), sb = $("skillbar");
+    const hr = hb && hb.getBoundingClientRect(), br = sb && sb.getBoundingClientRect();
+    ARENA_T = hr && hr.height ? Math.max(20, (hr.bottom - ar.top) / SC) : 60;
+    ARENA_B = br && br.height ? Math.min(VH - 10, (br.top - ar.top) / SC - 6) : VH - 70;
+    if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
     $("skyR").setAttribute("width", VW + 80); $("skyR").setAttribute("height", VH + 80);
     $("heroPos").setAttribute("transform", "translate(" + HERO_X.toFixed(1) + " " + HERO_Y.toFixed(1) + ")");
     foes.forEach(f => { f.px += HERO_X - ohx; f.py += HERO_Y - ohy; setFoePos(f); });
@@ -1383,7 +1391,7 @@ body.perf .pulse { animation: none; }
   }
   function newWaypoint(e, first) {
     const { lo, hi } = roamR(e), cur = Math.atan2(e.py - HERO_Y, e.px - HERO_X);
-    const m = e.R + 12, x0 = m, x1 = VW - m, y0 = m + 60, y1 = VH - m - 70;
+    const m = e.R + 12, x0 = m, x1 = VW - m, y0 = ARENA_T + m, y1 = ARENA_B - m;
     for (let k = 0; k < 6; k++) {
       const a = cur + (Math.random() * 2 - 1) * (first ? .45 : 1.5), c = Math.cos(a), sn = Math.sin(a);
       // how far the visible arena reaches from the core in this direction, so waypoints spread across the screen
@@ -1400,7 +1408,7 @@ body.perf .pulse { animation: none; }
   // then drifting slowly around the core while keeping its distance from other foes
   // stage pacing: enemies get a bit quicker and more erratic the deeper you go
   const pace = () => 1 + Math.min(.55, (S.stage - 1) * .008);
-  const sporadic = () => Math.min(1.3, .45 + S.stage * .012);
+  const sporadic = () => Math.min(1.05, .45 + S.stage * .01);
   let bumpFxT = 0;
   function moveFoes(dt) { while (dt > 1e-4) { const h = Math.min(dt, .05); moveStep(h); dt -= h; } }
   function moveStep(dt) {
@@ -1425,8 +1433,8 @@ body.perf .pulse { animation: none; }
         tx = (ux * c - uy * sn) * sp; ty = (ux * sn + uy * c) * sp;
         if (e.arrived) {
           const m = e.R + 6;
-          if (e.px < m) tx += (m - e.px) * 4; else if (e.px > VW - m) tx -= (e.px - VW + m) * 4;
-          if (e.py < m) ty += (m - e.py) * 4; else if (e.py > VH - m) ty -= (e.py - VH + m) * 4;
+          if (e.px < m) tx += (m - e.px) * 3; else if (e.px > VW - m) tx -= (e.px - VW + m) * 3;
+          if (e.py < ARENA_T + m) ty += (ARENA_T + m - e.py) * 3; else if (e.py > ARENA_B - m) ty -= (e.py - ARENA_B + m) * 3;
         }
         // sporadic jinks
         if (!reduce) {
@@ -1441,6 +1449,12 @@ body.perf .pulse { animation: none; }
       }
       e.vx = (e.vx || 0) + (tx - (e.vx || 0)) * k; e.vy = (e.vy || 0) + (ty - (e.vy || 0)) * k;
       e.px += e.vx * dt; e.py += e.vy * dt;
+      if (e.kb > .05) {
+        const push = e.kb * Math.min(1, dt * 6); e.kb -= push;
+        const hx = e.px - HERO_X, hy = e.py - HERO_Y, hd = Math.hypot(hx, hy) || 1, nx = e.px + hx / hd * push, ny = e.py + hy / hd * push, mm = e.R + 6;
+        // never push a foe into the screen edge, where the wall would shove it straight back
+        if (!e.arrived || (nx > mm && nx < VW - mm && ny > ARENA_T + mm && ny < ARENA_B - mm)) { e.px = nx; e.py = ny; } else e.kb = 0;
+      }
     }
     // bumps: foes bounce off each other and off the core's ring
     for (let i = 0; i < foes.length; i++) {
@@ -1474,9 +1488,9 @@ body.perf .pulse { animation: none; }
   // a tiny kickback along the line of fire when something hits an enemy
   function knock(e, m) {
     if (!e || e.dead || reduce) return;
-    const dx = e.px - HERO_X, dy = e.py - HERO_Y, d = Math.hypot(dx, dy) || 1;
-    m *= e.boss ? .35 : e.elite ? .6 : 1;
-    e.vx = (e.vx || 0) + dx / d * m; e.vy = (e.vy || 0) + dy / d * m;
+    // builds a small pending push away from the core that plays out over ~0.1s, capped so rapid hits can't stack it up
+    m *= (e.boss ? .15 : e.elite ? .35 : 1) * .25;
+    e.kb = Math.min(e.boss ? 2 : e.elite ? 4 : 6, (e.kb || 0) + m);
   }
   function removeFoe(e, fade) {
     const i = foes.indexOf(e); if (i >= 0) foes.splice(i, 1);
@@ -1595,7 +1609,7 @@ body.perf .pulse { animation: none; }
   const alive = () => !!enemy && !enemy.dead && !heroDown;
   const ATT = { nova: "e11", storm: "e12", barrier: "w11", siphon: "w12", overdrive: "d10", shatter: "d11" };
   const attRank = id => T(ATT[id]);
-  const baseLvl = id => Math.min(25, id === "nova" ? 1 + 3 * attRank(id) : 1 + 3 * Math.max(0, attRank(id) - 1));
+  const baseLvl = id => Math.min(40, id === "nova" ? 1 + 3 * attRank(id) : 1 + 3 * Math.max(0, attRank(id) - 1));
   const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
   const unlocked = id => S.maxStage >= SK[id].unlock || attRank(id) > 0;
   function dps() {
@@ -2091,7 +2105,7 @@ body.perf .pulse { animation: none; }
       item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: (4 + 5 * tier) * shardAmt(S.maxStage)
     };
   }
-  const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenAt(S.maxStage) * 3 * (1 + .8 * b.tier) * (1 + .2 * T("f6")) * ST.gold) : (b.gold || 0);
+  const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenAt(S.maxStage) * 2 * (1 + .8 * b.tier) * (1 + .2 * T("f6")) * ST.gold) : (b.gold || 0);
   function ensureBoard() {
     let changed = false;
     const size = 3 + T("f11");
@@ -2145,7 +2159,7 @@ body.perf .pulse { animation: none; }
     const forced = markT > 0;
     const crit = forced || (!st("eclipse") && Math.random() < ST.crit);
     let dmg = base * (.9 + Math.random() * .2);
-    if (crit) dmg *= ST.critDmg * (forced ? 1 + .1 * lvl("shatter") : 1);
+    if (crit) dmg *= ST.critDmg * (forced ? 1 + shatterCd(lvl("shatter")) : 1);
     if (e.hp / e.max < .3) dmg *= 1 + .1 * T("e6");
     if (e.fresh) { e.fresh = false; dmg *= 1 + .5 * T("e13"); }
     if (hp > ST.maxHp * .8) dmg *= 1 + .06 * T("x1");
@@ -2195,13 +2209,14 @@ body.perf .pulse { animation: none; }
       if (note) floatText(note, "info", e);
       else floatText(fmt(dmg) + (crit ? "!" : ""), crit ? "crit" : kind === "tap" ? "tapn" : "hit", e);
       if (crit && kind !== "tap") shake(3, 160);
-      if (!e.dead && e.el) anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -5), filter: "brightness(2.4)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160);
+      const tn = performance.now();
+      if (!e.dead && e.el && !(tn - (e.flashT || 0) < 140)) { e.flashT = tn; anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -3), filter: "brightness(2.2)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160); }
       if (!note) knock(e, (kind === "tap" ? 7 : wt === "Hammer" ? 20 : wt === "Glaive" ? 9 : 12) * (crit ? 1.7 : 1));
     };
     show();
     if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
   }
-  const effSpd = () => ST.spd * (odT > 0 ? 1.6 + .1 * (lvl("overdrive") - 1) : 1) * (st("gravity") ? .7 : 1);
+  const effSpd = () => ST.spd * (odT > 0 ? 1 + surgePct(lvl("overdrive")) / 100 : 1) * (st("gravity") ? .7 : 1);
   function fireOrbital(slot) {
     const t = wType(slot), tr = WTRAIT[t], base = slotAtk(slot) * tr.dmg;
     const T = wDelay(slot);
@@ -2503,14 +2518,20 @@ body.perf .pulse { animation: none; }
 
   // ================= skills =================
   const skillCost = sk => sk.cost * ST.maxMp * ST.costMult * (st("static") ? 1.5 : 1);
-  const SKILL_MAX = 25;
-  const skillCd = sk => sk.cd * ST.cdr * (1 - .015 * (lvl(sk.id) - 1)) * (sk.id === "nova" && has("void", 4) ? .6 : 1);
-  // skill levels: +15% power each, and x1.25 at levels 10 and 20
-  const skMult = L => (1 + .15 * (L - 1)) * Math.pow(1.25, Math.floor(L / 10));
-  const novaDmg = L => ST.atk * 3 * skMult(L) * ST.skillPow * (has("void", 4) ? 2 : 1);
-  const stormN = L => 6 + Math.floor(L / 5) + (T("d8") ? 3 : 0);
-  const stormDmg = L => ST.atk * .6 * skMult(L) * ST.skillPow;
-  const barrierAmt = L => ST.maxHp * (.35 + .04 * (L - 1)) * ST.skillPow * (1 + .2 * T("w7"));
+  // skill levels go to 40, but the level you can buy is capped by your best stage this run (+1 per 3 stages)
+  const SKILL_MAX = 40;
+  const skillCap = () => Math.min(SKILL_MAX, 4 + Math.floor(S.maxStage / 3));
+  const capStage = L => 3 * (L - 3);
+  const skillCd = sk => sk.cd * ST.cdr * (1 - .01 * (lvl(sk.id) - 1)) * (sk.id === "nova" && has("void", 4) ? .6 : 1);
+  // each skill level adds 6% power and takes 1% off that skill's cooldown
+  const skMult = L => 1 + .06 * (L - 1);
+  const novaDmg = L => ST.atk * 2.5 * skMult(L) * ST.skillPow * (has("void", 4) ? 2 : 1);
+  const stormN = L => 6 + Math.floor(L / 10) + (T("d8") ? 3 : 0);
+  const stormDmg = L => ST.atk * .45 * skMult(L) * ST.skillPow;
+  const barrierAmt = L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * (1 + .2 * T("w7"));
+  const surgePct = L => 50 + 2.5 * (L - 1), surgeT = L => 6 + .1 * (L - 1) + T("d4");
+  const siphonMp = L => Math.min(1, (.35 + .01 * (L - 1)) * ST.skillPow), siphonHp = L => .1 + .0025 * L;
+  const shatterT = L => 5 + .15 * (L - 1), shatterCd = L => .05 * L;
   const canCast = sk => unlocked(sk.id) && !(cds[sk.id] > 0) && !heroDown && mp >= skillCost(sk) && (!sk.foe || alive());
   function cast(id, manual) {
     const sk = SK[id];
@@ -2528,18 +2549,18 @@ body.perf .pulse { animation: none; }
       novaFx(); hit(d, 220, "nova");
       if (T("e8")) setTimeout(() => { if (alive()) { novaFx(); hit(d, 220, "nova"); } }, 350);
     } else if (id === "barrier") {
-      shield = shieldMax = barrierAmt(L); shieldT = 8 + .2 * (L - 1);
+      shield = shieldMax = barrierAmt(L); shieldT = 8 + .1 * (L - 1);
       if (T("x2")) mp = Math.min(ST.maxMp, mp + ST.maxMp * .08 * T("x2"));
       anim($("hBarrier"), [{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: .7 }, { transform: "scale(1)", opacity: 1 }], 300);
     } else if (id === "overdrive") {
-      odT = 6 + .25 * (L - 1) + T("d4"); heroModel.classList.add("od"); burst(HERO_X, HERO_Y, "#ffd04d", 8);
+      odT = surgeT(L); heroModel.classList.add("od"); burst(HERO_X, HERO_Y, "#ffd04d", 8);
     } else if (id === "storm") {
       const n = stormN(L), d = stormDmg(L);
       for (let i = 0; i < n; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(d, wDelay(), "storm"); } }, i * 170);
     } else if (id === "siphon") {
-      mp = Math.min(ST.maxMp, mp + ST.maxMp * Math.min(1, (.4 + .03 * (L - 1)) * P)); heal(ST.maxHp * (.1 + .005 * L)); siphonFx();
+      mp = Math.min(ST.maxMp, mp + ST.maxMp * siphonMp(L)); heal(ST.maxHp * siphonHp(L)); siphonFx();
       for (const k in stT) stT[k] = 0;
-    } else if (id === "shatter") { markT = 5 + .4 * (L - 1); crackFx(); }
+    } else if (id === "shatter") { markT = shatterT(L); crackFx(); }
     bump("cast", 1);
     return true;
   }
@@ -2562,13 +2583,13 @@ body.perf .pulse { animation: none; }
   function skillDesc(sk, L) {
     const P = ST.skillPow;
     if (sk.id === "nova") return "Burst for " + fmt(novaDmg(L)) + " damage";
-    if (sk.id === "barrier") return "Shield absorbs " + fmt(barrierAmt(L)) + " damage for " + (8 + .2 * (L - 1)).toFixed(1) + "s";
-    if (sk.id === "overdrive") return "+" + (60 + 10 * (L - 1)) + "% attack speed for " + (6 + .25 * (L - 1) + T("d4")).toFixed(1) + "s";
+    if (sk.id === "barrier") return "Shield absorbs " + fmt(barrierAmt(L)) + " damage for " + (8 + .1 * (L - 1)).toFixed(1) + "s";
+    if (sk.id === "overdrive") return "+" + surgePct(L) + "% attack speed for " + surgeT(L).toFixed(1) + "s";
     if (sk.id === "storm") return stormN(L) + " blades for " + fmt(stormDmg(L)) + " each";
-    if (sk.id === "siphon") return "Restore " + Math.round(Math.min(1, (.4 + .03 * (L - 1)) * P) * 100) + "% mana and " + Math.round(10 + .5 * L) + "% health, and clear all statuses";
-    return "Every hit crits for " + (5 + .4 * (L - 1)).toFixed(1) + "s with +" + 10 * L + "% crit damage";
+    if (sk.id === "siphon") return "Restore " + Math.round(siphonMp(L) * 100) + "% mana and " + Math.round(siphonHp(L) * 100) + "% health, and clear all statuses";
+    return "Every hit crits for " + shatterT(L).toFixed(1) + "s with +" + Math.round(shatterCd(L) * 100) + "% crit damage";
   }
-  const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.3, lvl(sk.id) - 1));
+  const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
 
   const skEls = {};
   function buildSkillbar() {
@@ -2948,8 +2969,9 @@ body.perf .pulse { animation: none; }
     $("skillsBody").innerHTML = SKILLS.map(sk => {
       if (!unlocked(sk.id)) return '<div class="row lock"><span class="n">' + sk.name + '</span><span class="d">Unlocks at stage ' + sk.unlock + " each run</span></div>";
       const L = lvl(sk.id), c = skillUpCost(sk);
-      return '<div class="row"><span class="n">' + sk.name + " Lv " + L + " / " + SKILL_MAX + '</span><span class="d">' + skillDesc(sk, L) + '</span><span class="d">' + (sk.cost ? Math.round(sk.cost * ST.costMult * 100) + "% mana, " : "Free, ") + skillCd(sk).toFixed(1) + 's cooldown</span><div class="side">' +
-        (L >= SKILL_MAX ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn shardc" data-act="skup" data-id="' + sk.id + '" data-cost="' + c + '" data-cur="shard">Upgrade ' + fmt(c) + " shards</button>") +
+      const cap = skillCap();
+      return '<div class="row"><span class="n">' + sk.name + " Lv " + L + (L < cap ? " / " + cap : "") + '</span><span class="d">' + skillDesc(sk, L) + '</span><span class="d">' + (sk.cost ? Math.round(sk.cost * ST.costMult * 100) + "% mana, " : "Free, ") + skillCd(sk).toFixed(1) + 's cooldown</span><div class="side">' +
+        (L >= SKILL_MAX ? '<button class="btn" disabled>Maxed</button>' : L >= cap ? '<button class="btn" disabled>Next level at stage ' + capStage(L + 1) + "</button>" : '<button class="btn shardc" data-act="skup" data-id="' + sk.id + '" data-cost="' + c + '" data-cur="shard">Upgrade ' + fmt(c) + " shards</button>") +
         '<button class="btn" data-act="skauto" data-id="' + sk.id + '">Auto: ' + (S.auto[sk.id] ? "On" : "Off") + "</button></div></div>";
     }).join("");
   }
@@ -3113,12 +3135,12 @@ body.perf .pulse { animation: none; }
       <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
     ["Health and mana", `<p><b>Health</b> (green bar) is your life. It regenerates 1% per second, and each kill heals 5%. If it hits zero your core collapses, you drop back one stage and switch to Farming.</p>
-      <p><b>Mana</b> (blue bar) only pays for skills. It regenerates 4.5% per second before bonuses. Essence training lowers skill costs and Flow speeds up regen.</p>
+      <p><b>Mana</b> (blue bar) only pays for skills. It regenerates 3% per second before bonuses, so you can't keep every skill going at once. Essence training lowers skill costs and Flow speeds up regen.</p>
       <p>Shields from Barrier show as a striped overlay on the health bar and absorb damage first.</p>`],
     ["Stages, elites and bosses", `<p>Each stage has 8 enemies. Every 10 stages the zone changes: new colors, and enemies with more sides and heavier armor.</p>
       <p><b>Elites</b> appear from stage 11 as the 8th enemy of a stage. They have horns and a red ring, 4x health and harder hits, and always drop an item plus 4x lumen. Bosses give 12x lumen.</p>
       <p><b>Bosses</b> are every 10th stage. You have 30 seconds. At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Barrier blocks it. If the timer runs out, the boss escapes and you drop back.</p>`],
-    ["Skills", `<p>Skills sit in the row along the bottom of the screen. Tap one to cast it. A dot means auto-cast is on, and you can toggle it in the Skills window. Skills cost mana, and upgrading them with shards makes them stronger. Each level adds 15% power and cuts that skill's cooldown by 1.5%, with an extra x1.25 power at levels 10 and 20. The cap is level 25. Tempo training and the Drive branch of the web shorten every cooldown.</p>
+    ["Skills", `<p>Skills sit in the row along the bottom of the screen. Tap one to cast it. A dot means auto-cast is on, and you can toggle it in the Skills window. Skills cost mana, and upgrading them with shards makes them stronger. Each level adds 6% power and cuts that skill's cooldown by 1%. Levels go to 40, but the level you can buy is capped by your best stage this run: the cap rises by 1 every 3 stages. Tempo training and the Drive branch of the web shorten every cooldown.</p>
       <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Siphon</b> (stage 30): restores mana and some health, and clears statuses.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
     ["Gear and loot", `<p>Your core has four slots, each shown on the core itself:</p>
@@ -3441,7 +3463,7 @@ body.perf .pulse { animation: none; }
       if (t.mile && milesAt(S.train[id]) > before) { floatText(t.name + " x" + t.mile + "!", "info", "hero", "#ffd04d"); sfx("chord", 0, 0); }
     } else if (act === "skup") {
       const sk = SK[id], c = skillUpCost(sk);
-      if (S.shards < c || lvl(id) >= SKILL_MAX) return;
+      if (S.shards < c || lvl(id) >= skillCap()) return;
       sfx("buy", 0, 0); S.shards -= c; S.skill[id] = lvl(id) + 1; markDirty("skills");
     } else if (act === "skauto") { S.auto[id] = !S.auto[id]; markDirty("skills"); }
     else if (act === "animMode") { S.anim = { auto: "on", on: "off", off: "auto" }[S.anim || "auto"]; applyGfx(); markDirty("guide"); }
