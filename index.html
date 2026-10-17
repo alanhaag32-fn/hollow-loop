@@ -295,10 +295,13 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 .panel .wsub:not(.on) { display: none; }
 /* tabs along the bottom of every window */
 .winTabs { position: relative; z-index: 1; display: flex; align-items: stretch; gap: 6px; padding: 8px 10px 10px; border-top: 1px solid rgba(255,255,255,.08); background: linear-gradient(180deg, rgba(8,6,16,.2), rgba(8,6,16,.5)); }
-.winTabs .tabs { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.winTabs .tabs { flex: 1; min-width: 0; display: flex; gap: 6px; overflow: hidden; touch-action: manipulation; }
 .winTabs .tabs::-webkit-scrollbar { display: none; }
-.wt { --cut: 9px; --edge: rgba(255,255,255,.14); --fill: rgba(22,18,40,.85); flex: 1 0 54px; min-width: 54px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 6px; color: #a49dc4; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.wt { --cut: 9px; --edge: rgba(255,255,255,.14); --fill: rgba(22,18,40,.85); flex: 1 1 0; min-width: 0; overflow: hidden; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 6px; color: #a49dc4; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
 .wt svg { width: 20px; height: 20px; flex: none; }
+.wt span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.winTabs.dense .wt span { display: none; }
+.winTabs.dense .wt svg { width: 23px; height: 23px; }
 .wt.on { --edge: rgba(79,211,228,.9); --fill: linear-gradient(180deg, rgba(26,58,70,.95), rgba(13,10,24,.88)); color: #ece8f7; }
 .wt.on svg { color: #4fd3e4; filter: drop-shadow(0 0 4px rgba(79,211,228,.5)); }
 .wx { --cut: 9px; --edge: rgba(255,107,107,.55); --fill: rgba(58,14,24,.88); width: 54px; height: 54px; flex: none; display: grid; place-items: center; color: #ffb3b3; padding: 0; }
@@ -306,11 +309,50 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 /* the web tab fills the window: no page scrolling, the map takes the space */
 .sheetInner.fill .sheetBody { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
 .sheetInner.fill #panels, .sheetInner.fill .panel:not([hidden]), .sheetInner.fill .wsub.on { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sheetInner.fillBoard .sheetBody { overflow-y: auto; }
+.sheetInner.fillBoard #panels, .sheetInner.fillBoard #p-board, .sheetInner.fillBoard #boardBody { flex: 1 0 auto; display: flex; flex-direction: column; }
+.sheetInner.fillBoard .board { flex: 1 0 auto; display: flex; flex-direction: column; gap: 11px; padding: 11px 9px 9px; }
+.sheetInner.fillBoard .paper { flex: 1 0 auto; padding: 9px 12px 8px; }
+.sheetInner.fillBoard .paper.blank { display: flex; flex-direction: column; justify-content: center; }
+/* compact bounty card: details on the left, claim on the right */
+.paper:not(.blank) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-content: center; }
+.paper:not(.blank) > * { grid-column: 1; }
+.paper .claimB { grid-column: 2; grid-row: 2 / span 3; align-self: center; }
+.ptop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ptop .tier { white-space: nowrap; flex: none; }
+.paper .pline span:first-child { white-space: nowrap; flex: none; }
+.ptop .who { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paper .obj { font-size: 15.5px; margin: 1px 0 6px; }
+.paper .pline { font-size: 12px; margin-top: 5px; }
+.paper .rw { text-align: right; }
+/* short screens (like inside the Claude app): tighter window chrome */
+@media (max-height: 640px) {
+  .sheetHd { padding: 9px 12px 8px 14px; }
+  .sheetHd h2 { font-size: 18px; }
+  .winIcon { width: 30px; height: 30px; }
+  .winTabs { padding: 6px 10px 8px; }
+  .wt, .wx { height: 46px; }
+  .wx { width: 46px; }
+  .sheetBody { padding-top: 10px; }
+  .sheetInner.fillBoard .paper { padding: 7px 11px 6px; }
+  .paper .obj { margin-bottom: 4px; }
+}
+.barInfo { flex: 1; min-width: 0; align-self: center; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.barInfo b { color: var(--ink); }
+#rerollBtn { align-self: center; flex: none; font-size: 13px; padding: 8px 12px; }
 .wsub[data-sub="web"] .webWrap { flex: 1; height: auto; min-height: 180px; }
-.wsub[data-sub="web"] #nodeCard { flex: none; margin-top: 10px; }
-.wsub[data-sub="web"] .nodeCard { padding: 10px 12px; }
-.wsub[data-sub="web"] .nodeCard .ef { font-size: 13px; }
-.wsub[data-sub="web"] .nodeCard .st { font-size: 12px; }
+#nodeCard { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 2; cursor: default; }
+#nodeCard:empty { display: none; }
+#nodeCard .nodeCard { padding: 10px 12px; gap: 2px 10px; border-width: 1.5px; background: linear-gradient(180deg, rgba(22,18,42,.5), rgba(12,9,24,.9)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: cardUp .18s ease-out; }
+@keyframes cardUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+body.noanim #nodeCard .nodeCard { animation: none; }
+#nodeCard .nodeCard .n { font-size: 15px; }
+#nodeCard .nodeCard .rk { font-size: 12px; }
+#nodeCard .nodeCard .ef { font-size: 13px; }
+#nodeCard .nodeCard .st { font-size: 12px; }
+#nodeCard .nodeCard .btn { grid-column: 2; grid-row: 2 / span 3; align-self: center; }
+#nodeCard .ncX { grid-column: 2; grid-row: 1; justify-self: end; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.06); color: var(--muted); display: grid; place-items: center; }
+#nodeCard .ncX svg { width: 12px; height: 12px; }
 .panel[hidden] { display: none; }
 .list { display: grid; gap: 10px; }
 .note { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
@@ -524,8 +566,7 @@ body.perf .pulse { animation: none; }
           <div class="legend"><span><i style="background:var(--c3)"></i>Edge</span><span><i style="background:var(--c1)"></i>Ward</span><span><i style="background:var(--c2)"></i>Drive</span><span><i style="background:var(--c4)"></i>Fortune</span><span><i style="background:var(--hero)"></i>Bridge</span></div>
           <p class="note">The web keeps every node you learn through ascensions. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
           <div class="wsub" data-sub="web">
-          <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom</div></div>
-          <div id="nodeCard"></div>
+          <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom. Tap a node for details</div><div id="nodeCard"></div></div>
           </div>
         </section>
       </div>
@@ -2782,17 +2823,17 @@ body.perf .pulse { animation: none; }
     const h = S.bounties.map((b, i) => {
       if (b.empty) return '<div class="paper blank"><div class="obj" style="margin:0">Empty pin</div><div class="pline" style="justify-content:center"><span id="bt' + i + '">New posting in ' + mmss(Math.max(0, b.at - Date.now())) + "</span></div></div>";
       const tr = TIERS[b.tier], done = b.prog >= b.n;
-      return '<div class="paper" style="--pc:' + tr.cv + '"><span class="pin"></span><div class="tier">' + tr.name + '</div><div class="obj">' + BT[b.type].text(b.n) + '</div>' +
+      return '<div class="paper" style="--pc:' + tr.cv + '"><span class="pin"></span><div class="ptop"><span class="tier">' + tr.name + '</span><span class="who">' + b.poster + '</span></div><div class="obj">' + BT[b.type].text(b.n) + '</div>' +
         '<div class="pbar"><i id="bp' + i + '" style="width:' + Math.min(100, b.prog / b.n * 100) + '%"></i></div>' +
-        '<div class="pline"><span id="bt' + i + '">' + fmt(b.prog) + " / " + fmt(b.n) + "</span><span>" + b.poster + "</span></div>" +
-        '<div class="pline"><span>Reward: ' + rewardText(b) + '</span><button class="btn go" data-act="claim" data-id="' + i + '" id="bc' + i + '"' + (done ? "" : " disabled") + ">Claim</button></div></div>";
+        '<div class="pline"><span id="bt' + i + '">' + fmt(b.prog) + " / " + fmt(b.n) + '</span><span class="rw">' + rewardText(b) + "</span></div>" +
+        '<button class="btn go claimB" data-act="claim" data-id="' + i + '" id="bc' + i + '"' + (done ? "" : " disabled") + ">Claim</button></div>";
     }).join("");
-    $("boardBody").innerHTML = '<p class="note">Claimed bounties leave an empty pin, and a new posting arrives 15 minutes later. Rerolling unfinished bounties costs lumen.</p>' +
-      '<div class="boardHd"><span class="note" style="margin:0">' + S.bountyDone + ' completed</span><button class="btn" data-act="reroll" id="rerollBtn">Reroll</button></div><div class="board">' + h + "</div>";
+    $("boardBody").innerHTML = '<div class="board">' + h + "</div>";
+    if ($("boardDone")) $("boardDone").textContent = S.bountyDone;
   }
 
   // ---- web tree ----
-  let treeSel = "core", ascArmed = false;
+  let treeSel = null, ascArmed = false;
   const ascGain = () => Math.floor(Math.pow(S.maxStage, 1.35) / 8 * (1 + .25 * T("f8")) * (1 + .1 * (S.ascensions || 0)) * (1 + .02 * IT("octa", "b")));
   const nodeCost = n => n.c * ((S.tree[n.id] || 0) + 1);
   const owned = n => T(n.id) > 0;
@@ -2823,12 +2864,13 @@ body.perf .pulse { animation: none; }
       h += '<text class="lbl" y="' + (r + 12) + '">' + n.s + "</text></g>";
     });
     $("web").innerHTML = h;
+    if (!treeSel || !NODE[treeSel]) { $("nodeCard").innerHTML = ""; return; }
     const n = NODE[treeSel], r = T(n.id), maxed = r >= n.max, av = avail(n);
     let btn;
     if (n.id === "core") btn = '<button class="btn" disabled>Owned</button>';
     else if (maxed) btn = '<button class="btn" disabled>Maxed</button>';
     else btn = '<button class="btn echoc" data-act="node" data-id="' + n.id + '" data-cost="' + nodeCost(n) + '" data-cur="echo"' + (av ? "" : " disabled") + ">" + nodeCost(n) + " echo" + (nodeCost(n) > 1 ? "es" : "") + "</button>";
-    $("nodeCard").innerHTML = '<div class="nodeCard" style="--bc:' + BR_COL[n.br] + '"><span class="n">' + n.name + '</span><span class="rk">' + BR_NAME[n.br] + (n.id === "core" ? "" : ", rank " + r + " of " + n.max) + '</span><span class="ef">' + n.desc + '</span><span class="st">' +
+    $("nodeCard").innerHTML = '<div class="nodeCard" style="--bc:' + BR_COL[n.br] + '"><span class="n">' + n.name + '</span><button type="button" class="ncX" data-ncx aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><span class="rk">' + BR_NAME[n.br] + (n.id === "core" ? "" : ", rank " + r + " of " + n.max) + '</span><span class="ef">' + n.desc + '</span><span class="st">' +
       (n.id === "core" ? "Tap a tinted node next to the Core to start a path. You have " + S.echoes + " echoes." : !av ? "Not connected yet. Learn a neighboring node first." : maxed ? "Fully learned" : S.echoes < nodeCost(n) ? "Need " + nodeCost(n) + " echoes, you have " + S.echoes + ". Earn echoes by ascending at stage 20+ or from Gold seal bounties." : owned(n) ? "Owned. Tap the button to add a rank." : "Connected and ready to learn") + "</span>" + btn + "</div>";
   }
   // ----- ascension web viewer: drag to pan, pinch / wheel / buttons to zoom -----
@@ -2872,7 +2914,7 @@ body.perf .pulse { animation: none; }
     let moved = 0, pinch = null;
     const local = e => { const r = w.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     w.addEventListener("pointerdown", e => {
-      if (e.target.closest(".webZoom")) return;
+      if (e.target.closest(".webZoom, #nodeCard")) return;
       pts.set(e.pointerId, local(e)); webTw++;
       if (pts.size === 1) moved = 0; else pinch = null;
       w.classList.add("drag");
@@ -2892,9 +2934,9 @@ body.perf .pulse { animation: none; }
     });
     const up = e => { if (!pts.delete(e.pointerId)) return; if (pts.size < 2) pinch = null; if (!pts.size) w.classList.remove("drag"); };
     addEventListener("pointerup", up); addEventListener("pointercancel", up);
-    w.addEventListener("wheel", e => { e.preventDefault(); const [px, py] = local(e); webTw++; webZoomAt(Math.exp(-e.deltaY * .0015), px, py); }, { passive: false });
+    w.addEventListener("wheel", e => { if (e.target.closest("#nodeCard")) return; e.preventDefault(); const [px, py] = local(e); webTw++; webZoomAt(Math.exp(-e.deltaY * .0015), px, py); }, { passive: false });
     // a drag shouldn't count as tapping the node it ended on
-    w.addEventListener("click", e => { if (moved > 8 && !e.target.closest(".webZoom")) { e.stopPropagation(); e.preventDefault(); } }, true);
+    w.addEventListener("click", e => { if (moved > 8 && !e.target.closest(".webZoom, #nodeCard")) { e.stopPropagation(); e.preventDefault(); } }, true);
     w.querySelector(".webZoom").addEventListener("click", e => {
       const b = e.target.closest("[data-zoom]"); if (!b) return;
       const L = webLimits(), z = b.dataset.zoom;
@@ -2906,11 +2948,19 @@ body.perf .pulse { animation: none; }
     });
     addEventListener("resize", () => { if (tab === "tree") webApply(); });
   })();
+  // tap a node to pop up its details; tap empty space or the x to put them away
   $("web").addEventListener("click", e => {
     const g = e.target.closest("[data-node]");
-    if (!g) return;
+    if (!g) { if (treeSel) { treeSel = null; renderTree(); lightRefresh(); } return; }
     treeSel = g.dataset.node; renderTree(); lightRefresh();
+    // if the card would cover the node, glide the map up a little
+    requestAnimationFrame(() => {
+      const n = NODE[treeSel], card = $("nodeCard"); if (!n || !card.offsetHeight) return;
+      const py = (n.y - WEB.cy) * WEB.z + WEB.H / 2, room = WEB.H - card.offsetHeight - 16;
+      if (py > room - 20) webTween(WEB.z, WEB.cx, n.y - (room / 2 - WEB.H / 2) / WEB.z);
+    });
   });
+  $("nodeCard").addEventListener("click", e => { if (e.target.closest("[data-ncx]")) { treeSel = null; renderTree(); lightRefresh(); } });
 
 
   const GUIDE = [
@@ -3037,15 +3087,19 @@ body.perf .pulse { animation: none; }
   function buildWinTabs(win) {
     const list = subList(win) || [];
     if (!curSub[win] && list.length) curSub[win] = list[0][0];
+    $("winTabs").parentElement.classList.toggle("dense", list.length > 5);
+    if (win === "board") { $("winTabs").innerHTML = '<div class="barInfo"><b id="boardDone">' + S.bountyDone + '</b> completed<br>New posting 15 min after a claim</div><button class="btn" type="button" id="rerollBtn">Reroll</button>'; return; }
     $("winTabs").innerHTML = list.length > 1 ? list.map(([id, name, sides]) => '<button type="button" role="tab" class="wt chf' + (curSub[win] === id ? " on" : "") + '" data-sub="' + id + '" aria-selected="' + (curSub[win] === id) + '">' + subIcon(id, sides) + "<span>" + name + "</span></button>").join("") : "";
   }
   function applySub(win) {
     if (!win) return;
     const list = subList(win), cur = curSub[win];
     $("p-" + win).querySelectorAll(".wsub").forEach(el => el.classList.toggle("on", !list || list.length < 2 || el.dataset.sub === cur));
-    $("sheetInner").classList.toggle("fill", win === "tree" && cur === "web");
+    $("sheetInner").classList.toggle("fill", (win === "tree" && cur === "web") || win === "board");
+    $("sheetInner").classList.toggle("fillBoard", win === "board");
   }
   $("winTabs").addEventListener("click", e => {
+    if (e.target.closest("#rerollBtn")) { reroll(); save(); updateUI(); return; }
     const b = e.target.closest("[data-sub]"); if (!b || !tab) return;
     curSub[tab] = b.dataset.sub;
     $("winTabs").querySelectorAll(".wt").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); });
@@ -3078,7 +3132,7 @@ body.perf .pulse { animation: none; }
       const rb = $("rerollBtn"), left = S.rerollAt - Date.now(), c = rerollCost();
       if (rb) {
         rb.disabled = left > 0 || S.gold < c;
-        rb.textContent = left > 0 ? "Reroll in " + mmss(left) : "Reroll for " + fmt(c) + " lumen";
+        rb.textContent = left > 0 ? "Reroll in " + mmss(left) : "Reroll: " + fmt(c) + " lumen";
       }
     }
   }
@@ -3097,7 +3151,7 @@ body.perf .pulse { animation: none; }
     if (id === "tree") requestAnimationFrame(centerWeb);
     $("sheetClose").focus();
   }
-  function closeWindow() { $("sheetInner").classList.remove("fill"); $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
+  function closeWindow() { $("sheetInner").classList.remove("fill", "fillBoard"); $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
   const MENU_ORDER = ["stats", "gear", "pack", "skills", "train", "index", "board", "tree", "-", "log", "guide"];
   (function buildMenu() {
     let bi = 0;
@@ -3268,7 +3322,7 @@ body.perf .pulse { animation: none; }
       let back = 0;
       TREE.forEach(n => { const r = S.tree[n.id] || 0; back += n.c * r * (r + 1) / 2; });
       if (!back) return;
-      S.echoes += back; S.tree = {}; treeSel = "core"; recalc(); markDirty("tree", "skills", "board"); buildSkillbar(); ensureBoard();
+      S.echoes += back; S.tree = {}; treeSel = null; recalc(); markDirty("tree", "skills", "board"); buildSkillbar(); ensureBoard();
       log("Refunded " + back + " echoes", "good");
     } else if (act === "ascend") {
       const g = ascGain();
