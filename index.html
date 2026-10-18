@@ -755,20 +755,20 @@ body.perf .pulse { animation: none; }
   const TRAIN = [
     { unlock: 1, id: "might", name: "Might", cat: "off", base: 10, g: 1.18, mode: "mult", stat: "attack", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)) },
     { unlock: 1, id: "vigor", name: "Vigor", cat: "def", base: 10, g: 1.18, mode: "mult", stat: "health", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)) },
-    { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.2, max: 100, mode: "pct", stat: "tap damage", eff: L => 1 + .015 * L },
+    { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.5, max: 100, mode: "pct", stat: "tap damage", eff: L => 1 + .015 * L },
     { unlock: 2, id: "greed", name: "Greed", cat: "fort", base: 40, g: 1.25, mode: "mult", stat: "lumen", mile: 1.25, eff: L => (1 + .05 * L) * Math.pow(1.25, milesAt(L)) },
-    { unlock: 3, id: "haste", name: "Haste", cat: "off", base: 50, g: 1.22, max: 120, mode: "pct", stat: "attack speed", eff: L => 1 + .01 * L },
-    { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.2, max: 75, mode: "pct", stat: "max mana", eff: L => 1 + .04 * L },
-    { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.3, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L },
-    { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.2, max: 100, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L },
-    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.2, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .015 * L },
+    { unlock: 3, id: "haste", name: "Haste", cat: "off", base: 50, g: 1.42, max: 120, mode: "pct", stat: "attack speed", eff: L => 1 + .01 * L },
+    { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.6, max: 75, mode: "pct", stat: "max mana", eff: L => 1 + .04 * L },
+    { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.6, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L },
+    { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.5, max: 100, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L },
+    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.5, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .015 * L },
     { unlock: 12, id: "agility", name: "Agility", cat: "def", base: 60, g: 1.22, mode: "pct", stat: "evasion rating", eff: L => 1 + .05 * L },
-    { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.3, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L },
-    { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.25, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L },
-    { unlock: 18, id: "precision", name: "Precision", cat: "off", base: 150, g: 1.22, max: 80, mode: "add", stat: "crit chance", eff: L => .0025 * L },
-    { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.2, max: 100, mode: "pct", stat: "skill power", eff: L => 1 + .01 * L },
-    { unlock: 25, id: "leech", name: "Leech", cat: "def", base: 150, g: 1.4, max: 20, mode: "add", stat: "life steal", eff: L => .001 * L },
-    { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.25, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L }
+    { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.6, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L },
+    { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.6, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L },
+    { unlock: 18, id: "precision", name: "Precision", cat: "off", base: 150, g: 1.55, max: 80, mode: "add", stat: "crit chance", eff: L => .0025 * L },
+    { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.45, max: 100, mode: "pct", stat: "skill power", eff: L => 1 + .01 * L },
+    { unlock: 25, id: "leech", name: "Leech", cat: "def", base: 150, g: 1.45, max: 40, mode: "add", stat: "life steal", eff: L => .0015 * L },
+    { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.6, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L }
   ];
   const TRN = {}; TRAIN.forEach(t => TRN[t.id] = t);
   const tm = id => TRN[id].eff((S.train && S.train[id]) || 0);
@@ -1801,7 +1801,8 @@ body.perf .pulse { animation: none; }
     const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1);
     const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1);
     const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
-    const tm = 30 + 3 * T("d7");
+    // bosses deep in get more time: +0.75s per stage past 40, up to +45s
+    const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + 3 * T("d7");
     return {
       hp: hpE * v.hp, max: hpE * v.hp, fresh: true, dmg: dmg * v.dmg, boss, elite: !!elite && !boss, sides, tier, hue: v.hue, v, fill: vFill(v), stroke: vStroke(v),
       R: Math.round((boss ? 34 : elite ? 30 : 25) * (v.id === "bastion" ? 1.08 : v.id === "pale" ? .92 : 1)), weapon: ENEMY_WEAPON[v.w],
@@ -2305,7 +2306,7 @@ body.perf .pulse { animation: none; }
     if (heroDown || !e || e.dead || !foes.includes(e)) return;
     const wt = kind === "blade" ? wType(slot || "weapon") : null;
     const forced = markT > 0;
-    const crit = forced || (!st("eclipse") && Math.random() < ST.crit);
+    const crit = forced || Math.random() < ST.crit * (st("eclipse") ? .5 : 1);
     let dmg = base * (.9 + Math.random() * .2);
     if (crit) dmg *= ST.critDmg * (forced ? 1 + shatterCd(lvl("shatter")) : 1);
     if (e.hp / e.max < .3) dmg *= 1 + .1 * T("e6");
@@ -2333,7 +2334,7 @@ body.perf .pulse { animation: none; }
       }
       if (M.well && M.well.ch > 0) M.well.dealt += dmg;
     }
-    e.hp -= dmg;
+    e.hp -= dmg; if (dmg > 0) e.lastHitT = performance.now();
     dpsLog.push([performance.now(), dmg]);
     if (wt === "Hammer" && dmg > 0 && e.hp > 0 && Math.random() < .2) {
       e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
@@ -2695,7 +2696,7 @@ body.perf .pulse { animation: none; }
     }
     if (M.motes) {
       const O = M.motes;
-      if (O.n > 0) e.hp = Math.min(e.max, e.hp + e.max * .008 * O.n * dt);
+      if (O.n > 0) e.hp = Math.min(e.max, e.hp + e.max * .003 * O.n * dt);
       else { O.t -= dt; if (O.t <= 0) { O.t = 12; O.n = 3; drawMotes(e); log("Shard motes are healing the boss. Tap them", "bad"); } }
     }
   }
@@ -3121,7 +3122,7 @@ body.perf .pulse { animation: none; }
     if (swCd > 0) swCd -= dt;
     for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
     heal(ST.maxHp * ST.hpRegen * dt);
-    leechPool = Math.min(ST.maxHp * ST.leech * 2, leechPool + ST.maxHp * ST.leech * 2 * dt);
+    leechPool = Math.min(ST.maxHp * ST.leech * 3, leechPool + ST.maxHp * ST.leech * 4 * dt);
     mp = Math.min(ST.maxMp, mp + ST.maxMp * ST.mpRegen * dt * (st("static") ? .5 : 1));
     if (document.hidden) moveFoes(dt);
     stepSpawns(dt);
@@ -3139,7 +3140,8 @@ body.perf .pulse { animation: none; }
   }
   function stepFoe(e, dt) {
     if (e.dead || !foes.includes(e)) return;
-    if (e.mods.includes("regen")) e.hp = Math.min(e.max, e.hp + e.max * .02 * modPow() * dt);
+    // Regenerating: heals only after 2.5s without being hit, so steady damage keeps it shut off
+    if (e.mods.includes("regen") && performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * dt);
     if (e.stun > 0) { e.stun -= dt; if (e.stun <= 0) e.el.model.classList.remove("stun"); }
     // ranged: they shoot while closing in (a little slower) and keep shooting once in position
     if (e.boss && e.arrived) {
@@ -3442,7 +3444,7 @@ body.perf .pulse { animation: none; }
       <p>Shields from Barrier show as a striped overlay on the health bar and absorb damage first.</p>`],
     ["Stages, elites and bosses", `<p>Each stage has 8 enemies. Every 10 stages the zone changes: new colors, and enemies with more sides and heavier armor.</p>
       <p><b>Elites</b> appear from stage 11 as the 8th enemy of a stage. They have horns and a red ring, 4x health and harder hits, and always drop an item plus 4x lumen. Bosses give 12x lumen.</p>
-      <p><b>Bosses</b> are every 10th stage. You have 30 seconds. At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Move out of the ring before it closes to dodge it, or let Barrier absorb it. If the timer runs out, the boss escapes and you drop back.</p>`],
+      <p><b>Bosses</b> are every 10th stage. You have 30 seconds, plus 0.75 seconds for every stage past 40 (up to 75 seconds). At 10 seconds left they enrage and hit twice as hard. Every few seconds they telegraph a <b>Crush</b>: the boss glows and a red ring closes around you, then it hits for 45% of your max health. Move out of the ring before it closes to dodge it, or let Barrier absorb it. If the timer runs out, the boss escapes and you drop back.</p>`],
     ["Skills", `<p>Skills sit in the row along the bottom of the screen. Tap one to cast it. A dot means auto-cast is on, and you can toggle it in the Skills window. Skills cost mana, and upgrading them with shards makes them stronger. Each level adds 6% power and cuts that skill's cooldown by 1%. Levels go to 40, but the level you can buy is capped by your best stage this run: the cap rises by 1 every 3 stages. Tempo training and the Drive branch of the web shorten every cooldown.</p>
       <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Dash</b> (stage 30): a quick burst in the direction you're moving (or away from the nearest enemy). You're untouchable while it lasts, it slices every enemy you pass through, and it shakes off all statuses. On auto-cast it only fires to escape a boss Crush or when your health is low.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
@@ -3456,15 +3458,15 @@ body.perf .pulse { animation: none; }
     ["Training", `<p>Train spends lumen on upgrades that last for the current run. Each level costs more than the last. New training unlocks as you reach deeper stages, and ascending locks it all again and resets the levels.</p>
       <p><b>Might</b> and <b>Vigor</b> double at levels 25, 50 and 100, then every 50 levels after that. <b>Greed</b> gets x1.25 at the same levels. The other upgrades have a level cap. Use the x1, x10 and Max buttons at the top to buy in bulk.</p>
       <p>Crit chance, block, life steal and drop chance are capped so they can't reach 100%.</p>`],
-    ["Defense", `<ul><li><b>Block chance</b>: a blocked hit loses 70% of its damage.</li><li><b>Evasion rating</b>: turns into a chance to dodge a hit completely. The same rating dodges less as stages get harder, so it needs to keep growing. Boss Crushes can't be dodged.</li><li><b>Life steal</b>: heals you for a share of the damage you deal, capped at 15%. It can't heal more than twice your life steal percent of max health each second.</li></ul>
+    ["Defense", `<ul><li><b>Block chance</b>: a blocked hit loses 70% of its damage.</li><li><b>Evasion rating</b>: turns into a chance to dodge a hit completely. The same rating dodges less as stages get harder, so it needs to keep growing. Boss Crushes can't be dodged.</li><li><b>Life steal</b>: heals you for a share of the damage you deal, capped at 15%. It can't heal more than four times your life steal percent of max health each second.</li></ul>
       <p>Stats shows your exact numbers, including your evade chance at the current stage.</p>`],
     ["Status effects", `<p>From stage 6, enemies carry random statuses, shown as colored tags under their health bar. Deeper stages stack more of them: 1 per enemy until stage 19, then 2 from stage 20, 3 from stage 40 and 4 from stage 60. Elites and bosses carry one extra. Every status an enemy carries has its own chance to land on each hit, so a deep enemy can stack several on you at once. Your active statuses show as chips under your mana bar and change how your core looks.</p>
-      <ul><li><b>Dim</b>: your light fades. Healing from regen, kills and life steal is cut by 60%.</li><li><b>Fracture</b>: your shell cracks. No block, and 20% more damage taken.</li><li><b>Static</b>: interference. Half mana regen, and skills cost 25% more.</li><li><b>Gravity</b>: you're weighed down. 30% slower attacks and no evasion.</li><li><b>Eclipse</b>: your light is covered. Your attacks can't crit, though Shatter still forces crits.</li></ul>
+      <ul><li><b>Dim</b>: your light fades. Healing from regen, kills and life steal is cut by 60%.</li><li><b>Fracture</b>: your shell cracks. No block, and 20% more damage taken.</li><li><b>Static</b>: interference. Half mana regen, and skills cost 25% more.</li><li><b>Gravity</b>: you're weighed down. 30% slower attacks and no evasion.</li><li><b>Eclipse</b>: your light is covered. Your crit chance is halved, though Shatter still forces crits.</li></ul>
       <p>Counters: an active Barrier stops new statuses, Dash clears them all, and Clarity training shortens them.</p>`],
     ["Boss mechanics", `<p>Every boss uses Crush. From stage 20, each zone's boss adds a signature mechanic. From stage 60, bosses combine two. The line under the boss's health bar tells you what's happening.</p>
       <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and 25% of the damage you deal reflects back at you. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
     ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +10% echoes.</p>
-      <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals when it hits you.</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
+      <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals when it hits you.</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time, but only after a couple of seconds without being hit, so steady damage keeps it from healing.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
     ["Enemy variants", `<p>Every shape comes in four variants with their own colors, designs, weapons and fighting styles. Variants unlock as you go deeper, and elites and bosses can be any variant.</p>
       <ul><li><b>Pale</b> (swift, from stage 1): icy white with a dashed core and speed lines. Fires twin darts from a needler. Attacks 60% faster but has 30% less health.</li><li><b>Bastion</b> (warden, from stage 4): slate green, thick armored outline, solid core and rivets. Lobs slow, heavy shells from a mortar. 70% more health and slow, but carries an extra status and lands statuses 50% more often.</li><li><b>Crimson</b> (brute, from stage 7): blood red with edge spikes and a scar. Launches spinning sawblades from its rails. Slow, heavy hits with a 25% chance to crit for double damage.</li><li><b>Umbral</b> (phantom, from stage 12): deep violet, flickering dashed outline and a void core. Charges up and fires void beams from a crystal lance. Dodges 25% of blades and skills, so taps are your best answer, and burns 8% of your mana on each hit.</li></ul>`],
     ["Index", `<p>There are 6 enemy families, one per shape: Triad (3 sides), Quadrant (4), Pentad (5), Hexen (6), Heptarch (7) and Octave (8). Each 10-stage zone uses the next family in order, and the cycle repeats after stage 60. Every family comes in three forms: normal, Elite (horns and a red ring, from stage 11) and Grand boss (crowned, every 10th stage).</p>
