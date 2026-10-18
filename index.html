@@ -56,7 +56,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* heads-up display over the full-screen arena */
 .hud { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; pointer-events: none; }
 .hud button { pointer-events: auto; }
-.glass { background: rgba(16,12,28,.62); border: 1.5px solid rgba(255,255,255,.12); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.glass { background: rgba(16,12,28,.8); border: 1.5px solid rgba(255,255,255,.12); }
 .chf { --cut: 10px; --edge: rgba(255,255,255,.17); --fill: rgba(16,12,28,.72); position: relative; isolation: isolate; border: 0 !important; border-radius: 0 !important; background: var(--edge) !important; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
 .chf::before { content: ""; position: absolute; inset: 1px; z-index: -1; background: var(--fill); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); pointer-events: none; }
 .menuBtn { position: fixed; z-index: 56; left: 12px; top: calc(env(safe-area-inset-top, 0px) + 10px); width: 46px; height: 46px; display: grid; place-items: center; color: #ece8f7; --cut: 12px; }
@@ -103,6 +103,9 @@ body.noanim .menuDrop button { animation: none; }
   position: fixed; inset: 0; background: #120f1c; color: var(--ink); overflow: hidden; touch-action: none;
   user-select: none; -webkit-user-select: none;
 }
+.bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+#bgSky { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, #1d1835, #07060c 75%); }
+#bgPlane { position: absolute; left: 0; top: 0; background-repeat: repeat; will-change: transform; }
 .scene { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .scene g, .scene polygon, .scene path, .scene rect, .scene circle, .scene ellipse, .scene line { transform-origin: 0 0; }
 #heroModel.dashing { opacity: .55; filter: drop-shadow(0 0 10px #9ff3e6); }
@@ -131,6 +134,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 @keyframes drift { to { transform: translateX(-40px); } }
 @keyframes pulse { 50% { transform: scale(1.12); opacity: .8; } }
 .glow { filter: drop-shadow(0 0 4px currentColor); }
+#fx .glow, #foes .glow { filter: none; }
 .core { filter: drop-shadow(0 0 8px #7be0d0); }
 .eModel.enr .eBody { filter: drop-shadow(0 0 7px #ff3b3b) saturate(1.7); }
 .eModel.tele .eBody { animation: tele .25s ease-in-out infinite alternate; }
@@ -176,7 +180,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 
 .skillbar { touch-action: none; -webkit-user-select: none; user-select: none; position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: repeat(6, 58px); gap: 8px; }
 @media (max-width: 440px) { .skillbar { left: 12px; right: 12px; transform: none; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; } }
-.sk { touch-action: none; -webkit-touch-callout: none; --cut: 11px; position: relative; border: 0; background: rgba(16,12,28,.66); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #ece8f7; padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; min-height: 58px; }
+.sk { touch-action: none; -webkit-touch-callout: none; --cut: 11px; position: relative; border: 0; background: rgba(16,12,28,.82); color: #ece8f7; padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; min-height: 58px; }
 .sk svg { width: 24px; height: 24px; }
 .sk .lb { font-size: 10.5px; font-weight: 600; line-height: 1.1; text-align: center; }
 .sk .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(10,8,20,.55); pointer-events: none; }
@@ -491,6 +495,7 @@ body.perf .pulse { animation: none; }
 </head>
 <body>
 <div class="arena" id="arena">
+  <div class="bg" aria-hidden="true"><div id="bgSky"></div><div id="bgPlane"></div></div>
     <svg class="scene" id="scene" viewBox="0 0 360 780" role="img" aria-label="Your glowing core fights a geometric enemy. Tap to strike.">
       <defs>
         <radialGradient id="sky" cx=".5" cy=".5" r=".75">
@@ -505,7 +510,7 @@ body.perf .pulse { animation: none; }
         <radialGradient id="coreG"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#bff7ee"/><stop offset=".7" stop-color="#7be0d0" stop-opacity=".55"/><stop offset="1" stop-color="#7be0d0" stop-opacity="0"/></radialGradient>
       </defs>
       <g id="world">
-        <rect id="skyR" x="-40" y="-40" width="440" height="860" fill="url(#sky)"/>
+        <rect id="skyR" x="-40" y="-40" width="440" height="860" fill="none"/>
         <g id="cam">
         <g id="stars"></g>
         <g id="farShapes"></g>
@@ -1221,55 +1226,65 @@ body.perf .pulse { animation: none; }
   }
 
   // ================= scenery =================
-  function buildStars() {
-    const g = $("stars"); g.innerHTML = ""; tileKey = ""; g.dataset.ver = ++tileVer;
-    const n = Math.round(MAP_W * MAP_H / 6000);
-    for (let i = 0; i < n; i++) {
-      const tw = Math.random() < .2;
-      svgEl("circle", { cx: (Math.random() * MAP_W).toFixed(1), cy: (Math.random() * MAP_H).toFixed(1), r: (.4 + Math.random() * 1.1).toFixed(2), fill: "#fff", opacity: (.15 + Math.random() * .5).toFixed(2), class: tw ? "twinkle" : "", style: tw ? "animation-delay:-" + (Math.random() * 3).toFixed(1) + "s" : "" }, g);
+  // stars and faint zone shapes are painted once into a tile image; it repeats under the scene and slides
+  // with the camera (with a little parallax), so the endless plane costs almost nothing per frame
+  const PARA = .75;
+  let bgTW = 1, bgTH = 1, bgOX = NaN, bgOY = NaN;
+  function drawBackdrop() {
+    const zone = Math.max(0, lastZone), h = (zone * 53 + 200) % 360;
+    $("bgSky").style.background = "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
+    const dpr = Math.min(2, window.devicePixelRatio || 1), tw = Math.max(200, Math.round(MAP_W * SC)), th = Math.max(200, Math.round(MAP_H * SC));
+    const c = document.createElement("canvas"); c.width = Math.round(tw * dpr); c.height = Math.round(th * dpr);
+    const x = c.getContext("2d"); x.scale(dpr, dpr);
+    // draw anything near an edge on the opposite side too, so the tile repeats without seams
+    const wrap = (cx, cy, r, fn) => { for (const ox of [0, -tw, tw]) for (const oy of [0, -th, th]) { if (cx + ox < -r || cx + ox > tw + r || cy + oy < -r || cy + oy > th + r) continue; fn(cx + ox, cy + oy); } };
+    const nS = Math.round(MAP_W * MAP_H / 5200);
+    x.fillStyle = "#fff";
+    for (let i = 0; i < nS; i++) {
+      const cx = Math.random() * tw, cy = Math.random() * th, r = (.4 + Math.random() * 1.1) * SC;
+      x.globalAlpha = .15 + Math.random() * .55;
+      wrap(cx, cy, r, (px, py) => { x.beginPath(); x.arc(px, py, r, 0, 6.2832); x.fill(); });
     }
+    const nF = Math.max(6, Math.round(MAP_W * MAP_H / 42000)), sides = 3 + zone % 6;
+    for (let i = 0; i < nF; i++) {
+      const cx = Math.random() * tw, cy = Math.random() * th, r = (10 + Math.random() * 40) * SC, rot = Math.random() * 6, outline = Math.random() < .45;
+      x.globalAlpha = outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1;
+      wrap(cx, cy, r, (px, py) => {
+        x.beginPath();
+        for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
+        x.closePath();
+        if (outline) { x.strokeStyle = "hsl(" + h + " 70% 70%)"; x.lineWidth = 1.2 * SC; x.stroke(); } else { x.fillStyle = "hsl(" + h + " 60% 60%)"; x.fill(); x.fillStyle = "#fff"; }
+      });
+    }
+    const bp = $("bgPlane");
+    bp.style.backgroundImage = "url(" + c.toDataURL("image/png") + ")";
+    bp.style.backgroundSize = tw + "px " + th + "px";
+    bp.style.width = (SW + tw + 2) + "px"; bp.style.height = (SH + th + 2) + "px";
+    bgTW = tw; bgTH = th; bgOX = NaN; placeBackdrop();
   }
+  function placeBackdrop() {
+    const md = (n, m) => ((n % m) + m) % m;
+    const ox = -md(CAMX * PARA * SC, bgTW), oy = -md(CAMY * PARA * SC, bgTH);
+    if (Math.abs(ox - bgOX) < .25 && Math.abs(oy - bgOY) < .25) return;
+    bgOX = ox; bgOY = oy;
+    $("bgPlane").style.transform = "translate3d(" + ox.toFixed(1) + "px," + oy.toFixed(1) + "px,0)";
+  }
+  function buildStars() { drawBackdrop(); }
   let lastZone = -1;
   function setZone(stage, force) {
     const zone = Math.floor((stage - 1) / 10);
     if (zone === lastZone && !force) return;
     lastZone = zone;
     const h = (zone * 53 + 200) % 360;
-    $("skyTop").setAttribute("stop-color", "hsl(" + h + " 40% 16%)");
-    $("skyBot").setAttribute("stop-color", "hsl(" + h + " 35% 6%)");
-    const far = $("farShapes"); far.innerHTML = ""; tileKey = ""; far.dataset.ver = ++tileVer;
-    const n = Math.max(8, Math.round(MAP_W * MAP_H / 45000)), sides = 3 + zone % 6;
-    for (let i = 0; i < n; i++) {
-      let x, y, k = 0;
-      x = Math.random() * MAP_W; y = Math.random() * MAP_H; void k;
-      const r = 10 + Math.random() * 40, outline = Math.random() < .45, op = (outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1).toFixed(2);
-      svgEl("polygon", { points: polyPts(sides, r, Math.random() * 6, x, y), fill: outline ? "none" : "hsl(" + h + " 60% 60%)", stroke: outline ? "hsl(" + h + " 70% 70%)" : "none", "stroke-width": 1.2, opacity: op, class: "farSpin", style: "animation-duration:" + (40 + Math.random() * 70).toFixed(0) + "s;animation-direction:" + (Math.random() < .5 ? "normal" : "reverse") }, far);
-    }
+    void h;
+    if (SW > 0) drawBackdrop();
   }
 
   let GROUND = 382, ARENA_T = 60, ARENA_B = 700;
   // the map is bigger than the screen; the camera follows your core. VX0/VY0 is the top-left of the view in map units
   // the plane is endless: MAP_W x MAP_H is just the size of the repeating backdrop tile
   let MAP_W = 1400, MAP_H = 1800, CAMX = 0, CAMY = 0, VX0 = 0, VY0 = 0, mapReady = false, tileKey = "", tileVer = 0;
-  function placeTiles() {
-    const ix = Math.floor(VX0 / MAP_W), iy = Math.floor(VY0 / MAP_H), key = ix + "," + iy;
-    if (key === tileKey) return; tileKey = key;
-    // four persistent copies, each tied to a grid parity: when you cross a tile edge only the copy that has
-    // gone off screen jumps ahead, so nothing you can see is rebuilt or restarts its animation
-    const md = (n, m) => ((n % m) + m) % m;
-    ["stars", "farShapes"].forEach(id => {
-      const src = $(id); let wrap = $(id + "Tiles");
-      if (!wrap) { wrap = svgEl("g", { id: id + "Tiles" }); src.parentNode.insertBefore(wrap, src); src.style.display = "none"; }
-      if (wrap.dataset.ver !== src.dataset.ver || wrap.children.length !== 4) {
-        wrap.innerHTML = ""; wrap.dataset.ver = src.dataset.ver;
-        for (let k = 0; k < 4; k++) { const c = src.cloneNode(true); c.removeAttribute("id"); c.style.display = ""; wrap.appendChild(c); }
-      }
-      for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
-        const cx = ix + a, cy = iy + b, c = wrap.children[md(cx, 2) + 2 * md(cy, 2)];
-        c.setAttribute("transform", "translate(" + cx * MAP_W + " " + cy * MAP_H + ")");
-      }
-    });
-  }
+  function placeTiles() { placeBackdrop(); }
   const VX1 = () => VX0 + VW, VY1 = () => VY0 + VH;
   function layout() {
     const ohx = HERO_X, ohy = HERO_Y;
@@ -1289,7 +1304,7 @@ body.perf .pulse { animation: none; }
     ARENA_T = hr && hr.height ? Math.max(20, (hr.bottom - ar.top) / SC) : 60;
     ARENA_B = br && br.height ? Math.min(VH - 10, (br.top - ar.top) / SC - 6) : VH - 70;
     if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
-    $("skyR").setAttribute("width", VW + 80); $("skyR").setAttribute("height", VH + 80);
+
     $("heroPos").setAttribute("transform", "translate(" + HERO_X.toFixed(1) + " " + HERO_Y.toFixed(1) + ")");
     syncTarget();
     buildStars();
@@ -1606,7 +1621,7 @@ body.perf .pulse { animation: none; }
     }
   }
   let tagCache = "", tagSide = null, tagFor = null;
-  let tagX = 0, tagY = 0, tagVis = false, tagHold = 0;
+  let tagX = 0, tagY = 0, tagVis = false, tagHold = 0, tagMeasT = 0, tagW = 150, tagH = 40, htH = 30;
   function placeTags(dt) {
     const ht = $("heroTag"), ft = $("foeTag");
     const hx = (HERO_X - VX0) * SC, hy = (HERO_Y + RING_R - 8 - VY0) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
@@ -1616,11 +1631,13 @@ body.perf .pulse { animation: none; }
     const vis = !!e && !e.dead && e.px > VX0 - m && e.px < VX1() + m && e.py > VY0 - m && e.py < VY1() + m;
     if (tagHold > 0) tagHold -= dt || .016;
     if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }
-    const w = ft.offsetWidth || 150, h = ft.offsetHeight || 40, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
+    const tn = performance.now();
+    if (tn - tagMeasT > 300 || tagFor !== e) { tagMeasT = tn; tagW = ft.offsetWidth || 150; tagH = ft.offsetHeight || 40; htH = ht.offsetHeight || 30; }
+    const w = tagW, h = tagH, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
     const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, (e.px - VX0) * SC));
     const up = (e.py - out - VY0) * SC - h, dn = (e.py + out - VY0) * SC, topLim = 112;
     // above or below: whichever covers less of the core's ring and readout and stays clear of the top bar
-    const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + (ht.offsetHeight || 30) + 4 }, cr = (RING_R + 8) * SC, ccx = (HERO_X - VX0) * SC, ccy = (HERO_Y - VY0) * SC;
+    const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + htH + 4 }, cr = (RING_R + 8) * SC, ccx = (HERO_X - VX0) * SC, ccy = (HERO_Y - VY0) * SC;
     const ovl = top => {
       const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
       return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
@@ -1692,6 +1709,8 @@ body.perf .pulse { animation: none; }
     applyCam(); placeTiles();
   }
   function frame(now) {
+    // battery saver draws every other frame (about 30 fps)
+    if (S.saver && lastFrame && now - lastFrame < 30) { requestAnimationFrame(frame); return; }
     const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
     stepHero(dt);
     if (!paused && !heroDown) moveFoes(dt);
@@ -2027,9 +2046,12 @@ body.perf .pulse { animation: none; }
       }
     }
   }
+  // particle budget: when the screen is already busy, extra sparks are skipped (nobody can see them anyway)
+  const fxBusy = () => fx.childElementCount > (perf || S.saver ? 40 : 80);
   function sparks(x, y, n, col, dist) {
     if (reduce) return;
-    if (perf) n = Math.ceil(n / 3);
+    if (perf || S.saver) n = Math.ceil(n / 3);
+    const busy = fx.childElementCount; if (busy > (perf || S.saver ? 40 : 80)) return; if (busy > 45) n = Math.ceil(n / 2);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, d = dist * (.5 + Math.random() * .5);
       tempFx(svgEl("circle", { cx: x, cy: y, r: 2, fill: col }), [{ transform: "translate(0px,0px)", opacity: 1 }, { transform: "translate(" + (Math.cos(a) * d).toFixed(1) + "px," + (Math.sin(a) * d).toFixed(1) + "px)", opacity: 0 }], 320);
@@ -2069,7 +2091,7 @@ body.perf .pulse { animation: none; }
     arena.appendChild(el); setTimeout(() => el.remove(), 360);
   }
   function ringFx(x, y, col, from, to, ms, width) {
-    if (reduce) return;
+    if (reduce || fxBusy()) return;
     tempFx(svgEl("circle", { cx: 0, cy: 0, r: 10, fill: "none", stroke: col, "stroke-width": width || 3 }), [{ transform: "translate(" + x + "px," + y + "px) scale(" + from + ")", opacity: 1 }, { transform: "translate(" + x + "px," + y + "px) scale(" + to + ")", opacity: 0 }], ms);
   }
   function burst(x, y, col, n) { ringFx(x, y, col, .5, 3, 450); sparks(x, y, n, col, 40); }
@@ -3445,6 +3467,7 @@ body.perf .pulse { animation: none; }
     const A = { auto: "Auto", on: "On", off: "Off" }[S.anim || "auto"];
     $("guideBody").innerHTML = '<div class="wsub" data-sub="set"><div class="sgroup"><h3>Settings</h3>' +
       '<div class="setRow"><div><b>Animations: ' + A + '</b><div class="d">Auto follows your device\'s reduce-motion setting' + (sysReduce ? ", which is on right now, so Auto turns most animations off" : "") + '. On always shows them.</div></div><button class="btn go" data-act="animMode">Change</button></div>' +
+      '<div class="setRow"><div><b>Battery saver: ' + (S.saver ? "On" : "Off") + '</b><div class="d">Runs at about 30 frames per second. Keeps your phone cooler and saves battery.</div></div><button class="btn go" data-act="saver">' + (S.saver ? "Turn off" : "Turn on") + '</button></div>' +
       '<div class="setRow"><div><b>Performance mode: ' + (S.perf ? "On" : "Off") + '</b><div class="d">Removes glow effects and trims particles. Try it if the game stutters on your computer.</div></div><button class="btn go" data-act="perfMode">' + (S.perf ? "Turn off" : "Turn on") + "</button></div>" +
       '<div class="setRow"><div><b>Sound: ' + (S.sound === false ? "Off" : "On") + '</b><div class="d">Soft, glassy tones for crits, kills, bosses, loot and your orbital.</div></div><button class="btn go" data-act="sndToggle">' + (S.sound === false ? "Turn on" : "Turn off") + "</button></div>" +
       '<div class="setRow"><div><b>Effects volume: ' + { low: "Low", med: "Medium", high: "High" }[S.vol || "med"] + '</b></div><button class="btn go" data-act="sndVol">Change</button></div>' +
@@ -3765,6 +3788,7 @@ body.perf .pulse { animation: none; }
     else if (act === "sndToggle") { S.sound = S.sound === false; audioInit(); setVolume(); markDirty("guide"); if (S.sound) setTimeout(() => sfx("buy"), 60); }
     else if (act === "sndVol") { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; audioInit(); setVolume(); markDirty("guide"); setTimeout(() => sfx("buy", 0, 0), 60); }
     else if (act === "perfMode") { S.perf = !S.perf; applyGfx(); markDirty("guide"); }
+    else if (act === "saver") { S.saver = !S.saver; markDirty("guide"); }
     else if (act === "intro") { closeWindow(); showIntro(); return; }
     else if (act === "saveCopy") {
       save();
