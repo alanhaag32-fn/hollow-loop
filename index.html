@@ -482,6 +482,14 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .nodeCard .ef { font-size: 14px; }
 .nodeCard .st { font-size: 13px; color: var(--muted); }
 .nodeCard .btn { grid-column: 2; grid-row: 1 / span 4; }
+.webWrap #nodeCard { position: absolute; left: 8px; right: 8px; bottom: 8px; top: auto; background: none; padding: 0; border-radius: 12px; pointer-events: none; }
+.webWrap #nodeCard .nodeCard { pointer-events: auto; border: 0; padding: 8px 10px; gap: 1px 10px; background: linear-gradient(180deg, rgba(12,9,26,.28), rgba(12,9,26,.6)); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,.7); }
+.webWrap #nodeCard .nodeCard .n { font-size: 14px; }
+.webWrap #nodeCard .nodeCard .rk { font-size: 11.5px; }
+.webWrap #nodeCard .nodeCard .ef { font-size: 12.5px; }
+.webWrap #nodeCard .nodeCard .st { font-size: 11px; }
+.webWrap #nodeCard .nodeCard .btn { text-shadow: none; padding: 6px 12px; }
+.webWrap:has(#nodeCard:not(:empty)) .webHint { opacity: 0; }
 body.noanim .bob, body.noanim .hover, body.noanim .drift, body.noanim .float, body.noanim .spinSlow, body.noanim .spinRev, body.noanim .spinCorona, body.noanim .bladeOrbit, body.noanim .pulse, body.noanim .ripple, body.noanim .eModel.tele .eBody, body.noanim .sheetInner, body.noanim #hCrack, body.noanim #heroModel.st-fracture #hShell, body.noanim #hGrav, body.noanim #hEclipse, body.noanim #hEclipseRing, body.noanim #heroModel.st-dim #hCore { animation: none; }
 body.noanim .prog i, body.noanim .bar i { transition: none; }
 body.perf .scene *, body.perf .scene { filter: none !important; }
@@ -3304,6 +3312,15 @@ body.perf .pulse { animation: none; }
       if (n.cap) h += '<circle r="' + (r - 6) + '" style="fill:none;stroke:' + (own ? "var(--panel)" : c) + ';stroke-width:1.5;opacity:' + (own || av ? 1 : .5) + '"/>';
       if (n.key) h += '<polygon points="' + starPts(4, 8, 3) + '" style="fill:' + (own ? "var(--panel)" : c) + ';opacity:' + (own || av ? 1 : .5) + '"/>';
       if (own && n.max > 1) h += '<text class="rkt" y="3.5" style="fill:var(--panel)">' + rank + "</text>";
+      if (n.max > 1 && (own || av)) {
+        // segmented ring: one notch per rank, filled up to your current rank
+        const R = r + 4.5, C = 2 * Math.PI * R, seg = C / n.max, gap = Math.min(2.2, seg * .3);
+        h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:' + c + ';stroke-opacity:.28;stroke-width:2.6;stroke-dasharray:' + (seg - gap).toFixed(2) + " " + gap.toFixed(2) + '"/>';
+        if (rank > 0) h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:' + c + ';stroke-width:2.6;stroke-dasharray:' + Array.from({ length: rank }, () => (seg - gap).toFixed(2) + " " + gap.toFixed(2)).join(" ") + " 0 " + C.toFixed(1) + '"/>';
+      }
+      // "+" badge: this node can take another rank right now
+      if (n.id !== "core" && av && rank < n.max && S.echoes >= nodeCost(n)) h += '<g class="upB" transform="translate(' + (r * .78).toFixed(1) + " " + (-r * .78).toFixed(1) + ')"><circle r="6.5" style="fill:#ffd04d;stroke:var(--panel);stroke-width:1.5"/><path d="M-3 0 H3 M0 -3 V3" style="stroke:#1a1430;stroke-width:1.8;stroke-linecap:round"/></g>';
+      else if (own && rank < n.max && n.max > 1) h += '<circle r="2.6" cx="' + (r * .78).toFixed(1) + '" cy="' + (-r * .78).toFixed(1) + '" style="fill:' + c + ';stroke:var(--panel);stroke-width:1"/>';
       h += '<text class="lbl" y="' + (r + 12) + '">' + n.s + "</text></g>";
     });
     $("web").innerHTML = h;
@@ -3326,7 +3343,8 @@ body.perf .pulse { animation: none; }
     const L = webLimits();
     WEB.z = Math.max(L.zmin, Math.min(L.zmax, WEB.z || 1));
     const vw = WEB.W / WEB.z, vh = WEB.H / WEB.z, mx = Math.max(0, 440 - vw / 2), my = Math.max(0, 440 - vh / 2);
-    WEB.cx = Math.max(-mx, Math.min(mx, WEB.cx)); WEB.cy = Math.max(-my, Math.min(my, WEB.cy));
+    const nc = $("nodeCard"), extra = nc && nc.firstChild ? (nc.offsetHeight + 12) / WEB.z : 0;
+    WEB.cx = Math.max(-mx, Math.min(mx, WEB.cx)); WEB.cy = Math.max(-my, Math.min(my + extra, WEB.cy));
     $("web").setAttribute("viewBox", (WEB.cx - vw / 2).toFixed(1) + " " + (WEB.cy - vh / 2).toFixed(1) + " " + vw.toFixed(1) + " " + vh.toFixed(1));
   }
   function webZoomAt(f, px, py) {
@@ -3452,7 +3470,8 @@ body.perf .pulse { animation: none; }
       <p>A claimed bounty leaves an empty pin, and a new one is posted 5 minutes later. You can reroll unfinished bounties for lumen, once every 10 minutes. A dot on the Board button means something is ready to claim. When you ascend, finished bounties stay on the board for you to claim in the new run, and the rest are reposted with rewards sized for the new run.</p>`],
     ["Ascension and the web", `<p>From stage 20 you can <b>ascend</b> in the Tree window. You restart at stage 1 and lose lumen, gear, training and skills. In return you earn <b>echoes</b> based on the highest stage you reached. Echoes and the web are permanent.</p>
       <p>Spend echoes on the web. You can only learn a node connected to one you already own, starting from the Core. The four branches are Edge (damage), Ward (survival), Drive (speed and skills) and Fortune (loot and lumen). Bridge nodes link neighboring branches.</p>
-      <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>`],
+      <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>
+      <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
     ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li></ul>`]
   ];
   const INTRO = [
