@@ -140,10 +140,10 @@ body.noanim .bladeOrbit2 { animation: none; }
 .eModel.tele .eBody { animation: tele .25s ease-in-out infinite alternate; }
 @keyframes tele { to { filter: drop-shadow(0 0 14px #ff3b3b) brightness(1.7); } }
 
-.float { position: absolute; pointer-events: none; font-family: "Syne", Impact, sans-serif; font-weight: 800; font-size: 15px; animation: fl .8s ease-out forwards; z-index: 2; text-shadow: 0 2px 0 rgba(0,0,0,.5); white-space: nowrap; }
+.float { will-change: transform, opacity; position: absolute; pointer-events: none; font-family: "Syne", Impact, sans-serif; font-weight: 800; font-size: 15px; animation: fl .8s ease-out forwards; z-index: 2; text-shadow: 0 2px 0 rgba(0,0,0,.5); white-space: nowrap; }
 .float.hit { color: #fff; }
 .float.tapn { color: #9ff3e6; font-size: 13px; }
-.float.crit { color: #ff8a3d; font-size: 24px; text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 10px rgba(255,110,40,.6); }
+.float.crit { color: #ff8a3d; font-size: 22px; text-shadow: 0 2px 0 rgba(0,0,0,.55); }
 .float.hurt { color: var(--hurt); }
 .float.heal { color: #5fd38d; font-size: 12px; }
 .float.gold { color: #ffe08a; font-size: 12.5px; font-weight: 700; text-shadow: 0 1px 0 rgba(0,0,0,.6), 0 0 8px rgba(255,214,110,.45); }
@@ -711,8 +711,11 @@ body.perf .pulse { animation: none; }
   // ===== economy v5: everything grows exponentially, like other idle games =====
   // enemy health and lumen grow 33% per stage, gear power 15% per stage, training compounds with milestone doublings
   const HPG = 1.35;
-  const stageHp = st => 20 * Math.pow(HPG, st - 1);
-  const stageDmg = st => .9 * Math.pow(1.27, st - 1);
+  // past stage 80 the curves ease off a little (health and lumen +30%/stage, damage +24%/stage)
+  const LATE = 80;
+  const curve = (st, g1, g2) => Math.pow(g1, Math.min(st, LATE) - 1) * Math.pow(g2, Math.max(0, st - LATE));
+  const stageHp = st => 20 * curve(st, HPG, 1.3);
+  const stageDmg = st => .9 * curve(st, 1.27, 1.24);
   const itemPow = st => 6 * Math.pow(1.13, st - 1);
   const MILES = [25, 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
   const milesAt = L => MILES.filter(m => L >= m).length;
@@ -1063,6 +1066,9 @@ body.perf .pulse { animation: none; }
     return c;
   }
   const has = (id, n) => ((ST && ST.sets[id]) || 0) >= n;
+  // echo power: every echo you've ever earned adds +1% attack and health, permanently. It never caps,
+  // so each ascension pushes you further even once the web is full
+  const echoPow = () => 1 + .01 * (S.echoesTotal || 0);
   function computeStats() {
     const sc = setCounts(), hs = (id, n) => (sc[id] || 0) >= n;
     const p = s => (S.equip[s] ? S.equip[s].power : 0);
@@ -1074,8 +1080,8 @@ body.perf .pulse { animation: none; }
     const evaR = bp * tm("agility") * (1 + sum.eva / 100) * (1 + .03 * IT("hepta", "e")) * (1 + .10 * T("w10")) * (1 + .08 * T("o2"));
     return {
       sets: sc, evaR,
-      atk: (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
-      maxHp: (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")),
+      atk: echoPow() * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
+      maxHp: echoPow() * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")),
       hpRegen: .01 * (1 + .10 * T("b2")),
       maxMp: 100 * tm("essence") * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
       mpRegen: .03 * tm("flow") * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
@@ -1114,7 +1120,7 @@ body.perf .pulse { animation: none; }
   const affSum = it => (it.affs || []).reduce((a, x) => a + x[1], 0);
   const score = it => it.power * (1 + affSum(it) / 100) * (it.set ? 1.1 : 1);
   // lumen per normal kill at a stage: 15% of that stage's enemy health
-  const lumenAt = st => 3 * Math.pow(HPG, st - 1);
+  const lumenAt = st => 3 * curve(st, HPG, 1.3);
   const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
   function rollRarity(boss, minR, stage) {
     // higher tiers get more common the deeper you go, up to a cap
@@ -2182,6 +2188,21 @@ body.perf .pulse { animation: none; }
     $("feed").innerHTML = feed.map(f => '<div class="' + f.cls + '"><time>' + f.t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) + "</time>" + f.text + "</div>").join("") || '<p class="note">Nothing yet.</p>';
   }
   let lastHealFloat = 0, leechPool = 0;
+  // hits landing within 150ms on the same enemy are added up into one number, so fast attacks don't flood the screen
+  function dmgFloat(e, d, crit, tap) {
+    const now = performance.now();
+    if (!e.fl) e.fl = { sum: 0, crit: false, tap: true, t: 0, pend: false };
+    const F = e.fl; F.sum += d; F.crit = F.crit || crit; F.tap = F.tap && tap;
+    if (F.pend) return;
+    const wait = Math.max(0, 150 - (now - F.t));
+    F.pend = true;
+    setTimeout(() => {
+      F.pend = false; F.t = performance.now();
+      if (F.sum > 0 && !document.hidden) floatText(fmt(F.sum) + (F.crit ? "!" : ""), F.crit ? "crit" : F.tap ? "tapn" : "hit", e.dead ? { px: e.px, py: e.py, R: e.R } : e);
+      F.sum = 0; F.crit = false; F.tap = true;
+    }, wait);
+  }
+  const floats = [];
   function floatText(text, cls, side, color) {
     const el = document.createElement("span");
     el.className = "float " + cls; el.textContent = text;
@@ -2192,10 +2213,9 @@ body.perf .pulse { animation: none; }
     const y = fe ? fe.py + (loot ? R * .5 : -R * .45) + Math.random() * 12 - 6 : HERO_Y - 34 - Math.random() * 12;
     el.style.left = ((x - VX0) * SC).toFixed(0) + "px";
     el.style.top = ((y - VY0) * SC).toFixed(0) + "px";
-    arena.appendChild(el);
-    const all = arena.querySelectorAll(".float");
-    if (all.length > 16) all[0].remove();
-    setTimeout(() => el.remove(), 820);
+    arena.appendChild(el); floats.push(el);
+    while (floats.length > 12) floats.shift().remove();
+    setTimeout(() => { el.remove(); const i = floats.indexOf(el); if (i >= 0) floats.splice(i, 1); }, 820);
   }
 
   // ================= economy, loot, bounties =================
@@ -2356,7 +2376,7 @@ body.perf .pulse { animation: none; }
       else if (crit) sfx("crit", 0, 160);
       else if (kind !== "tap") sfx("hit", 0, 70);
       if (note) floatText(note, "info", e);
-      else floatText(fmt(dmg) + (crit ? "!" : ""), crit ? "crit" : kind === "tap" ? "tapn" : "hit", e);
+      else dmgFloat(e, dmg, crit, kind === "tap");
       if (crit && kind !== "tap") shake(3, 160);
       const tn = performance.now();
       if (!e.dead && e.el && !(tn - (e.flashT || 0) < 140)) { e.flashT = tn; anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -3), filter: "brightness(2.2)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160); }
@@ -2428,8 +2448,9 @@ body.perf .pulse { animation: none; }
       if (!landed || heroDown) return;
       if (heavy) { shake(5, 200); floatText("Heavy blow", "hurt", "hero"); }
       if (e.v.burn) mp = Math.max(0, mp - ST.maxMp * e.v.burn);
-      if (e.mods.includes("vampiric") && !e.dead) e.hp = Math.min(e.max, e.hp + e.max * .04 * modPow());
+
       if (statusDone) return; statusDone = true;
+      if (e.mods.includes("vampiric") && !e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow()));
       if (e.mods.includes("draining")) applyStatus(pick(ZONE_STATUS), 5, false, e);
       e.statuses.list.forEach(id => { if (Math.random() < e.statuses.chance) applyStatus(id, 5, false, e); });
     };
@@ -3295,6 +3316,7 @@ body.perf .pulse { animation: none; }
   function renderTree() {
     const g = ascGain(), can = S.maxStage >= 20 && g >= 1;
     $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
+      '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round((echoPow() - 1) * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
       '<div class="note" style="margin:0">' + (can ? "Ascend to gain " + g + " echoes. You restart at stage " + (1 + 5 * T("f7")) + " and lose lumen, gear, training and skill levels. The web and bounties stay. Skills relock and return as you reach their stages again. Each ascension also gives enemies more modifiers and you +10% echoes."
         : "Reach stage 20 to ascend. Highest this run: stage " + S.maxStage + ".") + "</div>" +
       '<div class="ctrls" style="margin:0"><button class="btn go' + (can ? "" : " dim") + '" data-act="ascend">' + (ascArmed ? "Tap again to ascend" : "Ascend") + '</button><button class="btn" data-act="refund">Refund web</button></div></div>';
@@ -3466,7 +3488,7 @@ body.perf .pulse { animation: none; }
     ["Boss mechanics", `<p>Every boss uses Crush. From stage 20, each zone's boss adds a signature mechanic. From stage 60, bosses combine two. The line under the boss's health bar tells you what's happening.</p>
       <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and 25% of the damage you deal reflects back at you. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
     ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +10% echoes.</p>
-      <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals when it hits you.</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time, but only after a couple of seconds without being hit, so steady damage keeps it from healing.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
+      <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals a little each time it hits you (dodge its shots to stop it).</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time, but only after a couple of seconds without being hit, so steady damage keeps it from healing.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
     ["Enemy variants", `<p>Every shape comes in four variants with their own colors, designs, weapons and fighting styles. Variants unlock as you go deeper, and elites and bosses can be any variant.</p>
       <ul><li><b>Pale</b> (swift, from stage 1): icy white with a dashed core and speed lines. Fires twin darts from a needler. Attacks 60% faster but has 30% less health.</li><li><b>Bastion</b> (warden, from stage 4): slate green, thick armored outline, solid core and rivets. Lobs slow, heavy shells from a mortar. 70% more health and slow, but carries an extra status and lands statuses 50% more often.</li><li><b>Crimson</b> (brute, from stage 7): blood red with edge spikes and a scar. Launches spinning sawblades from its rails. Slow, heavy hits with a 25% chance to crit for double damage.</li><li><b>Umbral</b> (phantom, from stage 12): deep violet, flickering dashed outline and a void core. Charges up and fires void beams from a crystal lance. Dodges 25% of blades and skills, so taps are your best answer, and burns 8% of your mana on each hit.</li></ul>`],
     ["Index", `<p>There are 6 enemy families, one per shape: Triad (3 sides), Quadrant (4), Pentad (5), Hexen (6), Heptarch (7) and Octave (8). Each 10-stage zone uses the next family in order, and the cycle repeats after stage 60. Every family comes in three forms: normal, Elite (horns and a red ring, from stage 11) and Grand boss (crowned, every 10th stage).</p>
@@ -3476,6 +3498,7 @@ body.perf .pulse { animation: none; }
     ["Ascension and the web", `<p>From stage 20 you can <b>ascend</b> in the Tree window. You restart at stage 1 and lose lumen, gear, training and skills. In return you earn <b>echoes</b> based on the highest stage you reached. Echoes and the web are permanent.</p>
       <p>Spend echoes on the web. You can only learn a node connected to one you already own, starting from the Core. The four branches are Edge (damage), Ward (survival), Drive (speed and skills) and Fortune (loot and lumen). Bridge nodes link neighboring branches.</p>
       <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>
+      <p><b>Echo power</b>: every echo you have ever earned also gives +1% attack and health, permanently, with no cap. Spending echoes doesn't lower it, so every ascension keeps making you stronger even once the web is full.</p>
       <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
     ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li></ul>`]
   ];
@@ -3716,7 +3739,7 @@ body.perf .pulse { animation: none; }
     // rapid taps build a combo: +2% tap damage per chained tap, up to +98%
     const tnow = performance.now();
     combo = tnow - lastTapT < 450 ? Math.min(50, combo + 1) : 1; lastTapT = tnow;
-    if (combo >= 10 && combo % 10 === 0) floatText(combo + " combo", "info", "hero", "#9ff3e6");
+    if (combo === 25 || combo === 50) floatText(combo + " combo", "info", "hero", "#9ff3e6");
     const base = ST.atk * ST.tap * (1 + .02 * (combo - 1));
     hit(base, 60, "tap");
     if (Math.random() < .05 * T("e5")) hit(base, 140, "tap");
