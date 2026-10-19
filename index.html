@@ -1115,7 +1115,7 @@ body.perf .pulse { animation: none; }
       // no cap: anything past 100% becomes red crit chance
       crit: .05 + .035 * cq + tm("precision") + ocV("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10"),
       redPow: 2 * (1 + ocV("ferocity")),
-      critDmg: 1.75 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
+      critDmg: 2 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
       tap: .5 * tm("focus") * (1 + ocV("focus")) * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")),
       leech: Math.min(.15, sum.leech / 100 + tm("leech") + (.3 * IT("octa", "e") + .5 * T("e9") + .5 * T("w4")) / 100),
       block: Math.min(.5, (sum.block + IT("quad", "e") + 2 * T("w9") + T("w14")) / 100 + tm("guard")),
