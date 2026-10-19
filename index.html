@@ -144,6 +144,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 .float.hit { color: #fff; }
 .float.tapn { color: #9ff3e6; font-size: 13px; }
 .float.crit { color: #ff8a3d; font-size: 22px; text-shadow: 0 2px 0 rgba(0,0,0,.55); }
+.float.rcrit { color: #ff2e4d; font-size: 27px; text-shadow: 0 2px 0 rgba(0,0,0,.6), 0 0 1px #fff; }
 .float.hurt { color: var(--hurt); }
 .float.heal { color: #5fd38d; font-size: 12px; }
 .float.gold { color: #ffe08a; font-size: 12.5px; font-weight: 700; text-shadow: 0 1px 0 rgba(0,0,0,.6), 0 0 8px rgba(255,214,110,.45); }
@@ -463,6 +464,9 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .buyBar .btn { padding: 5px 12px; font-size: 13px; }
 .row .nx { color: var(--hero); font-weight: 600; }
 .row .mile { color: var(--c4); font-size: 11.5px; }
+.row.oc { border-color: rgba(255,208,77,.45); background: linear-gradient(180deg, rgba(255,208,77,.07), rgba(255,208,77,.02)); }
+.row.oc .ocd { color: #ffd04d; }
+.ocTag { display: inline-block; font-size: 10.5px; font-weight: 800; color: #1a1430; background: #ffd04d; border-radius: 5px; padding: 1px 5px; vertical-align: 2px; }
 .webWrap { position: relative; height: 420px; overflow: hidden; border: 2px solid var(--line); border-radius: 14px; background: var(--panel); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .webWrap.drag { cursor: grabbing; }
 .web { display: block; width: 100%; height: 100%; }
@@ -764,7 +768,7 @@ body.perf .pulse { animation: none; }
     { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.6, max: 75, mode: "pct", stat: "max mana", eff: L => 1 + .04 * L },
     { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.6, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L },
     { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.5, max: 100, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L },
-    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.5, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .015 * L },
+    { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.5, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .01 * L },
     { unlock: 12, id: "agility", name: "Agility", cat: "def", base: 60, g: 1.22, mode: "pct", stat: "evasion rating", eff: L => 1 + .05 * L },
     { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.6, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L },
     { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.6, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L },
@@ -774,6 +778,27 @@ body.perf .pulse { animation: none; }
     { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.6, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L }
   ];
   const TRN = {}; TRAIN.forEach(t => TRN[t.id] = t);
+  // Overcharge: once a capped upgrade is maxed it keeps going with no level limit. Cost starts at 3x the last
+  // normal level and grows 1.45x per level. Stats already at a hard ceiling get a related bonus instead.
+  const OC = {
+    focus: { per: .01, stat: "tap damage" },
+    haste: { per: .005, stat: "attack speed" },
+    precision: { per: .01, stat: "crit chance" },
+    ferocity: { per: .02, stat: "red crit power" },
+    insight: { per: .01, stat: "skill power" },
+    essence: { per: .02, stat: "max mana" },
+    flow: { per: .02, stat: "mana regen" },
+    tempo: { per: .003, stat: "cooldowns", less: true },
+    guard: { per: .005, stat: "damage blocked", cap: .2 },
+    clarity: { per: .01, stat: "chance to shrug off a status", cap: .5 },
+    leech: { per: .03, stat: "life steal heal limit" },
+    fortune: { per: .01, stat: "rare luck" }
+  };
+  const OC_G = 1.45;
+  const ocL = id => (S.oc && S.oc[id]) || 0;
+  const ocV = id => { const o = OC[id], v = o.per * ocL(id); return o.cap ? Math.min(o.cap, v) : v; };
+  const isOC = t => !!(t.max && OC[t.id] && S.train[t.id] >= t.max);
+  const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, t.max - 1); let c = 0; const L = ocL(t.id); for (let i = 0; i < n; i++) c += first * Math.pow(OC_G, L + i); return Math.ceil(c); };
   const tm = id => TRN[id].eff((S.train && S.train[id]) || 0);
   const SKILLS = [
     { id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z" },
@@ -939,7 +964,7 @@ body.perf .pulse { animation: none; }
   ];
 
   const fresh = () => ({
-    v: 4, eco: 7, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
+    v: 4, eco: 7, oc: {}, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
     echoes: 0, echoesTotal: 0, tree: {},
     train: Object.fromEntries(TRAIN.map(t => [t.id, 0])),
     skill: {}, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
@@ -1040,6 +1065,7 @@ body.perf .pulse { animation: none; }
       if (from === 1 && d.train && d.train.vigor) S.train.vigor = d.train.vigor;
       if (from === 2 && d.train && d.train.essence) { S.train.vigor = d.train.essence; S.train.essence = 0; }
       S.tree = d.tree || {};
+      S.oc = d.oc || {};
       S.skill = d.skill || {};
       S.auto = Object.assign(fresh().auto, d.auto || {});
       S.equip = d.equip || {};
@@ -1083,20 +1109,23 @@ body.perf .pulse { animation: none; }
       atk: echoPow() * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
       maxHp: echoPow() * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")),
       hpRegen: .01 * (1 + .10 * T("b2")),
-      maxMp: 100 * tm("essence") * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
-      mpRegen: .03 * tm("flow") * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
-      spd: (1 + .12 * bq) * tm("haste") * (1 + .015 * IT("hepta", "n")) * (1 + .02 * T("x3")) * (1 + sum.spd / 100) * (1 + .04 * T("d1")) * (1 + .02 * T("o2")) * (hs("sun", 2) ? 1.2 : 1),
-      crit: Math.min(.9, .05 + .035 * cq + tm("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10")),
-      critDmg: 2 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
-      tap: .5 * tm("focus") * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")),
+      maxMp: 100 * tm("essence") * (1 + ocV("essence")) * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
+      mpRegen: .03 * tm("flow") * (1 + ocV("flow")) * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
+      spd: (1 + .12 * bq) * tm("haste") * (1 + ocV("haste")) * (1 + .015 * IT("hepta", "n")) * (1 + .02 * T("x3")) * (1 + sum.spd / 100) * (1 + .04 * T("d1")) * (1 + .02 * T("o2")) * (hs("sun", 2) ? 1.2 : 1),
+      // no cap: anything past 100% becomes red crit chance
+      crit: .05 + .035 * cq + tm("precision") + ocV("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10"),
+      redPow: 2 * (1 + ocV("ferocity")),
+      critDmg: 1.75 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
+      tap: .5 * tm("focus") * (1 + ocV("focus")) * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")),
       leech: Math.min(.15, sum.leech / 100 + tm("leech") + (.3 * IT("octa", "e") + .5 * T("e9") + .5 * T("w4")) / 100),
       block: Math.min(.5, (sum.block + IT("quad", "e") + 2 * T("w9") + T("w14")) / 100 + tm("guard")),
       gold: tm("greed") * (1 + .03 * IT("hex", "n")) * (1 + sum.gold / 100) * Math.pow(1.1, T("f1")) * (1 + .03 * T("o3")) * (hs("choir", 2) ? 1.4 : 1),
       drop: Math.min(.95, .3 * tm("fortune") * (1 + .02 * IT("hex", "e")) * (1 + .05 * T("f2")) * (1 + .03 * T("b4")) * (hs("choir", 4) ? 1.5 : 1)),
-      luck: 1 + .1 * T("f3") + .05 * T("o4"),
+      luck: 1 + .1 * T("f3") + .05 * T("o4") + ocV("fortune"),
       setChance: .2 * (1 + .1 * T("f5")),
-      skillPow: tm("insight") * (1 + .03 * IT("penta", "e")) * (1 + .08 * T("d5")) * (1 + .04 * T("b3")),
-      cdr: Math.max(.3, tm("tempo") * (1 - .05 * T("d2")) * (1 - .02 * IT("penta", "b"))),
+      skillPow: tm("insight") * (1 + ocV("insight")) * (1 + .03 * IT("penta", "e")) * (1 + .08 * T("d5")) * (1 + .04 * T("b3")),
+      // Tempo Overcharge trims cooldowns further and lowers the floor from 30% toward 20%
+      cdr: Math.max(.3 - Math.min(.1, ocV("tempo") / 3), tm("tempo") * (1 - .05 * T("d2")) * (1 - .02 * IT("penta", "b")) * (1 - ocV("tempo"))),
       costMult: Math.max(.5, 1 - .05 * T("d3") - .03 * T("o3")),
       dmgTaken: 1 - Math.min(.45, .03 * T("w3") + .02 * IT("quad", "b")),
       statusDur: Math.max(.4, tm("clarity") * (1 - .03 * IT("hepta", "b"))),
@@ -1766,6 +1795,7 @@ body.perf .pulse { animation: none; }
   const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
   function applyStatus(id, sec, force, from) {
     if (heroDown || (shield > 0 && !force)) return;
+    if (!force && ocL("clarity") && !(stT[id] > 0) && Math.random() < ocV("clarity")) return;
     const isNew = !(stT[id] > 0);
     stT[id] = Math.max(stT[id] || 0, sec * ST.statusDur);
     if (isNew) { floatText(STATUS[id].name, "status", "hero", STATUS[id].col); sfx("status", 0, 150); }
@@ -2189,17 +2219,17 @@ body.perf .pulse { animation: none; }
   }
   let lastHealFloat = 0, leechPool = 0;
   // hits landing within 150ms on the same enemy are added up into one number, so fast attacks don't flood the screen
-  function dmgFloat(e, d, crit, tap) {
+  function dmgFloat(e, d, crit, tap, red) {
     const now = performance.now();
-    if (!e.fl) e.fl = { sum: 0, crit: false, tap: true, t: 0, pend: false };
-    const F = e.fl; F.sum += d; F.crit = F.crit || crit; F.tap = F.tap && tap;
+    if (!e.fl) e.fl = { sum: 0, crit: false, red: false, tap: true, t: 0, pend: false };
+    const F = e.fl; F.sum += d; F.crit = F.crit || crit; F.red = F.red || !!red; F.tap = F.tap && tap;
     if (F.pend) return;
     const wait = Math.max(0, 150 - (now - F.t));
     F.pend = true;
     setTimeout(() => {
       F.pend = false; F.t = performance.now();
-      if (F.sum > 0 && !document.hidden) floatText(fmt(F.sum) + (F.crit ? "!" : ""), F.crit ? "crit" : F.tap ? "tapn" : "hit", e.dead ? { px: e.px, py: e.py, R: e.R } : e);
-      F.sum = 0; F.crit = false; F.tap = true;
+      if (F.sum > 0 && !document.hidden) floatText(fmt(F.sum) + (F.red ? "!!" : F.crit ? "!" : ""), F.red ? "rcrit" : F.crit ? "crit" : F.tap ? "tapn" : "hit", e.dead ? { px: e.px, py: e.py, R: e.R } : e);
+      F.sum = 0; F.crit = false; F.red = false; F.tap = true;
     }, wait);
   }
   const floats = [];
@@ -2326,9 +2356,12 @@ body.perf .pulse { animation: none; }
     if (heroDown || !e || e.dead || !foes.includes(e)) return;
     const wt = kind === "blade" ? wType(slot || "weapon") : null;
     const forced = markT > 0;
-    const crit = forced || Math.random() < ST.crit * (st("eclipse") ? .5 : 1);
+    // crit chance past 100% rolls red crits; while Shatter forces crits, your crit chance becomes red crit chance
+    const cc = ST.crit * (st("eclipse") ? .5 : 1);
+    const crit = forced || Math.random() < cc;
+    const red = crit && Math.random() < (forced ? cc : cc - 1);
     let dmg = base * (.9 + Math.random() * .2);
-    if (crit) dmg *= ST.critDmg * (forced ? 1 + shatterCd(lvl("shatter")) : 1);
+    if (crit) dmg *= ST.critDmg * (forced ? 1 + shatterCd(lvl("shatter")) : 1) * (red ? ST.redPow : 1);
     if (e.hp / e.max < .3) dmg *= 1 + .1 * T("e6");
     if (e.fresh) { e.fresh = false; dmg *= 1 + .5 * T("e13"); }
     if (hp > ST.maxHp * .8) dmg *= 1 + .06 * T("x1");
@@ -2376,7 +2409,8 @@ body.perf .pulse { animation: none; }
       else if (crit) sfx("crit", 0, 160);
       else if (kind !== "tap") sfx("hit", 0, 70);
       if (note) floatText(note, "info", e);
-      else dmgFloat(e, dmg, crit, kind === "tap");
+      else dmgFloat(e, dmg, crit, kind === "tap", red);
+      if (red && !document.hidden) sparks(e.px, e.py, 5, "#ff2e4d", 28);
       if (crit && kind !== "tap") shake(3, 160);
       const tn = performance.now();
       if (!e.dead && e.el && !(tn - (e.flashT || 0) < 140)) { e.flashT = tn; anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -3), filter: "brightness(2.2)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160); }
@@ -2418,7 +2452,7 @@ body.perf .pulse { animation: none; }
     if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
     if (!noEvade && !st("gravity") && Math.random() < evadeChance()) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); return false; }
     let blocked = false;
-    if (!st("fracture") && Math.random() < ST.block) { d *= .3; blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120); }
+    if (!st("fracture") && Math.random() < ST.block) { d *= .3 - ocV("guard"); blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120); }
     d *= ST.dmgTaken * (st("fracture") ? 1.2 : 1);
     if (shield > 0) { const a = Math.min(shield, d); shield -= a; d -= a; if (a > 0) anim($("hBarrier"), [{ opacity: 1 }, { opacity: .3 }, { opacity: 1 }], 160); }
     hp -= d;
@@ -3143,7 +3177,8 @@ body.perf .pulse { animation: none; }
     if (swCd > 0) swCd -= dt;
     for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
     heal(ST.maxHp * ST.hpRegen * dt);
-    leechPool = Math.min(ST.maxHp * ST.leech * 3, leechPool + ST.maxHp * ST.leech * 4 * dt);
+    const lp = 1 + ocV("leech");
+    leechPool = Math.min(ST.maxHp * ST.leech * 3 * lp, leechPool + ST.maxHp * ST.leech * 4 * lp * dt);
     mp = Math.min(ST.maxMp, mp + ST.maxMp * ST.mpRegen * dt * (st("static") ? .5 : 1));
     if (document.hidden) moveFoes(dt);
     stepSpawns(dt);
@@ -3217,8 +3252,8 @@ body.perf .pulse { animation: none; }
   function renderStats() {
     const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
     $("statsBody").innerHTML =
-      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
-      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks 70% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
+      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((.7 + ocV("guard")) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
       G("Mana and skills", [["Mana", fmt(Math.max(0, mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
       G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
       G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
@@ -3250,6 +3285,11 @@ body.perf .pulse { animation: none; }
   let buyN = 1;
   const trainCostN = (t, n) => { let c = 0; const L = S.train[t.id]; for (let i = 0; i < n; i++) c += t.base * Math.pow(t.g, L + i); return Math.ceil(c); };
   function buyCount(t) {
+    if (isOC(t)) {
+      if (buyN !== "max") return buyN;
+      let n = 0; while (n < 500 && ocCostN(t, n + 1) <= S.gold) n++;
+      return Math.max(1, n);
+    }
     const L = S.train[t.id], room = t.max ? t.max - L : 1e9;
     if (buyN !== "max") return Math.max(1, Math.min(buyN, room));
     let n = 0, c = 0;
@@ -3269,6 +3309,12 @@ body.perf .pulse { animation: none; }
     const bar = '<div class="buyBar"><span>Buy</span>' + [1, 10, "max"].map(n => '<button class="btn' + (buyN === n ? " go" : "") + '" data-act="buyN" data-id="' + n + '">' + (n === "max" ? "Max" : "x" + n) + "</button>").join("") + "</div>";
     $("trainBody").innerHTML = bar + ["off", "def", "mana", "fort"].map(cat => '<div class="wsub list" data-sub="' + cat + '">' + TRAIN.filter(t => t.cat === cat).map(t => {
       if (S.maxStage < t.unlock) return '<div class="row lock"><span class="n">' + t.name + '</span><span class="d">' + t.stat + ". Unlocks at stage " + t.unlock + "</span></div>";
+      if (isOC(t)) {
+        const o = OC[t.id], n = buyCount(t), c = ocCostN(t, n), v0 = ocV(t.id), v1 = o.cap ? Math.min(o.cap, o.per * (ocL(t.id) + n)) : o.per * (ocL(t.id) + n);
+        const pc = v => (o.less ? "-" : "+") + String(Number((v * 100).toFixed(1))) + "%";
+        return '<div class="row oc"><span class="n">' + t.name + ' <span class="ocTag">OC</span> Lv ' + ocL(t.id) + '</span><span class="d">' + effText(t, t.max) + '</span><span class="d ocd">Overcharge: ' + pc(v0) + " " + o.stat + '<span class="nx"> →\u00a0' + pc(v1) + "</span></span>" +
+          '<div class="side">' + (o.cap && v0 >= o.cap ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-n="' + n + '" data-cost="' + c + '">' + (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen</button>") + "</div></div>";
+      }
       const L = S.train[t.id], maxed = t.max && L >= t.max, n = buyCount(t), c = trainCostN(t, n), nm = t.mile && nextMile(L);
       return '<div class="row"><span class="n">' + t.name + " Lv " + L + (t.max ? " / " + t.max : "") + '</span><span class="d">' + effText(t, L) + (maxed ? "" : '<span class="nx"> →\u00a0' + effText(t, L + n).replace(/ .*/, "") + "</span>") + "</span>" +
         (nm ? '<span class="d mile">x' + t.mile + " bonus at Lv " + nm + "</span>" : "") + '<div class="side">' +
@@ -3479,7 +3525,9 @@ body.perf .pulse { animation: none; }
       <p>Lumen and shards reset when you ascend, along with training and skills. Echoes never do.</p>`],
     ["Training", `<p>Train spends lumen on upgrades that last for the current run. Each level costs more than the last. New training unlocks as you reach deeper stages, and ascending locks it all again and resets the levels.</p>
       <p><b>Might</b> and <b>Vigor</b> double at levels 25, 50 and 100, then every 50 levels after that. <b>Greed</b> gets x1.25 at the same levels. The other upgrades have a level cap. Use the x1, x10 and Max buttons at the top to buy in bulk.</p>
-      <p>Crit chance, block, life steal and drop chance are capped so they can't reach 100%.</p>`],
+      <p><b>Overcharge</b>: once a capped upgrade is maxed, its button turns gold and keeps going with no level limit. Each Overcharge level costs 1.45x the last and adds a little more: tap damage, attack speed, crit chance, red crit power, skill power, mana, regen, cooldowns, block strength, status resistance, life steal limit or rare luck. Overcharge resets when you ascend, like the rest of training.</p>
+      <p><b>Red crits</b>: crit chance has no cap, and anything past 100% becomes red crit chance. A red crit deals your crit damage times your red crit power (x2 to start, more from Ferocity Overcharge), shown as a big red number with "!!". While Shatter forces crits, your normal crit chance counts as red crit chance.</p>
+      <p>Block, life steal and drop chance are capped so they can't reach 100%. Crit chance has no cap.</p>`],
     ["Defense", `<ul><li><b>Block chance</b>: a blocked hit loses 70% of its damage.</li><li><b>Evasion rating</b>: turns into a chance to dodge a hit completely. The same rating dodges less as stages get harder, so it needs to keep growing. Boss Crushes can't be dodged.</li><li><b>Life steal</b>: heals you for a share of the damage you deal, capped at 15%. It can't heal more than four times your life steal percent of max health each second.</li></ul>
       <p>Stats shows your exact numbers, including your evade chance at the current stage.</p>`],
     ["Status effects", `<p>From stage 6, enemies carry random statuses, shown as colored tags under their health bar. Deeper stages stack more of them: 1 per enemy until stage 19, then 2 from stage 20, 3 from stage 40 and 4 from stage 60. Elites and bosses carry one extra. Every status an enemy carries has its own chance to land on each hit, so a deep enemy can stack several on you at once. Your active statuses show as chips under your mana bar and change how your core looks.</p>
@@ -3621,8 +3669,9 @@ body.perf .pulse { animation: none; }
     });
     if (tab === "stats") renderStats();
     if (tab === "train" && buyN === "max") panel.querySelectorAll('[data-act="train"]').forEach(b => {
-      const t = TRN[b.dataset.id], n = buyCount(t), c = trainCostN(t, n);
+      const t = TRN[b.dataset.id], n = buyCount(t), c = isOC(t) ? ocCostN(t, n) : trainCostN(t, n);
       if (Number(b.dataset.n) === n) return;
+      if (isOC(t)) { markDirty("train"); return; }
       b.dataset.n = n; b.dataset.cost = c; b.textContent = (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen";
       b.classList.toggle("afford", S.gold >= c);
       const nx = b.closest(".row").querySelector(".nx"); if (nx) nx.textContent = " →\u00a0" + effText(t, S.train[t.id] + n).replace(/ .*/, "");
@@ -3819,7 +3868,12 @@ body.perf .pulse { animation: none; }
       markDirty("pack");
     } else if (act === "buyN") { buyN = id === "max" ? "max" : Number(id); markDirty("train"); }
     else if (act === "train") {
-      const t = TRN[id], n = buyCount(t), c = trainCostN(t, n);
+      const t = TRN[id], n = buyCount(t);
+      if (isOC(t)) {
+        const c = ocCostN(t, n); if (S.gold < c) return;
+        sfx("buy", 0, 0); S.gold -= c; S.oc = S.oc || {}; S.oc[id] = ocL(id) + n; recalc(); markDirty("train", "skills", "stats"); return;
+      }
+      const c = trainCostN(t, n);
       if (S.gold < c || S.maxStage < t.unlock || (t.max && S.train[id] >= t.max)) return;
       const before = milesAt(S.train[id]);
       sfx("buy", 0, 0); S.gold -= c; S.train[id] += n; recalc(); markDirty("train", "skills");
