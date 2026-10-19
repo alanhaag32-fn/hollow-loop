@@ -619,7 +619,8 @@ body.perf .pulse { animation: none; }
           </div>
         </section>
         <section class="panel" id="p-skills" hidden>
-          <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on. The level cap rises by 1 every 3 stages you reach this run.</p>
+          <div class="buyBar" id="resBar"></div>
+          <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on. Attack skills only auto-cast while you'd keep the reserve above, so there's always mana for Barrier, Dash and your own casts. The level cap rises by 1 every 3 stages you reach this run.</p>
           <div class="list" id="skillsBody"></div>
         </section>
         <section class="panel" id="p-train" hidden>
@@ -750,7 +751,7 @@ body.perf .pulse { animation: none; }
     { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1 },
     { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4 },
     { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, w: 1, from: 7 },
-    { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8% of your mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12 }
+    { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12 }
   ];
   const VAR = {}; VARIANTS.forEach(v => VAR[v.id] = v);
   const MOVE = { pale: 1.35, bastion: .75, crimson: 1, umbral: 1.15 };
@@ -2217,7 +2218,7 @@ body.perf .pulse { animation: none; }
     unread = 0;
     $("feed").innerHTML = feed.map(f => '<div class="' + f.cls + '"><time>' + f.t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) + "</time>" + f.text + "</div>").join("") || '<p class="note">Nothing yet.</p>';
   }
-  let lastHealFloat = 0, leechPool = 0;
+  let lastHealFloat = 0, leechPool = 0, lastBurnFloat = 0;
   // hits landing within 150ms on the same enemy are added up into one number, so fast attacks don't flood the screen
   function dmgFloat(e, d, crit, tap, red) {
     const now = performance.now();
@@ -2481,7 +2482,7 @@ body.perf .pulse { animation: none; }
       if (e.boss) shake(3, 160);
       if (!landed || heroDown) return;
       if (heavy) { shake(5, 200); floatText("Heavy blow", "hurt", "hero"); }
-      if (e.v.burn) mp = Math.max(0, mp - ST.maxMp * e.v.burn);
+      if (e.v.burn) { const b = Math.min(mp, 100 * e.v.burn); mp -= b; if (b > 1 && performance.now() - lastBurnFloat > 900) { lastBurnFloat = performance.now(); floatText("-" + fmt(b) + " mana", "info", "hero", "#6aa8ff"); } }
 
       if (statusDone) return; statusDone = true;
       if (e.mods.includes("vampiric") && !e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow()));
@@ -2794,6 +2795,7 @@ body.perf .pulse { animation: none; }
     }
     floatText("+" + fmt(g) + " lumen", "gold", e);
     heal(ST.maxHp * (.05 + (has("tide", 4) ? .05 : 0)));
+    mp = Math.min(ST.maxMp, mp + ST.maxMp * (boss ? .25 : elite ? .1 : .03));
     if (has("tide", 4)) mp = Math.min(ST.maxMp, mp + ST.maxMp * .15);
     shatter(e); sfx("shatter", boss || elite, 150);
     if (e.el) e.el.pos.style.visibility = "hidden";
@@ -2915,7 +2917,7 @@ body.perf .pulse { animation: none; }
       // auto-dash only to escape: out of a boss Crush, or away when health is low
       else if (sk.id === "dash") go = !!foes.find(f => !f.dead && f.tele > 0 && f.tele < .7) || (hpPct < .35 && foe);
       else {
-        go = foe;
+        go = foe && mp - skillCost(sk) >= ST.maxMp * (S.manaRes == null ? .3 : S.manaRes);
         if (saveForBarrier && mp - skillCost(sk) < skillCost(SK.barrier)) go = false;
       }
       if (go) cast(sk.id, false);
@@ -3322,6 +3324,8 @@ body.perf .pulse { animation: none; }
     }).join("") + "</div>").join("");
   }
   function renderSkills() {
+    const r = S.manaRes == null ? .3 : S.manaRes;
+    $("resBar").innerHTML = '<span>Auto-cast keeps</span>' + [0, .3, .5].map(v => '<button class="btn' + (Math.abs(r - v) < .01 ? " go" : "") + '" data-act="manaRes" data-id="' + v + '">' + Math.round(v * 100) + "%</button>").join("") + "<span>mana in reserve</span>";
     $("skillsBody").innerHTML = SKILLS.map(sk => {
       if (!unlocked(sk.id)) return '<div class="row lock"><span class="n">' + sk.name + '</span><span class="d">Unlocks at stage ' + sk.unlock + " each run</span></div>";
       const L = lvl(sk.id), c = skillUpCost(sk);
@@ -3508,7 +3512,7 @@ body.perf .pulse { animation: none; }
       <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The plane is endless, so roam as far as you like; the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
     ["Health and mana", `<p><b>Health</b> (green bar) is your life. It regenerates 1% per second, and each kill heals 5%. If it hits zero your core collapses, you drop back one stage and switch to Farming.</p>
-      <p><b>Mana</b> (blue bar) only pays for skills. It regenerates 3% per second before bonuses, so you can't keep every skill going at once. Essence training grows your mana pool (skills cost a fixed amount, so a bigger pool means more casts) and Flow speeds up regen.</p>
+      <p><b>Mana</b> (blue bar) only pays for skills. It regenerates 3% per second before bonuses, and every kill restores 3% (elites 10%, bosses 25%). Auto-cast keeps 30% in reserve by default (change it in Skills). Umbral enemies burn 8 mana per hit, and Static halves regen. Essence training grows your mana pool (skills cost a fixed amount, so a bigger pool means more casts) and Flow speeds up regen.</p>
       <p>Shields from Barrier show as a striped overlay on the health bar and absorb damage first.</p>`],
     ["Stages, elites and bosses", `<p>Each stage has 8 enemies. Every 10 stages the zone changes: new colors, and enemies with more sides and heavier armor.</p>
       <p><b>Elites</b> appear from stage 11 as the 8th enemy of a stage. They have horns and a red ring, 4x health and harder hits, and always drop an item plus 4x lumen. Bosses give 12x lumen.</p>
@@ -3889,6 +3893,7 @@ body.perf .pulse { animation: none; }
     else if (act === "sndToggle") { S.sound = S.sound === false; audioInit(); setVolume(); markDirty("guide"); if (S.sound) setTimeout(() => sfx("buy"), 60); }
     else if (act === "sndVol") { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; audioInit(); setVolume(); markDirty("guide"); setTimeout(() => sfx("buy", 0, 0), 60); }
     else if (act === "perfMode") { S.perf = !S.perf; applyGfx(); markDirty("guide"); }
+    else if (act === "manaRes") { S.manaRes = Number(id); markDirty("skills"); }
     else if (act === "saver") { S.saver = !S.saver; markDirty("guide"); }
     else if (act === "intro") { closeWindow(); showIntro(); return; }
     else if (act === "saveCopy") {
