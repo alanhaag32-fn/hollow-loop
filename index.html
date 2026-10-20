@@ -3298,7 +3298,8 @@ body.perf .pulse { animation: none; }
     if (sk.id === "dash") return "Dash " + Math.round(dashDist(L)) + " units, untouchable for " + dashI(L).toFixed(2) + "s, slicing foes in your path for " + fmt(dashDmg(L)) + " and clearing statuses";
     return "Every hit crits for " + shatterT(L).toFixed(1) + "s with +" + Math.round(shatterCd(L) * 100) + "% crit damage";
   }
-  const skillUpCost = sk => Math.ceil((2 + sk.unlock / 5) * Math.pow(1.2, lvl(sk.id) - 1));
+  // shard cost per skill level: cut to offset the earlier shard nerf (40% cheaper base, +17% per level instead of +20%)
+  const skillUpCost = sk => Math.ceil(.6 * (2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
 
   const skEls = {};
   function buildSkillbar() {
