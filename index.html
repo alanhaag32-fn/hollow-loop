@@ -438,8 +438,12 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .sheetHd .wallet i { color: var(--c1); font-style: normal; font-weight: 600; }
 .ctrls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 /* gear doll and item tiles */
-.doll { max-width: 236px; margin: 2px auto 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 16px; border: 1px solid var(--line); background: radial-gradient(circle at 50% 50%, rgba(123,224,208,.12), rgba(16,12,28,.5) 62%); }
-.dollCore svg { width: 140%; height: 140%; margin: -20%; overflow: visible; }
+.doll { width: max-content; margin: 2px auto 0; display: grid; grid-template-columns: 62px 132px 62px; grid-template-rows: 62px 132px 62px; gap: 12px; justify-items: center; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line); background: radial-gradient(circle at 50% 50%, rgba(123,224,208,.12), rgba(16,12,28,.5) 62%); }
+.dollCore { width: 132px; height: 132px; }
+.dollCore svg { width: 100%; height: 100%; }
+.doll .tile { width: 62px; }
+.doll .tile .tl { font-size: 10px; bottom: 4px; }
+@media (max-width: 360px) { .doll { grid-template-columns: 54px 112px 54px; grid-template-rows: 54px 112px 54px; gap: 8px; padding: 10px; } .dollCore { width: 112px; height: 112px; } .doll .tile { width: 54px; } .doll .tile .tl { font-size: 9px; } }
 .dollCore { aspect-ratio: 1; display: grid; place-items: center; }
 .dollCore i { width: 54%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, #9ff3e6 40%, rgba(123,224,208,.25) 70%, transparent 72%); box-shadow: 0 0 22px rgba(123,224,208,.55); outline: 1.5px dashed rgba(255,255,255,.22); outline-offset: 9px; }
 .dollStat { align-self: center; text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
@@ -3682,10 +3686,15 @@ body.perf .pulse { animation: none; }
     const src = $("heroModel"); if (!src) return "";
     const cl = src.cloneNode(true);
     ["hGrav", "hCrack", "hStatic", "hEclipse", "hEclipseRing", "hBarrier"].forEach(id => { const e = cl.querySelector("#" + id); if (e) e.remove(); });
-    const pos = { hWpn1: [0, -34], hWpn2: [29.4, 17], hWpn3: [-29.4, 17] };
-    for (const id in pos) { const e = cl.querySelector("#" + id); if (e) e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); }
+    // orbitals spaced evenly and slowly circling the core, like in combat
+    const pos = { hWpn1: [0, -38], hWpn2: [32.9, 19], hWpn3: [-32.9, 19] }, ring = document.createElementNS(NS, "g");
+    ring.setAttribute("class", "spinSlow");
+    for (const id in pos) { const e = cl.querySelector("#" + id); if (e) { e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); const o = e.parentNode; if (o.style.display !== "none") ring.appendChild(o); else o.remove(); } }
+    const bob = cl.querySelector(".bob") || cl; bob.appendChild(ring);
+    // a Glaive keeps spinning on its own
+    ring.querySelectorAll("path").forEach(pth => { if (pth.getAttribute("d") === HERO_WEAPON.Glaive) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
     cl.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); cl.removeAttribute("id"); cl.removeAttribute("class"); cl.removeAttribute("style");
-    return '<svg viewBox="-46 -46 92 92" aria-hidden="true">' + cl.outerHTML + "</svg>";
+    return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
   }
   const slotOpen = k => k === "weapon2" ? slot2Open() : k === "weapon3" ? slot3Open() : true;
   const slotPct = k => k === "weapon2" ? Math.round(SLOT2_DMG * 100) : k === "weapon3" ? Math.round(SLOT3_DMG[FR("orb3")] * 100) : 100;
