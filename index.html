@@ -18,7 +18,7 @@
 :root {
   --bg: #f1eff7; --panel: #ffffff; --line: #d8d3e8; --ink: #1c1730; --muted: #6a6486;
   --hero: #0f9d8a; --hurt: #d63a3a; --coin: #b87b00; --accent: #0e93a8; --mana: #2a6fd0; --life: #1f9d55;
-  --c0: #7b768f; --c1: #0e93a8; --c2: #7a45e0; --c3: #e0482a; --c4: #c98a00;
+  --c0: #7b768f; --c1: #0e93a8; --c2: #7a45e0; --c3: #e0482a; --c4: #c98a00; --c5: #d6286f;
   --cork: #c9a27a; --paper: #fffdf8;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -28,14 +28,14 @@
   :root:not([data-theme="light"]) {
     --bg: #14111f; --panel: #1e1a2e; --line: #332d4d; --ink: #ece8f7; --muted: #9a93b8;
     --hero: #7be0d0; --hurt: #ff6b6b; --coin: #ffc83d; --accent: #3cc7d9; --mana: #6aa8ff; --life: #5fd38d;
-    --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d;
+    --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d; --c5: #ff5fa8;
     --cork: #3a2e25; --paper: #262039;
   }
 }
 :root[data-theme="dark"] {
   --bg: #14111f; --panel: #1e1a2e; --line: #332d4d; --ink: #ece8f7; --muted: #9a93b8;
   --hero: #7be0d0; --hurt: #ff6b6b; --coin: #ffc83d; --accent: #3cc7d9; --mana: #6aa8ff; --life: #5fd38d;
-  --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d;
+  --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d; --c5: #ff5fa8;
   --cork: #3a2e25; --paper: #262039;
 }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
@@ -98,7 +98,7 @@ body.noanim .menuDrop button { animation: none; }
 
 .arena {
   --ink: #ece8f7; --muted: #9a93b8; --line: #3a3358;
-  --c0: #b9b5c9; --c1: #4fd3e4; --c2: #b48cff; --c3: #ff8463; --c4: #ffd04d;
+  --c0: #b9b5c9; --c1: #4fd3e4; --c2: #b48cff; --c3: #ff8463; --c4: #ffd04d; --c5: #ff5fa8;
   --hero: #7be0d0; --hurt: #ff6b6b; --coin: #ffc83d;
   position: fixed; inset: 0; background: #120f1c; color: var(--ink); overflow: hidden; touch-action: none;
   user-select: none; -webkit-user-select: none;
@@ -196,7 +196,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 .feed time { color: var(--muted); font-size: 12px; margin-right: 8px; font-variant-numeric: tabular-nums; }
 .badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: #120f22; font-size: 11px; line-height: 16px; text-align: center; font-weight: 700; }
 .feed .r0 { color: var(--c0); } .feed .r1 { color: var(--c1); } .feed .r2 { color: var(--c2); }
-.feed .r3 { color: var(--c3); } .feed .r4 { color: var(--c4); } .feed .bad { color: var(--hurt); } .feed .good { color: var(--hero); }
+.feed .r3 { color: var(--c3); } .feed .r4 { color: var(--c4); } .feed .r5 { color: var(--c5); } .feed .bad { color: var(--hurt); } .feed .good { color: var(--hero); }
 
 .intro { position: fixed; inset: 0; z-index: 60; background: rgba(10,8,20,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .intro[hidden] { display: none; }
@@ -317,7 +317,7 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 .sheet, .menuDrop, .intro {
   --bg: #120f22; --panel: rgba(255,255,255,.06); --line: rgba(255,255,255,.13); --ink: #ece8f7; --muted: #a49dc4;
   --hero: #7be0d0; --hurt: #ff6b6b; --coin: #ffc83d; --accent: #3cc7d9; --mana: #6aa8ff; --life: #5fd38d;
-  --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d; --cork: rgba(92,70,48,.38); --paper: rgba(40,33,64,.92);
+  --c0: #a7a3b8; --c1: #3cc7d9; --c2: #a77bff; --c3: #ff7a59; --c4: #ffc83d; --c5: #ff5fa8; --cork: rgba(92,70,48,.38); --paper: rgba(40,33,64,.92);
   color: var(--ink);
 }
 .sheet { position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 45%, rgba(8,6,18,.2), rgba(4,3,10,.62)); }
@@ -407,13 +407,20 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .list { display: grid; gap: 10px; }
 .note { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
 
-.r0 { --rc: var(--c0); } .r1 { --rc: var(--c1); } .r2 { --rc: var(--c2); } .r3 { --rc: var(--c3); } .r4 { --rc: var(--c4); }
+.r0 { --rc: var(--c0); } .r1 { --rc: var(--c1); } .r2 { --rc: var(--c2); } .r3 { --rc: var(--c3); } .r4 { --rc: var(--c4); } .r5 { --rc: var(--c5); }
 .card { display: grid; grid-template-columns: 44px 1fr; gap: 3px 12px; background: var(--panel); border: 2px solid var(--line); border-left: 6px solid var(--rc, var(--line)); border-radius: 12px; padding: 10px 12px; }
 .card.empty { border-left-color: var(--line); color: var(--muted); }
 .glyph { width: 40px; height: 40px; grid-column: 1; grid-row: 1 / span 6; align-self: center; }
 .card > :not(.glyph) { grid-column: 2; }
 .card.empty .glyph path { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 3 3; }
-.card.r4 .glyph { filter: drop-shadow(0 0 6px var(--rc)); }
+.card.r4 .glyph, .card.r5 .glyph { filter: drop-shadow(0 0 6px var(--rc)); }
+.card .impl { font-size: 12.5px; color: var(--muted); }
+.card .uniq { font-size: 12.5px; color: var(--rc); }
+.card .uniq b { color: var(--rc); }
+.forgeBox { margin-top: 6px; padding: 8px; border-radius: 10px; border: 1px dashed var(--line); display: grid; gap: 6px; }
+.forgeBox .fr { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
+.forgeBox .fr .btn { font-size: 12px; padding: 6px 9px; }
+.forgeBox .pend { color: var(--c4); }
 .nm { font-weight: 600; color: var(--rc); }
 .meta { font-size: 13px; color: var(--muted); }
 .aff { font-size: 13px; }
@@ -688,13 +695,13 @@ body.perf .pulse { animation: none; }
   const SLOTS = [
     { id: "weapon", name: "Orbital", nouns: ["Drone", "Glaive", "Laser", "Swarm", "Hammer", "Coil"], shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack" },
     { id: "armor", name: "Shell", nouns: ["Ring", "Lattice", "Carapace", "Aegis", "Bulwark", "Mirror"], shape: "M18 2 L32 10 L32 26 L18 34 L4 26 L4 10 Z M18 10 L25 14 L25 22 L18 26 L11 22 L11 14 Z", role: "health" },
-    { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Feather"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion" },
+    { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Wake"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion" },
     { id: "charm", name: "Lens", nouns: ["Sigil", "Prism", "Eye", "Moon", "Star", "Cube"], shape: "M2 18 Q18 3 34 18 Q18 33 2 18 Z M18 12 A6 6 0 1 0 18.01 12 Z", role: "crit chance" }
   ];
   const SLOT = {}; SLOTS.forEach(s => SLOT[s.id] = s);
   const LEGACY = {
     weapon: [["Blade", "Edge", "Lance", "Shard"], ["Fang", "Crescent", "Spear", "Shard", "Glaive", "Needle"]], armor: [["Plate", "Shell", "Carapace", "Aegis"]],
-    boots: [["Treads", "Stride", "Drift", "Step"], ["Wake", "Comet", "Drift", "Flare"]], charm: [["Sigil", "Prism", "Glyph", "Core"]]
+    boots: [["Treads", "Stride", "Drift", "Step"], ["Flow", "Comet", "Drift", "Flare"]], charm: [["Sigil", "Prism", "Glyph", "Core"]]
   };
   const HERO_WEAPON = {
     Drone: "M-5 -3 L0 -6 L5 -3 L5 3 L0 6 L-5 3 Z M-10 -1.5 L-5 -1.5 L-5 1.5 L-10 1.5 Z M5 -1.5 L10 -1.5 L10 1.5 L5 1.5 Z",
@@ -738,26 +745,106 @@ body.perf .pulse { animation: none; }
   const nextMile = L => MILES.find(m => m > L);
   const RARITY = [
     { name: "Common", mult: 1, w: 70, n: 0 }, { name: "Magic", mult: 1.5, w: 24, aff: [4, 8], n: 1 }, { name: "Rare", mult: 2.3, w: 5, aff: [8, 15], ramp: 20, cap: 3, n: 2 },
-    { name: "Epic", mult: 3.5, w: .8, aff: [15, 25], ramp: 15, cap: 4, n: 2 }, { name: "Legendary", mult: 5.5, w: .1, aff: [25, 40], ramp: 12, cap: 5, n: 3 }
+    { name: "Epic", mult: 3.5, w: .8, aff: [15, 25], ramp: 15, cap: 4, n: 3 }, { name: "Legendary", mult: 5.5, w: .1, aff: [25, 40], ramp: 12, cap: 5, n: 3 },
+    // Mythic: only after your first Transcend, only from bosses at stage 150+. Always a set item, always has a unique effect
+    { name: "Mythic", mult: 8, w: .1, aff: [40, 60], n: 4, myth: true }
   ];
-  const ARENA_C = ["#b9b5c9", "#4fd3e4", "#b48cff", "#ff8463", "#ffd04d"];
+  const mythOk = (boss, stage) => (S.transcends || 0) >= 1 && boss && stage >= 150;
+  const ARENA_C = ["#b9b5c9", "#4fd3e4", "#b48cff", "#ff8463", "#ffd04d", "#ff5fa8"];
+  // f: how a roll turns into the stat (a Legendary roll of 25-40 is 25-40% attack, but 2.5-4% life steal)
   const AFF = {
-    atk: { l: "attack", t: "pct" }, hp: { l: "health", t: "pct" }, mp: { l: "max mana", t: "pct" }, gold: { l: "lumen", t: "pct" },
-    spd: { l: "attack speed", t: "pct" }, cdmg: { l: "crit damage", t: "pct" }, tap: { l: "tap damage", t: "pct" }, regen: { l: "mana regen", t: "pct" },
-    leech: { l: "life steal", t: "leech" }, block: { l: "block chance", t: "block" }, eva: { l: "evasion rating", t: "pct" }
+    atk: { l: "attack", f: 1 }, hp: { l: "health", f: 1 }, mp: { l: "max mana", f: 1 }, gold: { l: "lumen", f: 1 },
+    spd: { l: "attack speed", f: 1 }, cdmg: { l: "crit damage", f: 1 }, tap: { l: "tap damage", f: 1 }, regen: { l: "mana regen", f: 1 },
+    leech: { l: "life steal", f: .1 }, block: { l: "block chance", f: .25 }, eva: { l: "evasion rating", f: 1 },
+    boss: { l: "damage to bosses", f: 1 }, elite: { l: "damage to elites", f: 1 }, orb: { l: "second and third orbital damage", f: 1 }, redp: { l: "red crit power", f: .5 },
+    dr: { l: "damage reduction", f: .15 }, mcost: { l: "lower mana costs", f: .2 }, move: { l: "move speed", f: .3 },
+    crit: { l: "crit chance", f: .1 }, skill: { l: "skill power", f: .75 }, shrug: { l: "chance to ignore a new status", f: .2 }, shard: { l: "shard find", f: .5 }
   };
   const AFF_KEYS = Object.keys(AFF);
-  function affVal(k, b, st) { const t = AFF[k].t; return t === "leech" ? b / 10 : t === "block" ? b / 4 : b; }
-  function affText(k, b, st) { const v = affVal(k, b, st); return "+" + (AFF[k].t === "flat" ? v : Math.round(v * 10) / 10 + "%") + " " + AFF[k].l; }
+  // which affixes can roll where: a shared pool plus each gear type's own
+  const AFF_SHARED = ["atk", "hp", "mp", "gold", "spd", "cdmg", "tap", "regen", "leech"];
+  const AFF_SLOT = { weapon: ["boss", "elite", "orb", "redp"], armor: ["block", "dr"], boots: ["eva", "mcost", "move"], charm: ["crit", "skill", "shrug", "shard"] };
+  const affPool = slot => AFF_SHARED.concat(AFF_SLOT[slot] || []);
+  function affVal(k, b, st) { return b * ((AFF[k] && AFF[k].f) || 1); }
+  function affText(k, b, st) { const v = affVal(k, b, st); return "+" + Math.round(v * 10) / 10 + "% " + AFF[k].l; }
   const PREFIX = ["Hollow", "Burning", "Quiet", "Fractured", "Prime", "Null", "Gilded", "Warped", "Radiant", "Static", "Drifting", "Inverted"];
   const SETS = [
-    { id: "void", name: "Voidforged", col: "#b48cff", cv: "var(--c2)", b2: "+25% attack", b4: "Nova cooldown -40% and Nova damage x2" },
-    { id: "sun", name: "Sunwake", col: "#ffd04d", cv: "var(--c4)", b2: "+20% attack speed", b4: "Every 8th attack fires 3 extra volleys" },
-    { id: "tide", name: "Tidecaller", col: "#4fd3e4", cv: "var(--c1)", b2: "+30% mana regen", b4: "Kills restore 15% mana and 5% health" },
-    { id: "blood", name: "Bloodglass", col: "#ff6b6b", cv: "var(--hurt)", b2: "+50% crit damage", b4: "Crits heal 2% health" },
-    { id: "choir", name: "Gilded Choir", col: "#f5ecc2", cv: "var(--coin)", b2: "+40% lumen", b4: "+50% loot drop chance" }
+    { id: "void", name: "Voidforged", col: "#b48cff", cv: "var(--c2)", b2: "+25% attack", b4: "Nova damage x2, and Nova marks its target to take +15% damage for 4s", b6: "Nova leaves a void field for 3s that deals 50% attack per second and pulls enemies in" },
+    { id: "sun", name: "Sunwake", col: "#ffd04d", cv: "var(--c4)", b2: "+20% attack speed", b4: "Every 8th attack fires 3 extra volleys", b6: "Those extra volleys fire from every orbital you have" },
+    { id: "tide", name: "Tidecaller", col: "#4fd3e4", cv: "var(--c1)", b2: "+30% mana regen", b4: "Kills restore 5% mana and 1.5% health", b6: "Every 100 mana you spend sends out a wave dealing 300% attack to every enemy in view" },
+    { id: "blood", name: "Bloodglass", col: "#ff6b6b", cv: "var(--hurt)", b2: "+50% crit damage", b4: "Crits heal 1% health (once per volley)", b6: "Red crits make the target bleed for 100% of the hit over 3s" },
+    { id: "choir", name: "Gilded Choir", col: "#f5ecc2", cv: "var(--coin)", b2: "+40% lumen", b4: "+50% loot drop chance", b6: "Bosses drop items one rarity higher, and twice the shards" },
+    { id: "storm", name: "Stormglass", col: "#7fb2ff", cv: "#7fb2ff", b2: "+30% skill power", b4: "Storm strikes Shock enemies: +20% damage taken for 3s", b6: "Shocked enemies explode when they die, dealing 150% attack to enemies nearby" },
+    { id: "bastion", name: "Hollow Bastion", col: "#9fb3c8", cv: "#9fb3c8", b2: "+30% health", b4: "Each block gives +4% damage for 5s, stacking up to 10 times", b6: "Barrier reforms once when it breaks (every 20s)" },
+    { id: "veil", name: "Phantom Veil", col: "#8de0c0", cv: "#8de0c0", b2: "+40% evasion", b4: "Evading gives +50% damage for 1s", b6: "Dash leaves a decoy that draws enemy fire for 2s" },
+    { id: "star", name: "Starforged", col: "#ff5fa8", cv: "var(--c5)", myth: true, b2: "+1% attack per Stardust you've earned (up to +100%)", b4: "Every orbital fires 15% faster for each orbital you have equipped", b6: "+25% red crit chance" }
   ];
   const SET = {}; SETS.forEach(s => SET[s.id] = s);
+  // every Shell, Corona and Lens shape has a built-in bonus that grows with rarity (Rare value shown; Legendary x2, Mythic x3)
+  const IMPL_M = [.4, .7, 1, 1.5, 2, 3];
+  const IMPL = {
+    Ring: ["regen", .005, v => "+" + (v * 100).toFixed(2).replace(/\.?0+$/, "") + "% health regen per second"],
+    Lattice: ["block", .04, v => "+" + pctS(v) + " block chance"],
+    Carapace: ["dr", .04, v => pctS(v) + " less damage taken"],
+    Aegis: ["aegis", .15, v => "+" + pctS(v) + " Barrier strength"],
+    Bulwark: ["thorn", .10, v => "Returns " + pctS(v) + " of damage taken to the attacker"],
+    Mirror: ["reflect", .04, v => pctS(v) + " chance to reflect enemy shots"],
+    Sunburst: ["spd", .05, v => "+" + pctS(v) + " more attack speed"],
+    Petal: ["eva", .15, v => "+" + pctS(v) + " evasion"],
+    Spire: ["move", .05, v => "+" + pctS(v) + " move speed"],
+    Ember: ["burn", .05, v => "Hits burn for " + pctS(v) + " of attack over 2s"],
+    Halo: ["mregen", .10, v => "+" + pctS(v) + " mana regen"],
+    Wake: ["wake", .075, v => "Enemy shots travel " + pctS(Math.min(.4, v)) + " slower"],
+    Sigil: ["skill", .075, v => "+" + pctS(v) + " skill power"],
+    Prism: ["cdmg", .15, v => "+" + pctS(v) + " crit damage"],
+    Eye: ["redp", .1, v => "+" + v.toFixed(2).replace(/\.?0+$/, "") + "x red crit power"],
+    Moon: ["crit", .01, v => "+" + pctS(v) + " crit chance"],
+    Star: ["tap", .2, v => "+" + pctS(v) + " tap damage"],
+    Cube: ["gold", .1, v => "+" + pctS(v) + " lumen"]
+  };
+  const pctS = v => (Math.round(v * 1000) / 10) + "%";
+  const implOf = it => { const d = it && IMPL[noun(it)]; return d ? { k: d[0], v: d[1] * IMPL_M[it.r], txt: d[2](d[1] * IMPL_M[it.r]) } : null; };
+  // orbital traits get stronger at Legendary and Mythic; Coil chains further with every tier
+  const COIL = [[.3, 1], [.3, 1], [.3, 2], [.35, 3], [.4, 4], [.5, 5]];
+  function wTr(slot) {
+    const t = wType(slot), b = WTRAIT[t], it = S.equip[slot], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+    const o = { name: b.name, rate: b.rate, dmg: b.dmg, stun: 0, chain: null };
+    if (t === "Drone") o.rate = [1.3, 1.4, 1.5][hi];
+    if (t === "Glaive") o.dmg = [.55, .65, .75][hi];
+    if (t === "Laser" || t === "Swarm") o.dmg = b.dmg * [1, 1.15, 1.25][hi];
+    if (t === "Hammer") o.stun = [.2, .3, .4][hi];
+    if (t === "Coil") o.chain = COIL[r];
+    return o;
+  }
+  function traitText(it) {
+    const t = HERO_WEAPON[noun(it)] ? noun(it) : "Glaive", r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+    if (t === "Drone") return "Fires " + [30, 40, 50][hi] + "% faster at 80% damage per volley";
+    if (t === "Glaive") return "Hits on the way out and again on the way back, " + [55, 65, 75][hi] + "% each";
+    if (t === "Laser") return "Ignores Shielded blocks and Armored damage reduction" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
+    if (t === "Swarm") return "Can't be dodged by Umbrals and pops boss shard motes like a tap" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
+    if (t === "Hammer") return "Slow, heavy hits with a " + [20, 30, 40][hi] + "% chance to briefly stun the target";
+    const c = COIL[r]; return Math.round(c[0] * 100) + "% chance to chain to " + c[1] + " more " + (c[1] > 1 ? "enemies" : "enemy") + " for 60% damage each";
+  }
+  // unique effects: Legendary and Mythic items roll one from their gear type's list
+  const UNIQ = {
+    split: { s: "weapon", name: "Splitshot", desc: "25% chance a volley also splits into 2 shards that hit other enemies for 40% each" },
+    heat: { s: "weapon", name: "Overheat", desc: "Each orbital hit on the same target adds +3% damage, up to +90%" },
+    exec: { s: "weapon", name: "Executioner", desc: "Orbital hits destroy normal enemies under 15% health outright (double damage to elites and bosses there)" },
+    grav: { s: "weapon", name: "Gravity Well", desc: "Every 10th orbital hit pulls nearby enemies in and stuns them for 0.5s" },
+    phoenix: { s: "armor", name: "Phoenix Core", desc: "Once every 2 minutes, a killing blow revives you at 50% health" },
+    prism: { s: "armor", name: "Prism Shell", desc: "Ignore the first hit every 6 seconds" },
+    last: { s: "armor", name: "Last Stand", desc: "Below 30% health you take 40% less damage" },
+    anchor: { s: "armor", name: "Anchor", desc: "Immune to Gravity and Fracture" },
+    after: { s: "boots", name: "Afterimage", desc: "Dash hits for double damage and leaves you untouchable for 0.5s longer" },
+    flare: { s: "boots", name: "Solar Flare", desc: "While moving, release a pulse every 5s that deals 100% attack to enemies around you" },
+    tail: { s: "boots", name: "Tailwind", desc: "+1% attack speed for every second in combat, up to +30%. Resets when you're hit" },
+    comet: { s: "boots", name: "Comet Trail", desc: "Moving leaves a trail that burns enemies for 20% attack per second" },
+    eye3: { s: "charm", name: "Third Eye", desc: "+50% red crit power" },
+    tlens: { s: "charm", name: "Time Lens", desc: "Crits slow the enemy, and the shots it fires, by 20% for 1s" },
+    focus: { s: "charm", name: "Focus Lens", desc: "Skill crits are always red crits" },
+    lucky: { s: "charm", name: "Lucky Star", desc: "5% of kills drop a bonus item" }
+  };
+  const uniqFor = slot => Object.keys(UNIQ).filter(k => UNIQ[k].s === slot);
   const VARIANTS = [
     { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1 },
     { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4 },
@@ -1074,7 +1161,9 @@ body.perf .pulse { animation: none; }
   // ================= save =================
   function migrateItem(it, from) {
     if (!it) return;
-    const parts = it.name.split(" "), last = parts[parts.length - 1];
+    const parts = it.name.split(" ");
+    if (it.slot === "boots" && parts[parts.length - 1] === "Feather") parts[parts.length - 1] = "Wake";
+    const last = parts[parts.length - 1];
     if (!SLOT[it.slot].nouns.includes(last)) (LEGACY[it.slot] || []).forEach(list => { const i = list.indexOf(last); if (i >= 0) parts[parts.length - 1] = SLOT[it.slot].nouns[i]; });
     it.name = parts.join(" ");
     if (!it.affs) { it.affs = it.aff ? [[it.aff, it.affv]] : []; delete it.aff; delete it.affv; }
@@ -1157,34 +1246,40 @@ body.perf .pulse { animation: none; }
     const sum = {}; AFF_KEYS.forEach(k => sum[k] = 0);
     Object.values(S.equip).forEach(it => (it.affs || []).forEach(([k, b]) => { if (AFF[k]) sum[k] += affVal(k, b, it.stage); }));
     const bp = p("boots"), bq = q("boots"), cq = q("charm");
-    const evaR = bp * tm("agility") * (1 + sum.eva / 100) * (1 + .03 * IT("hepta", "e")) * (1 + .10 * T("w10")) * (1 + .08 * T("o2"));
+    // shape bonuses from Shell, Corona and Lens, and unique effects from anything equipped
+    const I = {}; ["armor", "boots", "charm"].forEach(sl => { const m = implOf(S.equip[sl]); if (m) I[m.k] = (I[m.k] || 0) + m.v; });
+    const iv = k => I[k] || 0, U = new Set(); Object.values(S.equip).forEach(it => { if (it && it.u) U.add(it.u); });
+    const evaR = bp * tm("agility") * (1 + sum.eva / 100) * (1 + iv("eva")) * (hs("veil", 2) ? 1.4 : 1) * (1 + .03 * IT("hepta", "e")) * (1 + .10 * T("w10")) * (1 + .08 * T("o2"));
     return {
-      sets: sc, evaR,
-      atk: echoPow() * starPow() * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
-      maxHp: echoPow() * starPow() * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")),
-      hpRegen: .01 * (1 + .10 * T("b2")),
+      sets: sc, evaR, U,
+      aegis: 1 + iv("aegis"), thorn: iv("thorn"), reflect: iv("reflect"), burn: iv("burn"), wake: Math.min(.4, iv("wake")),
+      move: (1 + iv("move")) * (1 + sum.move / 100), bossDmg: 1 + sum.boss / 100, orbDmg: 1 + sum.orb / 100,
+      shrug: sum.shrug / 100, shardF: 1 + sum.shard / 100, redBonus: hs("star", 6) ? .25 : 0,
+      atk: echoPow() * starPow() * (hs("star", 2) ? 1 + Math.min(1, .01 * (S.stardustTotal || 0)) : 1) * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
+      maxHp: echoPow() * starPow() * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")) * (hs("bastion", 2) ? 1.3 : 1),
+      hpRegen: .01 * (1 + .10 * T("b2")) + iv("regen"),
       maxMp: 100 * tm("essence") * (1 + ocV("essence")) * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
-      mpRegen: .03 * tm("flow") * (1 + ocV("flow")) * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1),
-      spd: (1 + .12 * bq) * tm("haste") * (1 + ocV("haste")) * (1 + .015 * IT("hepta", "n")) * (1 + .02 * T("x3")) * (1 + sum.spd / 100) * (1 + .04 * T("d1")) * (1 + .02 * T("o2")) * (hs("sun", 2) ? 1.2 : 1),
+      mpRegen: .03 * tm("flow") * (1 + ocV("flow")) * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1) * (1 + iv("mregen")),
+      spd: (1 + .12 * bq) * tm("haste") * (1 + ocV("haste")) * (1 + .015 * IT("hepta", "n")) * (1 + .02 * T("x3")) * (1 + sum.spd / 100) * (1 + .04 * T("d1")) * (1 + .02 * T("o2")) * (hs("sun", 2) ? 1.2 : 1) * (1 + iv("spd")),
       // no cap: anything past 100% becomes red crit chance
-      crit: .05 + .035 * cq + tm("precision") + ocV("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10"),
-      redPow: 2 * (1 + ocV("ferocity")),
-      critDmg: 2 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1),
-      tap: .5 * tm("focus") * (1 + ocV("focus")) * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")),
+      crit: .05 + .035 * cq + tm("precision") + ocV("precision") + .02 * T("e2") + .01 * T("b4") + .01 * T("e10") + iv("crit") + sum.crit / 100,
+      redPow: (2 + iv("redp")) * (1 + ocV("ferocity")) * (1 + sum.redp / 100) * (U.has("eye3") ? 1.5 : 1),
+      critDmg: 2 * tm("ferocity") * (1 + .04 * IT("triad", "e")) * (1 + .10 * T("e10")) * (1 + sum.cdmg / 100) * (1 + .15 * T("e3")) * (1 + .05 * T("o4")) * (hs("blood", 2) ? 1.5 : 1) * (1 + iv("cdmg")),
+      tap: .5 * tm("focus") * (1 + ocV("focus")) * (1 + .05 * IT("octa", "n")) * (1 + .10 * T("x3")) * (1 + sum.tap / 100) * (1 + .25 * T("e4")) * (1 + iv("tap")),
       leech: Math.min(.15, sum.leech / 100 + tm("leech") + (.3 * IT("octa", "e") + .5 * T("e9") + .5 * T("w4")) / 100),
-      block: Math.min(.5, (sum.block + IT("quad", "e") + 2 * T("w9") + T("w14")) / 100 + tm("guard")),
-      gold: tm("greed") * (1 + .03 * IT("hex", "n")) * (1 + sum.gold / 100) * Math.pow(1.1, T("f1")) * (1 + .03 * T("o3")) * (hs("choir", 2) ? 1.4 : 1),
+      block: Math.min(.5, (sum.block + IT("quad", "e") + 2 * T("w9") + T("w14")) / 100 + tm("guard") + iv("block")),
+      gold: tm("greed") * (1 + .03 * IT("hex", "n")) * (1 + sum.gold / 100) * Math.pow(1.1, T("f1")) * (1 + .03 * T("o3")) * (hs("choir", 2) ? 1.4 : 1) * (1 + iv("gold")),
       drop: Math.min(.95, .3 * tm("fortune") * (1 + .02 * IT("hex", "e")) * (1 + .05 * T("f2")) * (1 + .03 * T("b4")) * (hs("choir", 4) ? 1.5 : 1)),
       luck: 1 + .1 * T("f3") + .05 * T("o4") + ocV("fortune"),
       setChance: .2 * (1 + .1 * T("f5")),
-      skillPow: tm("insight") * (1 + ocV("insight")) * (1 + .03 * IT("penta", "e")) * (1 + .08 * T("d5")) * (1 + .04 * T("b3")),
+      skillPow: tm("insight") * (1 + ocV("insight")) * (1 + .03 * IT("penta", "e")) * (1 + .08 * T("d5")) * (1 + .04 * T("b3")) * (1 + iv("skill")) * (1 + sum.skill / 100) * (hs("storm", 2) ? 1.3 : 1),
       // Tempo Overcharge trims cooldowns further and lowers the floor from 30% toward 20%
       cdr: Math.max(.3 - Math.min(.1, ocV("tempo") / 3), tm("tempo") * (1 - .05 * T("d2")) * (1 - .02 * IT("penta", "b")) * (1 - ocV("tempo"))),
-      costMult: Math.max(.5, 1 - .05 * T("d3") - .03 * T("o3")),
-      dmgTaken: 1 - Math.min(.45, .03 * T("w3") + .02 * IT("quad", "b")),
+      costMult: Math.max(.35, (1 - .05 * T("d3") - .03 * T("o3")) * (1 - Math.min(.3, sum.mcost / 100))),
+      dmgTaken: Math.max(.3, (1 - Math.min(.45, .03 * T("w3") + .02 * IT("quad", "b"))) * (1 - iv("dr")) * (1 - Math.min(.3, sum.dr / 100))),
       statusDur: Math.max(.4, tm("clarity") * (1 - .03 * IT("hepta", "b"))),
       salv: 1 + .2 * T("f4") + .1 * T("b3") + .03 * IT("hex", "b"),
-      eliteDmg: 1 + .1 * T("o1"),
+      eliteDmg: (1 + .1 * T("o1")) * (1 + sum.elite / 100),
       bigGold: 1 + .1 * T("f9")
     };
   }
@@ -1207,20 +1302,24 @@ body.perf .pulse { animation: none; }
   const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
   function rollRarity(boss, minR, stage) {
     // higher tiers get more common the deeper you go, up to a cap
-    const w = RARITY.map((r, i) => i < minR ? 0 : r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
+    const w = RARITY.map((r, i) => i < minR || (r.myth && !mythOk(boss, stage)) ? 0 : r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
     let t = w.reduce((a, b) => a + b, 0) * Math.random();
     for (let i = 0; i < w.length; i++) { t -= w[i]; if (t <= 0 && w[i] > 0) return i; }
     return Math.max(minR, 0);
   }
-  function makeItem(stage, boss, minR, forceSlot) {
-    const ri = rollRarity(boss, minR || 0, stage), r = RARITY[ri], slot = forceSlot ? SLOTS.find(x => x.id === forceSlot) : pick(SLOTS);
+  function makeItem(stage, boss, minR, forceSlot, up) {
+    let ri0 = rollRarity(boss, minR || 0, stage);
+    if (up) ri0 = Math.min(mythOk(boss, stage) ? 5 : 4, ri0 + up);
+    const ri = ri0, r = RARITY[ri], slot = forceSlot ? SLOTS.find(x => x.id === forceSlot) : pick(SLOTS);
     const power = Math.max(1, Math.round(itemPow(stage) * r.mult * (.9 + Math.random() * .2)));
     const it = { id: S.nextId++, slot: slot.id, r: ri, power, stage, affs: [] };
-    if (ri >= 2 && Math.random() < ST.setChance) it.set = pick(SETS).id;
+    if (r.myth) it.set = pick(SETS).id;
+    else if (ri >= 2 && Math.random() < ST.setChance) it.set = pick(SETS.filter(x => !x.myth)).id;
     it.name = (it.set ? SET[it.set].name : pick(PREFIX)) + " " + pick(slot.nouns);
-    const gd = FR("gild"), count = (r.n || 0) + (gd >= 1 && ri >= 2 ? 1 : 0) + (gd >= 2 && ri === 1 ? 1 : 0) + (gd >= 3 && ri === 4 ? 1 : 0);
-    const keys = AFF_KEYS.slice(), craft = 1 + .1 * FR("craft");
-    for (let i = 0; i < count; i++) {
+    const gd = FR("gild"), count = (r.n || 0) + (gd >= 1 && ri >= 2 ? 1 : 0) + (gd >= 2 && ri === 1 ? 1 : 0) + (gd >= 3 && ri >= 4 ? 1 : 0);
+    const keys = affPool(slot.id), craft = 1 + .1 * FR("craft");
+    if (ri >= 4) it.u = pick(uniqFor(slot.id));
+    for (let i = 0; i < count && keys.length; i++) {
       const k = keys.splice(rnd(keys.length), 1)[0];
       it.affs.push([k, Math.round((r.aff[0] + Math.random() * (r.aff[1] - r.aff[0])) * craft)]);
     }
@@ -1618,7 +1717,8 @@ body.perf .pulse { animation: none; }
         }
       }
       e.vx = (e.vx || 0) + (tx - (e.vx || 0)) * k; e.vy = (e.vy || 0) + (ty - (e.vy || 0)) * k;
-      e.px += e.vx * dt; e.py += e.vy * dt;
+      const sf = e.slowT > performance.now() ? .8 : 1;
+      e.px += e.vx * dt * sf; e.py += e.vy * dt * sf;
       if (e.kb > .05) {
         const push = e.kb * Math.min(1, dt * 6); e.kb -= push;
         const hx = e.px - HERO_X, hy = e.py - HERO_Y, hd = Math.hypot(hx, hy) || 1, nx = e.px + hx / hd * push, ny = e.py + hy / hd * push, mm = e.R + 6;
@@ -1773,6 +1873,11 @@ body.perf .pulse { animation: none; }
     const l = Math.hypot(dx, dy) || 1, v = dashDist(L) / DASH_TIME;
     dashVX = dx / l * v; dashVY = dy / l * v; dashT = DASH_TIME; dashIT = dashI(L); dashHit = new Set(); dashD = dashDmg(L);
     const x0 = HERO_X, y0 = HERO_Y;
+    if (ST.U.has("after")) { dashD *= 2; dashIT += .5; }
+    if (has("veil", 6)) {
+      decoy = { x: x0, y: y0, until: performance.now() + 2000 };
+      if (!reduce) { const g = svgEl("g", { transform: "translate(" + x0.toFixed(1) + " " + y0.toFixed(1) + ")" }); svgEl("circle", { r: 16, fill: "#8de0c0", opacity: .35 }, g); svgEl("circle", { r: 26, fill: "none", stroke: "#8de0c0", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, g); tempFx(g, [{ opacity: .9 }, { opacity: .9, offset: .8 }, { opacity: 0 }], 2000); }
+    }
     dashFx(x0, y0, x0 + dashVX * DASH_TIME, y0 + dashVY * DASH_TIME);
     heroModel.classList.add("dashing");
   }
@@ -1797,7 +1902,8 @@ body.perf .pulse { animation: none; }
     }
     // smooth acceleration toward the stick direction
     const k = 1 - Math.exp(-dt * 18);
-    hvx += (ix * HERO_SPD - hvx) * k; hvy += (iy * HERO_SPD - hvy) * k;
+    const spd = HERO_SPD * (ST ? ST.move : 1);
+    hvx += (ix * spd - hvx) * k; hvy += (iy * spd - hvy) * k;
     if (dashT > 0) {} else if (Math.abs(hvx) + Math.abs(hvy) > .5) {
       HERO_X += hvx * dt; HERO_Y += hvy * dt;
       GROUND = HERO_Y + 40;
@@ -1853,7 +1959,8 @@ body.perf .pulse { animation: none; }
   const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
   function applyStatus(id, sec, force, from) {
     if (heroDown || (shield > 0 && !force)) return;
-    if (!force && ocL("clarity") && !(stT[id] > 0) && Math.random() < ocV("clarity")) return;
+    if (!force && (id === "gravity" || id === "fracture") && ST.U.has("anchor")) return;
+    if (!force && !(stT[id] > 0) && Math.random() < Math.min(.6, (ocL("clarity") ? ocV("clarity") : 0) + ST.shrug)) return;
     const isNew = !(stT[id] > 0);
     stT[id] = Math.max(stT[id] || 0, sec * ST.statusDur);
     if (isNew) { floatText(STATUS[id].name, "status", "hero", STATUS[id].col); sfx("status", 0, 150); }
@@ -2054,7 +2161,7 @@ body.perf .pulse { animation: none; }
   function slotAtk(slot) {
     if (slot !== "weapon2" && slot !== "weapon3") return ST.atk;
     const p1 = S.equip.weapon ? S.equip.weapon.power : 0, p2 = S.equip[slot] ? S.equip[slot].power : 0;
-    return ST.atk * (5 + p2) / (5 + p1) * slotDmg(slot);
+    return ST.atk * (5 + p2) / (5 + p1) * slotDmg(slot) * ST.orbDmg;
   }
   // orbitals glide around the core toward the target's side and keep their muzzles pointed at it
   const ORB = [{ a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 }, { a: 1.57, r: 37, x: 0, y: 37, ux: 0, uy: 1, sp: 0 }, { a: 3.14, r: 43, x: -43, y: 0, ux: -1, uy: 0, sp: 0 }];
@@ -2426,13 +2533,23 @@ body.perf .pulse { animation: none; }
     // crit chance past 100% rolls red crits; while Shatter forces crits, your crit chance becomes red crit chance
     const cc = ST.crit * (st("eclipse") ? .5 : 1);
     const crit = forced || Math.random() < cc;
-    const red = crit && Math.random() < (forced ? cc : cc - 1);
+    const pn = performance.now();
+    let red = crit && Math.random() < (forced ? cc : cc - 1) + ST.redBonus;
+    if (crit && ST.U.has("focus") && (kind === "nova" || kind === "storm")) red = true;
     let dmg = base * (.9 + Math.random() * .2);
     if (crit) dmg *= ST.critDmg * (forced ? 1 + shatterCd(lvl("shatter")) : 1) * (red ? ST.redPow : 1);
     if (e.hp / e.max < .3) dmg *= 1 + .1 * T("e6");
     if (e.fresh) { e.fresh = false; dmg *= 1 + .5 * T("e13"); }
     if (hp > ST.maxHp * .8) dmg *= 1 + .06 * T("x1");
-    if (e.boss) dmg *= (1 + .1 * T("e7")) * (1 + .03 * IT("triad", "b")) * (1 + .1 * FR("boss"));
+    if (e.boss) dmg *= (1 + .1 * T("e7")) * (1 + .03 * IT("triad", "b")) * (1 + .1 * FR("boss")) * ST.bossDmg;
+    if (e.voidT > pn) dmg *= 1.15;
+    if (e.shockT > pn) dmg *= 1.2;
+    if (blockStk > 0 && blockStkT > pn) dmg *= 1 + .04 * blockStk;
+    if (evadeBuffT > pn) dmg *= 1.5;
+    if (kind === "blade") {
+      if (ST.U.has("heat")) { if (heatE === e) heatN = Math.min(30, heatN + 1); else { heatE = e; heatN = 0; } dmg *= 1 + .03 * heatN; }
+      if (ST.U.has("exec") && e.hp / e.max < .15) { if (!e.boss && !e.elite) dmg = Math.max(dmg, e.hp); else dmg *= 2; }
+    }
     if (e.elite) dmg *= ST.eliteDmg;
     if (T("w8") && hp < ST.maxHp * .3) dmg *= 1.5;
     if (e.mods.includes("armored") && kind !== "tap" && wt !== "Laser") dmg *= .7;
@@ -2456,7 +2573,8 @@ body.perf .pulse { animation: none; }
     }
     e.hp -= dmg; if (dmg > 0) e.lastHitT = performance.now();
     dpsLog.push([performance.now(), dmg]);
-    if (wt === "Hammer" && dmg > 0 && e.hp > 0 && Math.random() < .2) {
+    if (dmg > 0 && !e.dead) gearOnHit(e, dmg, kind, crit, red);
+    if (wt === "Hammer" && dmg > 0 && e.hp > 0 && Math.random() < wTr(slot || "weapon").stun) {
       e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
       floatText("Stunned", "info", e);
     }
@@ -2468,7 +2586,7 @@ body.perf .pulse { animation: none; }
       const now = performance.now();
       if (hp - before > ST.maxHp * .02 && now - lastHealFloat > 600) { lastHealFloat = now; floatText("+" + fmt(hp - before), "heal", "hero"); }
     }
-    if (crit) { bump("crit", 1); if (has("blood", 4)) heal(ST.maxHp * .02); }
+    if (crit) { bump("crit", 1); if (has("blood", 4) && pn - bloodT > 90) { bloodT = pn; heal(ST.maxHp * .01); } }
     const show = () => {
       if (kind === "blade" || kind === "storm") slash(crit, slot || "weapon", e);
       else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
@@ -2486,25 +2604,116 @@ body.perf .pulse { animation: none; }
     show();
     if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
   }
-  const effSpd = () => ST.spd * (odT > 0 ? 1 + surgePct(lvl("overdrive")) / 100 : 1) * (st("gravity") ? .7 : 1);
+  const effSpd = () => ST.spd * (odT > 0 ? 1 + surgePct(lvl("overdrive")) / 100 : 1) * (st("gravity") ? .7 : 1) * (ST.U.has("tail") ? 1 + .01 * tailT : 1);
+  // ---------- gear effects ----------
+  let heatE = null, heatN = 0, bloodT = 0, gravN = 0, blockStk = 0, blockStkT = 0, evadeBuffT = 0, tailT = 0, flareT = 0, cometT = 0, prismT = 0, phoenixT = 0, bastT = 0, manaSpent = 0;
+  let decoy = null;
+  const trail = [], fields = [];
+  // damage that skips crits and floats (bleeds, burns, trails, fields, blasts)
+  function dotDmg(e, d) {
+    if (!e || e.dead || heroDown || d <= 0) return;
+    e.hp -= d; e.lastHitT = performance.now(); dpsLog.push([performance.now(), d]);
+    if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
+  }
+  function gearOnHit(e, dmg, kind, crit, red) {
+    const pn = performance.now();
+    if (kind === "nova" && has("void", 4)) e.voidT = pn + 4000;
+    if (kind === "storm" && has("storm", 4)) e.shockT = pn + 3000;
+    if (red && has("blood", 6)) { const dps = dmg / 3; e.bleed = { dps: Math.max(dps, e.bleed && e.bleed.t > 0 ? e.bleed.dps : 0), t: 3 }; }
+    if (kind === "blade" && ST.burn > 0) e.burn = { dps: ST.atk * ST.burn / 2, t: 2 };
+    if (crit && ST.U.has("tlens")) e.slowT = pn + 1000;
+    if (kind === "blade" && ST.U.has("grav") && ++gravN % 10 === 0) {
+      ringFx(e.px, e.py, "#b48cff", 4, .6, 300, 3);
+      foes.forEach(f => { if (f.dead) return; const dx = e.px - f.px, dy = e.py - f.py, d = Math.hypot(dx, dy); if (d > 130) return; if (d > 1) { f.vx = (f.vx || 0) + dx / d * 160; f.vy = (f.vy || 0) + dy / d * 160; } f.stun = Math.max(f.stun || 0, .5); if (f.el) f.el.model.classList.add("stun"); });
+    }
+  }
+  // ticks for set and unique effects that run over time
+  function stepGear(dt) {
+    const pn = performance.now(), U = ST.U, moving = Math.abs(hvx) + Math.abs(hvy) > 40;
+    for (const e of foes) {
+      if (e.dead) continue;
+      if (e.bleed && e.bleed.t > 0) { e.bleed.t -= dt; dotDmg(e, e.bleed.dps * dt); }
+      if (e.burn && e.burn.t > 0) { e.burn.t -= dt; dotDmg(e, e.burn.dps * dt); }
+    }
+    if (U.has("tail")) { if (alive()) tailT = Math.min(30, tailT + dt); } else tailT = 0;
+    if (U.has("flare") && moving && alive()) {
+      flareT += dt;
+      if (flareT >= 5) { flareT = 0; ringFx(HERO_X, HERO_Y, "#ffd04d", 1, 12, 380, 3); foes.forEach(f => { if (!f.dead && Math.hypot(f.px - HERO_X, f.py - HERO_Y) < 130) land(f, ST.atk, "aoe"); }); }
+    }
+    if (U.has("comet") && moving) {
+      cometT += dt;
+      if (cometT >= .15) {
+        cometT = 0; trail.push({ x: HERO_X, y: HERO_Y, t: 2 });
+        if (!reduce && !fxBusy()) tempFx(svgEl("circle", { cx: HERO_X.toFixed(1), cy: HERO_Y.toFixed(1), r: 7, fill: "#ff9a4d", opacity: .5 }), [{ opacity: .55 }, { opacity: 0 }], 2000);
+      }
+    }
+    for (let i = trail.length - 1; i >= 0; i--) { trail[i].t -= dt; if (trail[i].t <= 0) trail.splice(i, 1); }
+    if (trail.length) foes.forEach(f => { if (!f.dead && trail.some(p => Math.hypot(f.px - p.x, f.py - p.y) < f.R + 10)) dotDmg(f, ST.atk * .2 * dt); });
+    for (let i = fields.length - 1; i >= 0; i--) {
+      const F2 = fields[i]; F2.t -= dt;
+      if (F2.t <= 0) { fields.splice(i, 1); continue; }
+      foes.forEach(f => {
+        if (f.dead) return; const dx = F2.x - f.px, dy = F2.y - f.py, d = Math.hypot(dx, dy);
+        if (d > F2.R + f.R) return;
+        dotDmg(f, ST.atk * .5 * dt);
+        if (d > 8 && !f.boss) { f.vx = (f.vx || 0) + dx / d * 220 * dt; f.vy = (f.vy || 0) + dy / d * 220 * dt; }
+      });
+    }
+    if (decoy && decoy.until < pn) decoy = null;
+  }
   function fireOrbital(slot) {
-    const t = wType(slot), tr = WTRAIT[t], base = slotAtk(slot) * tr.dmg;
+    const t = wType(slot), tr = wTr(slot), base = slotAtk(slot) * tr.dmg;
     const T = wDelay(slot);
     throwBlade(false, undefined, slot);
     hit(base, T, "blade", slot);
     if (t === "Glaive") hit(base, Math.round(T * 1.4), "blade", slot);
-    if (t === "Coil" && Math.random() < .3) setTimeout(() => { if (alive()) { throwBlade(false, 1, slot); hit(slotAtk(slot) * .6, wDelay(slot), "blade", slot); } }, 140);
+    if (tr.chain && Math.random() < tr.chain[0]) setTimeout(() => chainZap(enemy, tr.chain[1], slotAtk(slot) * .6, slot), T + 20);
+    if (ST.U.has("split") && Math.random() < .25) setTimeout(() => splitShot(enemy, slotAtk(slot) * .4, slot), T + 10);
   }
-  const orbRate = slot => WTRAIT[wType(slot)].rate;
+  // nearest living foes to a point, skipping some
+  function nearFoes(x, y, n, skip, maxD) {
+    return foes.filter(f => !f.dead && !skip.has(f) && Math.hypot(f.px - x, f.py - y) < (maxD || 1e9)).sort((a, b) => Math.hypot(a.px - x, a.py - y) - Math.hypot(b.px - x, b.py - y)).slice(0, n);
+  }
+  // Coil: lightning jumps from the target to other enemies, one after another
+  function chainZap(from, n, dmg, slot) {
+    if (!from || heroDown) return;
+    const hitSet = new Set([from]); let cur = from;
+    for (let i = 0; i < n; i++) {
+      const nx = nearFoes(cur.px, cur.py, 1, hitSet, 260)[0];
+      if (!nx) break;
+      hitSet.add(nx);
+      const a = cur, b = nx;
+      setTimeout(() => {
+        if (heroDown || b.dead) return;
+        if (!reduce && !fxBusy()) tempFx(svgEl("path", { d: zigzag(a.px, a.py, b.px, b.py, 6, 10), fill: "none", stroke: "#9fe8ff", "stroke-width": 2, class: "glow" }), [{ opacity: 1 }, { opacity: 0 }], 180);
+        land(b, dmg, "blade", slot);
+      }, i * 70);
+      cur = nx;
+    }
+  }
+  function splitShot(from, dmg, slot) {
+    if (!from || heroDown) return;
+    const tg = nearFoes(from.px, from.py, 2, new Set([from]), 300);
+    while (tg.length < 2 && !from.dead) tg.push(from);
+    tg.forEach((f, i) => {
+      if (!reduce && !fxBusy()) { const g = svgEl("circle", { r: 2.6, fill: "#fff" }); moveFx(g, from.px, from.py, f.px, f.py, 140, null, 0, "linear"); }
+      setTimeout(() => { if (!f.dead && !heroDown) land(f, dmg, "blade", slot); }, 140 + i * 20);
+    });
+  }
+  const orbRate = slot => wTr(slot).rate * (has("star", 4) ? 1 + .15 * (1 + has2() + has3()) : 1);
   function heroAttack() {
     attackCount++;
     fireOrbital("weapon");
     if (Math.random() < .04 * T("d6")) setTimeout(() => { if (alive()) { throwBlade(false, 1); hit(ST.atk, wDelay(), "blade"); } }, 120);
-    if (has("sun", 4) && attackCount % 8 === 0) for (let i = 0; i < 3; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(ST.atk * .7, wDelay(), "blade"); } }, 80 * i + 60);
+    if (has("sun", 4) && attackCount % 8 === 0) {
+      const sl = has("sun", 6) ? WS.filter((k, i) => i === 0 || (i === 1 ? has2() : has3())) : ["weapon"];
+      sl.forEach(k => { for (let i = 0; i < 3; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1, k); hit(slotAtk(k) * .7, wDelay(k), "blade", k); } }, 80 * i + 60); });
+    }
   }
   function checkDeath() {
     if (hp > 0) return;
     if ((T("w6") || T("k2")) && swCd <= 0) { hp = ST.maxHp * (T("k2") ? .6 : .3); swCd = T("k2") ? 30 : 60; log("Second wind", "good"); burst(HERO_X, HERO_Y, "#7be0d0", 8); }
+    else if (ST.U.has("phoenix") && performance.now() > phoenixT) { phoenixT = performance.now() + 120000; hp = ST.maxHp * .5; log("Phoenix Core: revived", "good"); burst(HERO_X, HERO_Y, "#ff8a3d", 14); floatText("Phoenix", "info", "hero", "#ff8a3d"); }
     else onDeath();
   }
   function trueDamage(d, label) {
@@ -2517,15 +2726,24 @@ body.perf .pulse { animation: none; }
   function hurt(d, noEvade, from) {
     const dir = from ? fdir(from) : F();
     if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
-    if (!noEvade && !st("gravity") && Math.random() < evadeChance()) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); return false; }
+    const pn = performance.now();
+    if (ST.U.has("prism") && pn > prismT) { prismT = pn + 6000; floatText("Prism", "info", "hero", "#ffffff"); ringFx(HERO_X, HERO_Y, "#ffffff", 1.6, 2.6, 260, 2); return false; }
+    if (!noEvade && !st("gravity") && Math.random() < evadeChance()) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); if (has("veil", 4)) evadeBuffT = pn + 1000; return false; }
     let blocked = false;
-    if (!st("fracture") && Math.random() < ST.block) { d *= .3 - ocV("guard"); blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120); }
+    if (!st("fracture") && Math.random() < ST.block) {
+      d *= .3 - ocV("guard"); blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120);
+      if (has("bastion", 4)) { blockStk = blockStkT > pn ? Math.min(10, blockStk + 1) : 1; blockStkT = pn + 5000; }
+    }
     d *= ST.dmgTaken * (st("fracture") ? 1.2 : 1);
+    if (ST.U.has("last") && hp < ST.maxHp * .3) d *= .6;
+    const hadShield = shield > 0;
     if (shield > 0) { const a = Math.min(shield, d); shield -= a; d -= a; if (a > 0) anim($("hBarrier"), [{ opacity: 1 }, { opacity: .3 }, { opacity: 1 }], 160); }
+    if (hadShield && shield <= 0 && has("bastion", 6) && pn > bastT) { bastT = pn + 20000; shield = shieldMax; shieldT = Math.max(shieldT, 4); floatText("Barrier reforms", "info", "hero", "#9fb3c8"); anim($("hBarrier"), [{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], 260); }
     hp -= d;
+    if (d > 0) tailT = 0;
     const src = from || enemy;
-    if (d > 0 && T("w13") && src && !src.dead && !heroDown) {
-      const e = src, r = d * .1 * T("w13");
+    if (d > 0 && (T("w13") || ST.thorn) && src && !src.dead && !heroDown) {
+      const e = src, r = d * (.1 * T("w13") + ST.thorn);
       e.hp -= r; dpsLog.push([performance.now(), r]);
       if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
     }
@@ -2558,6 +2776,7 @@ body.perf .pulse { animation: none; }
     // on screen, shots are real projectiles you can sidestep; from off screen they still land on their own
     const mx = e.wx != null ? e.wx : e.px, my = e.wy != null ? e.wy : e.py;
     if (!document.hidden && mx > VX0 - 30 && mx < VX1() + 30 && my > VY0 - 30 && my < VY1() + 30) { fireShot(e, heavy, land); return; }
+    if (decoy) return;
     const t = enemyAttackFx(e, heavy);
     if (t > 0 && !document.hidden) setTimeout(() => land(), t); else land();
   }
@@ -2572,20 +2791,28 @@ body.perf .pulse { animation: none; }
   // tougher the deeper you go, and from elites and bosses
   const shotSkill = e => Math.min(1.6, .55 + S.stage / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
   // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
+  // where enemies aim: the core, or the Phantom Veil decoy while it lasts
+  const tgtX = () => decoy ? decoy.x : HERO_X, tgtY = () => decoy ? decoy.y : HERO_Y;
   function leadPt(fromX, fromY, spd, f) {
+    if (decoy) return [decoy.x, decoy.y];
     const d = Math.hypot(HERO_X - fromX, HERO_Y - fromY), t = spd > 0 ? d / spd : .4;
     return [HERO_X + hvx * t * f, HERO_Y + hvy * t * f];
   }
   function steer(o, x, y) { const l = Math.hypot(x - o.x, y - o.y) || 1, sp = Math.hypot(o.vx, o.vy); o.vx = (x - o.x) / l * sp; o.vy = (y - o.y) / l * sp; o.deg = Math.atan2(o.vy, o.vx) * 57.2958; }
   function aimFrom(e) {
-    const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = HERO_X - ax, dy = HERO_Y - ay, l = Math.hypot(dx, dy) || 1, L = MUZZLE[e.v.id] || 22;
+    const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = tgtX() - ax, dy = tgtY() - ay, l = Math.hypot(dx, dy) || 1, L = MUZZLE[e.v.id] || 22;
     return { x: ax + dx / l * L, y: ay + dy / l * L, ux: dx / l, uy: dy / l, d: l, deg: Math.atan2(dy, dx) * 57.2958 };
   }
   function kick(e, px, ms) {
     if (!e.el) return;
     anim(e.el.weapon, [{ transform: "translate(0px,0px)" }, { transform: "translate(0px," + px + "px)", offset: .2 }, { transform: "translate(0px,0px)" }], ms);
   }
-  function addShot(o) { o.t = 0; eshots.push(o); placeShot(o); return o; }
+  function addShot(o) {
+    o.t = 0;
+    const k = (1 - (ST ? ST.wake : 0)) * (o.src && o.src.slowT > performance.now() ? .8 : 1);
+    if (k < 1) { o.vx *= k; o.vy *= k; o.life /= k; if (o.homeT) o.homeT /= k; }
+    eshots.push(o); placeShot(o); return o;
+  }
   function placeShot(o) { if (o.g) o.g.setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ")" + (o.spin ? " rotate(" + (o.t * o.spin).toFixed(0) + ")" : o.deg != null ? " rotate(" + o.deg.toFixed(1) + ")" : "")); }
   function killShot(o, burst) {
     const i = eshots.indexOf(o); if (i >= 0) eshots.splice(i, 1);
@@ -2602,7 +2829,7 @@ body.perf .pulse { animation: none; }
         const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
         svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
         svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
-        const o = addShot({ g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
+        const o = addShot({ src: e, g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
         const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
       }, i * 110));
       return;
@@ -2613,7 +2840,7 @@ body.perf .pulse { animation: none; }
       const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
       svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
       svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-      addShot({ g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
+      addShot({ src: e, g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
       return;
     }
     if (id === "bastion") {
@@ -2628,7 +2855,7 @@ body.perf .pulse { animation: none; }
         const g = svgEl("g", {}, fx); g.style.color = tc;
         svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
         svgEl("circle", { r: 2.2, fill: "#fff" }, g);
-        addShot({ g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
+        addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
       }, C);
       void a0;
       return;
@@ -2668,7 +2895,7 @@ body.perf .pulse { animation: none; }
       o.t += dt;
       if (o.home && o.t < o.homeT && !heroDown) {
         // turn toward the core, limited by the shot's turn rate
-        const want = Math.atan2(HERO_Y - o.y, HERO_X - o.x), cur = Math.atan2(o.vy, o.vx), sp = Math.hypot(o.vx, o.vy);
+        const want = Math.atan2(tgtY() - o.y, tgtX() - o.x), cur = Math.atan2(o.vy, o.vx), sp = Math.hypot(o.vx, o.vy);
         let dA = ((want - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI; dA = Math.max(-o.home * dt, Math.min(o.home * dt, dA));
         o.vx = Math.cos(cur + dA) * sp; o.vy = Math.sin(cur + dA) * sp; if (!o.spin) o.deg = (cur + dA) * 57.2958;
       }
@@ -2681,7 +2908,11 @@ body.perf .pulse { animation: none; }
         }
         continue;
       }
-      if (!(dashIT > 0) && !heroDown && Math.hypot(HERO_X - o.x, HERO_Y - o.y) < o.r + HERO_HIT) { sparks(o.x, o.y, 4, o.col, 16); o.hit(); killShot(o, false); continue; }
+      if (!(dashIT > 0) && !heroDown && Math.hypot(HERO_X - o.x, HERO_Y - o.y) < o.r + HERO_HIT) {
+        // Mirror shells can bounce the shot back at whoever fired it
+        if (ST.reflect > 0 && o.src && !o.src.dead && Math.random() < ST.reflect) { floatText("Reflect", "info", "hero", "#cfe9ff"); sparks(o.x, o.y, 4, "#cfe9ff", 16); land(o.src, ST.atk * 2, "aoe"); killShot(o, false); continue; }
+        sparks(o.x, o.y, 4, o.col, 16); o.hit(); killShot(o, false); continue;
+      }
       if (o.t >= o.life) killShot(o, true);
     }
   }
@@ -2843,7 +3074,12 @@ body.perf .pulse { animation: none; }
     if (e.mods.includes("volatile")) setTimeout(() => { burst(e.px, e.py, "#ff8463", 12); shake(6, 300); trueDamage(ST.maxHp * .25 * modPow(), "Blast"); }, 150);
     const g = Math.ceil(lumenAt(S.stage) * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
     addGold(g, true); S.totalKills++;
-    if (!e.child) { const sa = shardAmt(S.stage); if (boss) addShards(4 * sa, e); else if (elite) addShards(2 * sa, e); else if (Math.random() < .08) addShards(sa, e); }
+    if (!e.child) { const sa = shardAmt(S.stage) * ST.shardF; if (boss) addShards(Math.round(4 * sa * (has("choir", 6) ? 2 : 1)), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
+    // Stormglass: shocked enemies blow up (blast kills don't chain)
+    if (e.shockT > performance.now() && has("storm", 6) && !e.blastKill) {
+      ringFx(e.px, e.py, "#7fb2ff", .6, 6, 320, 3);
+      foes.forEach(f => { if (f !== e && !f.dead && Math.hypot(f.px - e.px, f.py - e.py) < 90 + f.R) { f.blastKill = true; dotDmg(f, ST.atk * 1.5); if (!f.dead) f.blastKill = false; } });
+    }
     bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
     const fam = FAM[e.sides], kk = boss ? "b" : elite ? "e" : "n";
     if (fam) {
@@ -2860,16 +3096,17 @@ body.perf .pulse { animation: none; }
       markDirty("index");
     }
     floatText("+" + fmt(g) + " lumen", "gold", e);
-    heal(ST.maxHp * (.05 + (has("tide", 4) ? .05 : 0)));
+    heal(ST.maxHp * (.05 + (has("tide", 4) ? .015 : 0)));
     mp = Math.min(ST.maxMp, mp + ST.maxMp * (boss ? .25 : elite ? .1 : .03));
-    if (has("tide", 4)) mp = Math.min(ST.maxMp, mp + ST.maxMp * .15);
+    if (has("tide", 4)) mp = Math.min(ST.maxMp, mp + ST.maxMp * .05);
     shatter(e); sfx("shatter", boss || elite, 150);
     if (e.el) e.el.pos.style.visibility = "hidden";
     let best = -1;
     if (boss) {
-      best = receive(makeItem(S.stage, true, 1)).r;
-      best = Math.max(best, receive(makeItem(S.stage, true, 1)).r);
-      if (Math.random() < .2) best = Math.max(best, receive(makeItem(S.stage, true, 2)).r);
+      const up = has("choir", 6) ? 1 : 0;
+      best = receive(makeItem(S.stage, true, 1, null, up)).r;
+      best = Math.max(best, receive(makeItem(S.stage, true, 1, null, up)).r);
+      if (Math.random() < .2) best = Math.max(best, receive(makeItem(S.stage, true, 2, null, up)).r);
       log(e.name + " destroyed", "good");
       if (Math.random() < .25 * T("k4")) { S.echoes++; S.echoesTotal++; markDirty("tree"); log("Midas: the boss left an echo", "r4"); }
     } else if (elite) {
@@ -2877,6 +3114,7 @@ body.perf .pulse { animation: none; }
       if (Math.random() < .15 * T("f12")) best = Math.max(best, receive(makeItem(S.stage, false, 1)).r);
       log(e.name + " destroyed", "good");
     } else if (!e.child && Math.random() < ST.drop) best = receive(makeItem(S.stage, false, 0)).r;
+    if (!e.child && ST.U.has("lucky") && Math.random() < .05) best = Math.max(best, receive(makeItem(S.stage, boss, 0)).r);
     if (best >= 1) setTimeout(() => { lootBeam(best, e.px, e.py); sfx("loot", best, 200); }, 250);
     const splits = e.mods.includes("splitting") && !e.child;
     if (splits) log(e.name + " splits apart", "r3");
@@ -2929,13 +3167,13 @@ body.perf .pulse { animation: none; }
   const skillMaxAll = () => SKILL_MAX + 5 * FR("mast");
   const skillCap = () => Math.min(skillMaxAll(), 4 + 2 * FR("mast") + Math.floor(S.maxStage / 3));
   const capStage = L => Math.max(1, 3 * (L - 4 - 2 * FR("mast")));
-  const skillCd = sk => sk.cd * ST.cdr * (1 - .01 * (lvl(sk.id) - 1)) * (sk.id === "nova" && has("void", 4) ? .6 : 1);
+  const skillCd = sk => sk.cd * ST.cdr * (1 - .01 * (lvl(sk.id) - 1));
   // each skill level adds 6% power and takes 1% off that skill's cooldown
   const skMult = L => 1 + .06 * (L - 1);
   const novaDmg = L => ST.atk * 2.5 * skMult(L) * ST.skillPow * (has("void", 4) ? 2 : 1);
   const stormN = L => 6 + Math.floor(L / 10) + (T("d8") ? 3 : 0);
   const stormDmg = L => ST.atk * .45 * skMult(L) * ST.skillPow;
-  const barrierAmt = L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * (1 + .2 * T("w7"));
+  const barrierAmt = L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * (1 + .2 * T("w7")) * ST.aegis;
   const surgePct = L => 50 + 2.5 * (L - 1), surgeT = L => 6 + .1 * (L - 1) + T("d4");
   // Dash: a quick burst in the direction you're moving (or away from danger), untouchable while it lasts,
   // slicing every foe it passes through and shaking off statuses
@@ -2948,7 +3186,10 @@ body.perf .pulse { animation: none; }
       if (manual && unlocked(id) && !(cds[id] > 0)) floatText(sk.foe && !alive() ? "No target" : "Need mana", "info", "hero");
       return false;
     }
-    mp -= skillCost(sk); cds[id] = skillCd(sk);
+    const cost = skillCost(sk);
+    mp -= cost; cds[id] = skillCd(sk);
+    // Tidecaller 6: every 100 mana spent releases a wave
+    if (has("tide", 6)) { manaSpent += cost; while (manaSpent >= 100) { manaSpent -= 100; setTimeout(tideWave, 120); } }
     sfx(id === "shatter" ? "shatterSkill" : id, 0, 0);
     if (T("k3")) for (const k in cds) if (k !== id && cds[k] > 0) cds[k] = Math.max(0, cds[k] - 1);
     if (Math.random() < .04 * T("d13")) { cds[id] = 0; floatText("Echo cast", "info", "hero"); }
@@ -2956,6 +3197,7 @@ body.perf .pulse { animation: none; }
     if (id === "nova") {
       const d = novaDmg(L);
       novaFx(); hit(d, 220, "nova");
+      if (has("void", 6) && enemy) { const tg = enemy; setTimeout(() => { if (!tg.dead) voidField(tg.px, tg.py); }, 220); }
       if (T("e8")) setTimeout(() => { if (alive()) { novaFx(); hit(d, 220, "nova"); } }, 350);
     } else if (id === "barrier") {
       shield = shieldMax = barrierAmt(L); shieldT = 8 + .1 * (L - 1);
@@ -2972,6 +3214,15 @@ body.perf .pulse { animation: none; }
     } else if (id === "shatter") { markT = shatterT(L); crackFx(); }
     bump("cast", 1);
     return true;
+  }
+  function voidField(x, y) {
+    fields.push({ x, y, R: 70, t: 3 });
+    if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 70, fill: "rgba(122,69,224,.18)", stroke: "#b48cff", "stroke-width": 2, "stroke-dasharray": "6 5" }), [{ opacity: 0 }, { opacity: 1, offset: .1 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 3000);
+  }
+  function tideWave() {
+    if (heroDown) return;
+    ringFx(HERO_X, HERO_Y, "#4fd3e4", 1, 26, 520, 4);
+    foes.forEach(f => { if (!f.dead && inView(f)) land(f, ST.atk * 3, "aoe"); });
   }
   function autoCast() {
     if (heroDown || !ST) return;
@@ -3251,6 +3502,7 @@ body.perf .pulse { animation: none; }
     if (swCd > 0) swCd -= dt;
     for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
     heal(ST.maxHp * ST.hpRegen * dt);
+    stepGear(dt);
     const lp = 1 + ocV("leech");
     leechPool = Math.min(ST.maxHp * ST.leech * 3 * lp, leechPool + ST.maxHp * ST.leech * 4 * lp * dt);
     mp = Math.min(ST.maxMp, mp + ST.maxMp * ST.mpRegen * dt * (st("static") ? .5 : 1));
@@ -3274,6 +3526,7 @@ body.perf .pulse { animation: none; }
   }
   function stepFoe(e, dt) {
     if (e.dead || !foes.includes(e)) return;
+    if (e.slowT > performance.now()) dt *= .8;
     // Regenerating: heals only after 2.5s without being hit, so steady damage keeps it shut off
     if (e.mods.includes("regen") && performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * dt);
     if (e.stun > 0) { e.stun -= dt; if (e.stun <= 0) e.el.model.classList.remove("stun"); }
@@ -3303,7 +3556,9 @@ body.perf .pulse { animation: none; }
   function itemCard(it, mode, label) {
     const slot = SLOT[it.slot], r = RARITY[it.r];
     const tr = it.slot === "weapon" ? WTRAIT[HERO_WEAPON[noun(it)] ? noun(it) : "Glaive"] : null;
-    const traitL = tr ? '<div class="trait"><b>' + tr.name + "</b>: " + tr.desc + "</div>" : "";
+    const im = implOf(it);
+    const traitL = (tr ? '<div class="trait"><b>' + tr.name + "</b>: " + traitText(it) + "</div>" : "") + (im ? '<div class="impl">' + noun(it) + ": " + im.txt + "</div>" : "") +
+      (it.u && UNIQ[it.u] ? '<div class="uniq"><b>' + UNIQ[it.u].name + "</b>: " + UNIQ[it.u].desc + "</div>" : "");
     const affs = (it.affs || []).map(([k, b]) => '<div class="aff">' + affText(k, b, it.stage) + "</div>").join("");
     const setl = it.set ? '<div class="setl" style="color:' + SET[it.set].cv + '">' + SET[it.set].name + " set</div>" : "";
     let cmp = "", acts = "";
@@ -3321,7 +3576,7 @@ body.perf .pulse { animation: none; }
       }
       acts = '<div class="acts"><button class="btn go" data-act="eq" data-id="' + it.id + '">' + (two ? "Equip main" : "Equip") + "</button>" + (two ? '<button class="btn go" data-act="eq2" data-id="' + it.id + '">Equip second</button>' : "") + (two && slot3Open() ? '<button class="btn go" data-act="eq3" data-id="' + it.id + '">Equip third</button>' : "") + '<button class="btn" data-act="sv" data-id="' + it.id + '">Salvage +' + fmt(salvValue(it)) + " lumen" + (salvShards(it) ? ", +" + salvShards(it) + (salvShards(it) > 1 ? " shards" : " shard") : "") + "</button></div>";
     }
-    return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + "</div>";
+    return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + forgeUI(it) + "</div>";
   }
   // what an item's power actually gives, in plain numbers
   function itemMain(it) {
@@ -3331,11 +3586,52 @@ body.perf .pulse { animation: none; }
     if (it.slot === "boots") return "+" + Math.round(12 * qq) + "% attack speed, " + fmt(it.power) + " evasion";
     return "+" + (3.5 * qq).toFixed(1) + "% crit chance";
   }
+  // ---- Reforge: after your first Transcend, once you reach stage 150 in a cycle ----
+  const canForge = () => (S.transcends || 0) >= 1 && cycleBest() >= TRANS_AT;
+  let rfOpen = null, rfPend = null;
+  const findItem = id => Object.values(S.equip).find(x => x && x.id === id) || S.inv.find(x => x.id === id);
+  const honeCost = it => Math.ceil(3 * shardAmt(it.stage || 1) * Math.max(1, it.r) * Math.pow(1.5, it.rr || 0));
+  const reforgeCost = it => 3 * honeCost(it);
+  const rollAff = it => { const R = RARITY[it.r]; return Math.round((R.aff[0] + Math.random() * (R.aff[1] - R.aff[0])) * (1 + .1 * FR("craft"))); };
+  function forgeUI(it) {
+    if (!canForge() || !(it.affs && it.affs.length) || !RARITY[it.r].aff) return "";
+    if (rfOpen !== it.id) return '<div class="acts"><button class="btn" data-act="rfOpen" data-id="' + it.id + '">Reforge</button></div>';
+    const hc = honeCost(it), rc = reforgeCost(it);
+    let h = '<div class="forgeBox"><div class="fr"><span>Hone rerolls a value. Reforge swaps a stat for another (only one stat per item can ever be reforged). Each roll on this item costs 1.5x more.</span></div>';
+    it.affs.forEach(([k, b], i) => {
+      const pend = rfPend && rfPend.id === it.id && rfPend.i === i;
+      h += '<div class="fr"><span>' + affText(k, b, it.stage) + (it.rf === i ? " (reforged)" : "") + "</span>";
+      if (pend) h += '<span class="pend">New: ' + affText(rfPend.k, rfPend.b, it.stage) + '</span><span><button class="btn go" data-act="rfKeep" data-id="' + it.id + '">Keep new</button> <button class="btn" data-act="rfOld" data-id="' + it.id + '">Keep old</button></span>';
+      else if (!rfPend || rfPend.id !== it.id) h += '<span><button class="btn' + (S.shards >= hc ? "" : " dim") + '" data-act="rfHone" data-id="' + it.id + '" data-i="' + i + '">Hone ' + fmt(hc) + "</button>" +
+        (it.rf == null || it.rf === i ? ' <button class="btn' + (S.shards >= rc ? "" : " dim") + '" data-act="rfRe" data-id="' + it.id + '" data-i="' + i + '">Reforge ' + fmt(rc) + "</button>" : "") + "</span>";
+      h += "</div>";
+    });
+    return h + '<div class="fr"><span>Costs are in shards. You have ' + fmt(S.shards) + '.</span><button class="btn" data-act="rfOpen" data-id="' + it.id + '">Close</button></div></div>';
+  }
+  function forgeAct(act, id, i) {
+    const it = findItem(id); if (!it) return;
+    if (act === "rfOpen") { rfOpen = rfOpen === id ? null : id; rfPend = null; }
+    else if (act === "rfHone" || act === "rfRe") {
+      if (!canForge() || rfPend) return;
+      const re = act === "rfRe", c = re ? reforgeCost(it) : honeCost(it);
+      if (S.shards < c || !it.affs[i] || (re && it.rf != null && it.rf !== i)) return;
+      S.shards -= c; it.rr = (it.rr || 0) + 1;
+      let k = it.affs[i][0];
+      if (re) { const have = it.affs.map(a => a[0]).filter((x, j) => j !== i), pool = affPool(it.slot).filter(x => !have.includes(x) && x !== k); if (pool.length) k = pick(pool); it.rf = i; }
+      rfPend = { id, i, k, b: rollAff(it) };
+      sfx("chord", 0, 0);
+    } else if (act === "rfKeep" || act === "rfOld") {
+      if (!rfPend || rfPend.id !== id) return;
+      if (act === "rfKeep") { it.affs[rfPend.i] = [rfPend.k, rfPend.b]; recalc(); }
+      rfPend = null;
+    }
+    markDirty("gear", "pack", "stats"); save();
+  }
   function renderStats() {
     const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
     $("statsBody").innerHTML =
-      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], slot3Open() ? ["Third orbital", has3() ? wType("weapon3") + " (" + WTRAIT[wType("weapon3")].name + "), " + fmt(slotAtk("weapon3")) + " attack" : "Empty"] : null, ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
-      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((.7 + ocV("guard")) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
+      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], slot3Open() ? ["Third orbital", has3() ? wType("weapon3") + " (" + WTRAIT[wType("weapon3")].name + "), " + fmt(slotAtk("weapon3")) + " attack" : "Empty"] : null, ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+      G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((.7 + ocV("guard")) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Move speed", pct(ST.move, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
       G("Mana and skills", [["Mana", fmt(Math.max(0, mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
       G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
       G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
@@ -3358,8 +3654,9 @@ body.perf .pulse { animation: none; }
     const sc = ST.sets, ids = Object.keys(sc);
     h += '<div class="wsub" data-sub="sets"><div class="setsum">' + (ids.length ? ids.map(id => {
       const s = SET[id], n = sc[id];
-      return '<div><b style="color:' + s.cv + '">' + s.name + " " + n + '/4</b></div><div class="' + (n >= 2 ? "" : "off") + '">2 pieces: ' + s.b2 + '</div><div class="' + (n >= 4 ? "" : "off") + '">4 pieces: ' + s.b4 + "</div>";
-    }).join('<div style="height:8px"></div>') : '<span class="off">Set items drop at Rare or better. Wear 2 or 4 pieces of one set for bonuses.</span>') + "</div></div>";
+      return '<div><b style="color:' + s.cv + '">' + s.name + " " + n + '/6</b></div><div class="' + (n >= 2 ? "" : "off") + '">2 pieces: ' + s.b2 + '</div><div class="' + (n >= 4 ? "" : "off") + '">4 pieces: ' + s.b4 + '</div><div class="' + (n >= 6 ? "" : "off") + '">6 pieces: ' + s.b6 + "</div>";
+    }).join('<div style="height:8px"></div>') : '<span class="off">Set items drop at Rare or better. Wear 2, 4 or 6 pieces of one set for bonuses (6 needs the third orbital slot).</span>') + "</div>" +
+      '<div class="setsum" style="margin-top:10px"><div><b>All sets</b></div>' + SETS.filter(x => !sc[x.id]).map(x => '<div style="margin-top:6px"><b style="color:' + x.cv + '">' + x.name + "</b>" + (x.myth ? " (Mythic only)" : "") + '</div><div class="off">2: ' + x.b2 + '</div><div class="off">4: ' + x.b4 + '</div><div class="off">6: ' + x.b6 + "</div>").join("") + "</div></div>";
     $("gearBody").innerHTML = h;
   }
   function renderPack() {
@@ -3684,9 +3981,11 @@ body.perf .pulse { animation: none; }
       <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Dash</b> (stage 30): a quick burst in the direction you're moving (or away from the nearest enemy). You're untouchable while it lasts, it slices every enemy you pass through, and it shakes off all statuses. On auto-cast it only fires to escape a boss Crush or when your health is low.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
     ["Gear and loot", `<p>Your core has four slots, each shown on the core itself:</p>
-      <ul><li><b>Orbital</b>: attack. A weapon that circles your core and fires on its own. Each type attacks differently and has its own trait:<ul><li><b>Drone</b> (Rapid): twin bolts, 30% faster at 80% damage.</li><li><b>Glaive</b> (Returning): thrown and spins back, hitting twice for 55% each.</li><li><b>Laser</b> (Piercing): instant beam that ignores Shielded and Armored.</li><li><b>Swarm</b> (Seeking): three homing shards that Umbrals can't dodge, and they pop boss motes.</li><li><b>Hammer</b> (Crushing): drops from above, slower but 160% damage, with a 20% chance to stun.</li><li><b>Coil</b> (Chaining): lightning with a 30% chance to arc a second strike.</li></ul>From stage 25 you permanently unlock a <b>second orbital</b> slot (and after transcending, the Star Forge can open a third). It orbits the other way, fires on its own timer at 60% damage, and auto-equip fills it with your second-best orbital. Mix traits, like a Laser for armored foes and a Swarm for Umbrals.</li><li><b>Shell</b>: health. A spinning barrier around the core.</li><li><b>Corona</b>: attack speed and evasion rating. A ring of light.</li><li><b>Lens</b>: crit chance. A small satellite.</li></ul>
-      <p>Rarity goes Common, Magic, Rare, Epic, Legendary. Higher rarity means much more power: Magic 1.5x, Rare 2.3x, Epic 3.5x, Legendary 5.5x. Magic rolls 1 bonus stat, Rare and Epic roll 2, and Legendary rolls 3. Item power also grows 13% per stage, so drops from deeper stages quickly beat old gear. Each item card shows exactly what it gives and how it compares to what you wear, in percent.</p>
-      <p><b>Sets</b> drop at Rare or better: Voidforged, Sunwake, Tidecaller, Bloodglass and Gilded Choir. Wearing 2 or 4 pieces of one set gives bonuses and an aura around your core.</p>
+      <ul><li><b>Orbital</b>: attack. A weapon that circles your core and fires on its own. Each type attacks differently and has its own trait:<ul><li><b>Drone</b> (Rapid): twin bolts, 30% faster at 80% damage.</li><li><b>Glaive</b> (Returning): thrown and spins back, hitting twice for 55% each.</li><li><b>Laser</b> (Piercing): instant beam that ignores Shielded and Armored.</li><li><b>Swarm</b> (Seeking): three homing shards that Umbrals can't dodge, and they pop boss motes.</li><li><b>Hammer</b> (Crushing): drops from above, slower but 160% damage, with a 20% chance to stun.</li><li><b>Coil</b> (Chaining): lightning with a 30% chance to chain to another enemy for 60%. Better Coils chain further: 2 enemies at Rare, 3 at Epic, 4 at Legendary, 5 at Mythic.</li></ul>Legendary and Mythic orbitals have stronger traits (shown on the item).From stage 25 you permanently unlock a <b>second orbital</b> slot (and after transcending, the Star Forge can open a third). It orbits the other way, fires on its own timer at 60% damage, and auto-equip fills it with your second-best orbital. Mix traits, like a Laser for armored foes and a Swarm for Umbrals.</li><li><b>Shell</b>: health. A spinning barrier around the core.</li><li><b>Corona</b>: attack speed and evasion rating. A ring of light.</li><li><b>Lens</b>: crit chance. A small satellite.</li></ul>
+      <p>Every Shell, Corona and Lens shape also has a <b>built-in bonus</b> that grows with rarity. Shells: Ring (health regen), Lattice (block), Carapace (less damage taken), Aegis (Barrier strength), Bulwark (returns damage), Mirror (reflects shots). Coronas: Sunburst (attack speed), Petal (evasion), Spire (move speed), Ember (burning hits), Halo (mana regen), Wake (slower enemy shots). Lenses: Sigil (skill power), Prism (crit damage), Eye (red crit power), Moon (crit chance), Star (tap damage), Cube (lumen).</p>
+      <p>Rarity goes Common, Magic, Rare, Epic, Legendary, Mythic. Higher rarity means much more power: Magic 1.5x, Rare 2.3x, Epic 3.5x, Legendary 5.5x, Mythic 8x. Magic rolls 1 bonus stat, Rare 2, Epic and Legendary 3, Mythic 4. Some bonus stats only roll on one gear type, like boss damage on Orbitals or crit chance on Lenses. Legendary and Mythic items also carry a <b>unique effect</b>. Mythics only drop after your first Transcend, from bosses at stage 150 or deeper, and are always set items. Item power also grows 13% per stage, so drops from deeper stages quickly beat old gear. Each item card shows exactly what it gives and how it compares to what you wear, in percent.</p>
+      <p><b>Sets</b> drop at Rare or better: Voidforged, Sunwake, Tidecaller, Bloodglass, Gilded Choir, Stormglass, Hollow Bastion and Phantom Veil, plus Starforged on Mythics only. Wearing 2, 4 or 6 pieces of one set gives bonuses and an aura around your core. The Sets tab in Gear lists them all; 6 pieces needs the third orbital slot.</p>
+      <p><b>Reforge</b>: after your first Transcend, once you reach stage 150 in a cycle, items get a Reforge button. Hone rerolls one bonus stat's value; Reforge swaps one bonus stat for another from that gear type's list (only one stat per item can ever be reforged). You see the new roll and choose to keep it or the old one. Both cost shards, and every roll on the same item costs 1.5x more.</p>
       <p>Better items equip themselves. The rest go to your Pack, where you can equip or salvage them for lumen. Auto-salvage clears low-rarity junk for you.</p>`],
     ["Currencies", `<ul><li><b>Lumen</b>: scattered light from every shape you destroy. Spend it in Train. It also comes from salvage and bounties.</li><li><b>Shards</b>: crystal fragments of shattered shapes. Spend them on skill upgrades. Normal enemies drop them 8% of the time, elites always drop 2 portions and bosses 4. Salvaging Epic or Legendary gear and finishing bounties also gives shards. Each portion grows every 12 stages. Shards are scarce on purpose: you won't be able to max every skill at each level cap, so choose which ones to push.</li><li><b>Echoes</b>: earned by ascending and from Gold seal bounties. Spend them on the permanent web.</li></ul>
       <p>Lumen and shards reset when you ascend, along with training and skills. Echoes never do.</p>`],
@@ -4030,6 +4329,7 @@ body.perf .pulse { animation: none; }
       let g = 0, sh = 0; S.inv.forEach(it => { g += salvValue(it); sh += salvShards(it); });
       bump("salvage", S.inv.length); S.inv = []; addGold(g, false); addShards(sh);
       log("Salvaged pack for " + fmt(g) + " lumen" + (sh ? " and " + sh + " shards" : ""), "good"); markDirty("pack");
+    } else if (act.startsWith("rf")) { forgeAct(act, Number(id), Number(b.dataset.i)); updateUI();
     } else if (act === "eq2" || act === "eq3") {
       const idx = S.inv.findIndex(i => i.id === Number(id)), k = act === "eq2" ? "weapon2" : "weapon3";
       if (idx < 0 || !(k === "weapon2" ? slot2Open() : slot3Open())) return;
