@@ -802,7 +802,7 @@ body.perf .pulse { animation: none; }
     flow: { per: .02, stat: "mana regen" },
     tempo: { per: .003, stat: "cooldowns", less: true },
     guard: { per: .005, stat: "damage blocked", cap: .2 },
-    clarity: { per: .01, stat: "chance to shrug off a status", cap: .5 },
+    clarity: { per: .01, stat: "chance to ignore a new status effect", cap: .5 },
     leech: { per: .03, stat: "life steal heal limit" },
     fortune: { per: .01, stat: "rare luck" }
   };
@@ -3899,13 +3899,22 @@ body.perf .pulse { animation: none; }
   document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("menuDrop").hidden) closeMenu(); else if (tab) closeWindow(); });
 
   // ================= UI update =================
+  // shrink the stage title to fit beside the currency box instead of cutting it off
+  let stageKey = "";
+  function fitStage(txt) {
+    const el = $("stageLbl"), cur = document.querySelector(".hudCur"), key = txt + "|" + (cur ? cur.offsetWidth : 0);
+    if (key === stageKey) return;
+    stageKey = key; el.textContent = txt; el.style.fontSize = "";
+    let fs = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth && fs > 11) { fs -= 1; el.style.fontSize = fs + "px"; }
+  }
   function updateUI() {
     $("gold").textContent = fmt(S.gold);
     $("echoTop").textContent = S.echoes ? S.echoes + " echoes" : "";
     $("dustTop").textContent = S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "";
     $("wGold").textContent = fmt(S.gold); $("wEcho").textContent = S.echoes;
     $("shardTop").textContent = fmt(S.shards) + " shards"; $("wShard").textContent = fmt(S.shards);
-    $("stageLbl").textContent = "Stage " + S.stage;
+    fitStage("Stage " + S.stage);
     const need = killsNeeded();
     $("stageSub").textContent = (S.stage % 10 === 0 ? "Boss fight" : S.kills + "/" + need + " kills" + (foes.some(f => f.elite && !f.dead) ? ", elite here" : "")) + ", best " + S.maxStage;
     $("prog").style.width = Math.min(100, S.kills / need * 100) + "%";
@@ -4135,7 +4144,9 @@ body.perf .pulse { animation: none; }
   setTarget(null);
   stageSpawned = S.kills;
   layout();
-  addEventListener("resize", () => { layout(); tagCache = ""; });
+  addEventListener("resize", () => { layout(); tagCache = ""; stageKey = ""; });
+  // the title font loads late and is wider than the fallback, so fit again once it arrives
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { stageKey = ""; updateUI(); });
   requestAnimationFrame(frame);
   buildSkillbar();
   // ---- offline progress: your core keeps farming at half speed while you're away (up to 8 hours) ----
