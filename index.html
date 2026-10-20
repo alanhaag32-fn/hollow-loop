@@ -834,10 +834,14 @@ body.perf .pulse { animation: none; }
   const starPow = () => 1 + .03 * starEff();
   const starEcho = () => 1 + .02 * starEff();
   const TRANS_AT = 150;
+  const ECHO_K = .09;  // echoes per ascension = ECHO_K x (stage^1.5 climbed this run) x bonuses
   const transOpen = () => (S.peak || 1) >= TRANS_AT || (S.stardustTotal || 0) > 0;
   // echoes past a fair amount for your best stage (about 8 full ascensions there) count only 5% toward Stardust,
   // so echoes farmed from an exploit or endless grinding can't inflate a Transcend
-  const dustEchoCap = () => Math.round(8 * .12 * starEcho() * Math.pow(Math.max(S.cyclePeak || 1, S.maxStage || 1), 1.5));
+  // every Transcend needs stage 150 reached in the current cycle, not just once ever
+  const cycleBest = () => Math.max(S.cyclePeak || 1, S.maxStage || 1);
+  const canTrans = () => cycleBest() >= TRANS_AT && dustGain() >= 1;
+  const dustEchoCap = () => Math.round(8 * ECHO_K * starEcho() * Math.pow(Math.max(S.cyclePeak || 1, S.maxStage || 1), 1.5));
   const dustEchoes = () => { const E = S.echoesTotal || 0, C = dustEchoCap(); return Math.min(E, C) + Math.max(0, E - C) * .05; };
   const dustGain = () => Math.floor(Math.sqrt(dustEchoes()) * Math.max(S.cyclePeak || 1, S.maxStage || 1) / TRANS_AT);
   const ocL = id => (S.oc && S.oc[id]) || 0;
@@ -3472,7 +3476,7 @@ body.perf .pulse { animation: none; }
   }
   function doTranscend() {
     const g = dustGain();
-    if (!transOpen() || g < 1) return false;
+    if (!transOpen() || !canTrans()) return false;
     transArmed = false;
     S = Object.assign(fresh(), keepAlways(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1, bounties: [] });
     S.cyclePeak = 1;
@@ -3488,7 +3492,7 @@ body.perf .pulse { animation: none; }
   const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
   // you must climb at least 10 stages past where the run began (and reach stage 20) before you can ascend
   const ascMin = () => Math.max(20, runStart() + 10);
-  const ascGain = () => Math.floor(.12 * starEcho() * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .25 * T("f8")) * (1 + .1 * (S.ascensions || 0)) * (1 + .02 * IT("octa", "b")));
+  const ascGain = () => Math.floor(ECHO_K * starEcho() * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .25 * T("f8")) * (1 + .05 * (S.ascensions || 0)) * (1 + .02 * IT("octa", "b")));
   const nodeCost = n => n.c * ((S.tree[n.id] || 0) + 1);
   const owned = n => T(n.id) > 0;
   const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
@@ -3498,8 +3502,8 @@ body.perf .pulse { animation: none; }
     const g = dustGain(), bestC = Math.max(S.cyclePeak || 1, S.maxStage);
     let h = '<div class="ascTop transTop"><div><b class="dustC">' + fmt(S.stardust || 0) + " Stardust</b> to spend · " + fmt(S.stardustTotal || 0) + " earned in total</div>" +
       '<div class="note" style="margin:0"><b class="dustC">Star Power</b>: +' + Math.round((starPow() - 1) * 100) + "% attack and health, +" + Math.round((starEcho() - 1) * 100) + "% echo gain" + ((S.stardustTotal || 0) > 50 ? " (Stardust past 50 counts half)" : "") + "</div>" +
-      '<div class="note" style="margin:0">Transcend now for <b class="dustC">' + g + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(S.echoesTotal || 0) + " echoes earned" + ((S.echoesTotal || 0) > dustEchoCap() ? "; echoes past " + fmt(dustEchoCap()) + " count only 5% at this stage" : "") + "). You restart at stage " + (1 + 10 * FR("head")) + " and lose everything an ascension does, plus <b>all echoes, the whole web and echo power</b>, and your ascension count (enemy modifiers reset). You keep Stardust, the Star Forge, Index bonuses, records and settings.</div>" +
-      '<div class="ctrls" style="margin:0"><button class="btn go' + (g >= 1 ? "" : " dim") + '" data-act="transcend">' + (transArmed ? "Tap again to transcend" : "Transcend") + "</button></div></div>";
+      '<div class="note" style="margin:0">' + (bestC < TRANS_AT ? "<b>Reach stage " + TRANS_AT + " this cycle to transcend</b> (best this cycle: " + bestC + "). " : "") + (bestC < TRANS_AT ? "At stage " + TRANS_AT + " you would get about " : "Transcend now for ") + '<b class="dustC">' + (bestC < TRANS_AT ? Math.floor(Math.sqrt(dustEchoes()) * TRANS_AT / TRANS_AT) : g) + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(S.echoesTotal || 0) + " echoes earned" + ((S.echoesTotal || 0) > dustEchoCap() ? "; echoes past " + fmt(dustEchoCap()) + " count only 5% at this stage" : "") + "). You restart at stage " + (1 + 10 * FR("head")) + " and lose everything an ascension does, plus <b>all echoes, the whole web and echo power</b>, and your ascension count (enemy modifiers reset). You keep Stardust, the Star Forge, Index bonuses, records and settings.</div>" +
+      '<div class="ctrls" style="margin:0"><button class="btn go' + (canTrans() ? "" : " dim") + '" data-act="transcend">' + (transArmed ? "Tap again to transcend" : "Transcend") + "</button></div></div>";
     let grp = "";
     FORGE.forEach(f => {
       if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
@@ -3526,7 +3530,7 @@ body.perf .pulse { animation: none; }
     const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
     $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
       '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round((echoPow() - 1) * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
-      '<div class="note" style="margin:0">' + (can ? "Ascend to gain " + g + " echoes" + (runStart() > 1 ? " (only stages past " + runStart() + ", where this run began, count)" : "") + ". You restart at stage " + startStage() + " and lose lumen, gear, training and skill levels. The web and bounties stay. Skills relock and return as you reach their stages again. Each ascension also gives enemies more modifiers and you +10% echoes."
+      '<div class="note" style="margin:0">' + (can ? "Ascend to gain " + g + " echoes" + (runStart() > 1 ? " (only stages past " + runStart() + ", where this run began, count)" : "") + ". You restart at stage " + startStage() + " and lose lumen, gear, training and skill levels. The web and bounties stay. Skills relock and return as you reach their stages again. Each ascension also gives enemies more modifiers and you +5% echoes."
         : "Reach stage " + ascMin() + " to ascend" + (ascMin() > 20 ? " (10 stages past where this run began)" : "") + ". Highest this run: stage " + S.maxStage + ".") + "</div>" +
       '<div class="ctrls" style="margin:0"><button class="btn go' + (can ? "" : " dim") + '" data-act="ascend">' + (ascArmed ? "Tap again to ascend" : "Ascend") + '</button><button class="btn" data-act="refund">Refund web</button></div></div>';
     let h = "";
@@ -3698,7 +3702,7 @@ body.perf .pulse { animation: none; }
       <p>Counters: an active Barrier stops new statuses, Dash clears them all, and Clarity training shortens them.</p>`],
     ["Boss mechanics", `<p>Every boss uses Crush. From stage 20, each zone's boss adds a signature mechanic. From stage 60, bosses combine two. The line under the boss's health bar tells you what's happening.</p>
       <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and 25% of the damage you deal reflects back at you. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
-    ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +10% echoes.</p>
+    ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +5% echoes.</p>
       <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals a little each time it hits you (dodge its shots to stop it).</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time, but only after a couple of seconds without being hit, so steady damage keeps it from healing.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
     ["Enemy variants", `<p>Every shape comes in four variants with their own colors, designs, weapons and fighting styles. Variants unlock as you go deeper, and elites and bosses can be any variant.</p>
       <ul><li><b>Pale</b> (swift, from stage 1): icy white with a dashed core and speed lines. Fires twin darts from a needler. Attacks 60% faster but has 30% less health.</li><li><b>Bastion</b> (warden, from stage 4): slate green, thick armored outline, solid core and rivets. Lobs slow, heavy shells from a mortar. 70% more health and slow, but carries an extra status and lands statuses 50% more often.</li><li><b>Crimson</b> (brute, from stage 7): blood red with edge spikes and a scar. Launches spinning sawblades from its rails. Slow, heavy hits with a 25% chance to crit for double damage.</li><li><b>Umbral</b> (phantom, from stage 12): deep violet, flickering dashed outline and a void core. Charges up and fires void beams from a crystal lance. Dodges 25% of blades and skills, so taps are your best answer, and burns 8% of your mana on each hit.</li></ul>`],
@@ -3711,7 +3715,7 @@ body.perf .pulse { animation: none; }
       <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>
       <p><b>Echo power</b>: every echo you have ever earned also gives +1% attack and health, permanently, with no cap. Spending echoes doesn't lower it, so every ascension keeps making you stronger even once the web is full.</p>
       <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
-    ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
+    ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. You need to reach stage ${150} again in every cycle before you can transcend. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
       <p>In return you earn <b>Stardust</b>: the square root of the echoes you earned this cycle, times your best stage this cycle divided by 150. Echoes beyond about 8 full ascensions' worth at your best stage count only 5%, so endless grinding at a low stage doesn't pay. The Transcend tab shows exactly how much you'd get before you commit.</p>
       <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +2% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
       <p>Spend Stardust in the <b>Star Forge</b>: <b>Expanded Training</b> (+10 level cap on capped training per rank), <b>Skill Mastery</b> (+5 skill level cap), <b>Gilded Gear</b> (extra bonus stats on items), <b>Fine Craft</b> (stronger bonus stats), <b>Head Start</b> (each ascension starts 10 stages further in with a Rare starter kit; echoes only count the stages you climb past your start, and you must climb at least 10 before ascending), <b>Third Orbital</b> (a third weapon slot at 40%, 70%, then 100% damage), <b>Boss Hunter</b> (+5s boss timer and +10% boss damage per rank), <b>Overcharge Discount</b> (cheaper Overcharge growth), <b>Bounty Board+</b> (an extra bounty slot per rank, faster postings) and <b>Offline Mastery</b> (offline farming up to full speed and 24 hours).</p>
@@ -4102,7 +4106,7 @@ body.perf .pulse { animation: none; }
       if (!ascArmed) { ascArmed = true; markDirty("tree"); setTimeout(() => { ascArmed = false; markDirty("tree"); }, 3000); updateUI(); return; }
       doAscend();
     } else if (act === "transcend") {
-      if (!transOpen() || dustGain() < 1) return;
+      if (!transOpen() || !canTrans()) return;
       if (!transArmed) { transArmed = true; markDirty("tree"); setTimeout(() => { transArmed = false; markDirty("tree"); }, 3000); updateUI(); return; }
       doTranscend();
     } else if (act === "forge") {
