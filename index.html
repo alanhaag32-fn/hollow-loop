@@ -437,6 +437,30 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .float.shardf { color: #4fd3e4; font-size: 13px; }
 .sheetHd .wallet i { color: var(--c1); font-style: normal; font-weight: 600; }
 .ctrls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+/* gear doll and item tiles */
+.doll { max-width: 330px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: radial-gradient(circle at 50% 50%, rgba(123,224,208,.12), rgba(16,12,28,.55) 62%); }
+.dollCore { aspect-ratio: 1; display: grid; place-items: center; }
+.dollCore i { width: 54%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff 0 22%, #9ff3e6 40%, rgba(123,224,208,.25) 70%, transparent 72%); box-shadow: 0 0 22px rgba(123,224,208,.55); outline: 1.5px dashed rgba(255,255,255,.22); outline-offset: 9px; }
+.dollStat { align-self: center; text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.dollStat b { display: block; font-size: 14px; color: var(--ink); }
+.tile { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border-radius: 12px; border: 2px solid var(--rc, var(--line)); background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.25)); color: var(--ink); cursor: pointer; min-width: 0; }
+.tile svg { width: 56%; height: 56%; }
+.tile.r3 svg, .tile.r4 svg, .tile.r5 svg { filter: drop-shadow(0 0 5px var(--rc)); }
+.tile.empty { border-style: dashed; color: var(--muted); }
+.tile.empty svg path { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 3 3; }
+.tile.lock { opacity: .45; }
+.tile.sel { outline: 2px solid #fff; outline-offset: 2px; }
+.tile .tl { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 10px; line-height: 1; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 3px; }
+.tile .sd { position: absolute; top: 5px; left: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--sc); box-shadow: 0 0 0 1.5px rgba(0,0,0,.5); }
+.tile .ua { position: absolute; top: 2px; right: 5px; font-size: 12px; font-weight: 800; color: #5fd38d; }
+.tile .uq { position: absolute; bottom: 3px; right: 5px; font-size: 10px; color: var(--rc); }
+.tile .uq.t { top: 3px; bottom: auto; }
+.tileGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.pkBar { display: grid; gap: 7px; margin-bottom: 10px; }
+.pkBar .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.pkBar select { background: rgba(255,255,255,.05); color: var(--ink); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 600; }
+.gHd { margin: 14px 2px 8px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.pkDetail { margin-top: 10px; }
 .setsum { background: var(--panel); border: 2px dashed var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
 .setsum .off { color: var(--muted); }
 
@@ -3553,7 +3577,7 @@ body.perf .pulse { animation: none; }
 
   // ================= windows =================
   const glyph = slotId => '<svg class="glyph" viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[slotId].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
-  function itemCard(it, mode, label) {
+  function itemCard(it, mode, label, extra) {
     const slot = SLOT[it.slot], r = RARITY[it.r];
     const tr = it.slot === "weapon" ? WTRAIT[HERO_WEAPON[noun(it)] ? noun(it) : "Glaive"] : null;
     const im = implOf(it);
@@ -3576,7 +3600,8 @@ body.perf .pulse { animation: none; }
       }
       acts = '<div class="acts"><button class="btn go" data-act="eq" data-id="' + it.id + '">' + (two ? "Equip main" : "Equip") + "</button>" + (two ? '<button class="btn go" data-act="eq2" data-id="' + it.id + '">Equip second</button>' : "") + (two && slot3Open() ? '<button class="btn go" data-act="eq3" data-id="' + it.id + '">Equip third</button>' : "") + '<button class="btn" data-act="sv" data-id="' + it.id + '">Salvage +' + fmt(salvValue(it)) + " lumen" + (salvShards(it) ? ", +" + salvShards(it) + (salvShards(it) > 1 ? " shards" : " shard") : "") + "</button></div>";
     }
-    return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + forgeUI(it) + "</div>";
+    if (mode === "swap") { const cur = S.equip[gearSel], d = cur ? Math.round((score(it) / score(cur) - 1) * 100) : 0; cmp = cur ? ' <span class="' + (d > 0 ? "up" : "dn") + '">' + (d > 0 ? "+" : "") + fmt(d) + "% vs equipped</span>" : ' <span class="up">Empty slot</span>'; }
+    return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + (extra || "") + forgeUI(it) + "</div>";
   }
   // what an item's power actually gives, in plain numbers
   function itemMain(it) {
@@ -3636,21 +3661,33 @@ body.perf .pulse { animation: none; }
       G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
       G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
   }
+  let gearSel = "weapon", gearPick = null;
+  const slotOpen = k => k === "weapon2" ? slot2Open() : k === "weapon3" ? slot3Open() : true;
+  const slotPct = k => k === "weapon2" ? Math.round(SLOT2_DMG * 100) : k === "weapon3" ? Math.round(SLOT3_DMG[FR("orb3")] * 100) : 100;
   function renderGear() {
-    let h = SLOTS.map(s => {
-      const it = S.equip[s.id];
-      let c = it ? itemCard(it, "gear", s.id === "weapon" ? "Main orbital" : null) : '<div class="card empty">' + glyph(s.id) + '<div class="nm" style="color:var(--muted)">' + s.name + '</div><div class="meta">Empty. Gives ' + s.role + ".</div></div>";
-      if (s.id === "weapon") {
-        const w2 = S.equip.weapon2;
-        c += slot2Open() && w2 ? itemCard(w2, "gear", "Second orbital (" + Math.round(SLOT2_DMG * 100) + "% damage)")
-          : '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Second orbital</div><div class="meta">' + (slot2Open() ? "Empty. Equip any orbital from your Pack. It fires on its own timer at " + Math.round(SLOT2_DMG * 100) + "% damage." : "Locked. Unlocks permanently when you first reach stage " + SLOT2_AT + ".") + "</div></div>";
-        const w3 = S.equip.weapon3, p3 = Math.round(SLOT3_DMG[FR("orb3")] * 100);
-        if (slot3Open()) c += w3 ? itemCard(w3, "gear", "Third orbital (" + p3 + "% damage)") : '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Third orbital</div><div class="meta">Empty. Equip any orbital from your Pack. It fires on its own timer at ' + p3 + "% damage.</div></div>";
-        else if (transOpen()) c += '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Third orbital</div><div class="meta">Locked. Open it with Third Orbital in the Star Forge (Transcend tab).</div></div>';
+    const T1 = k => {
+      const it = S.equip[k], open = slotOpen(k);
+      if (!open) return tile(null, "gSel", k, k === "weapon2" ? "Stage " + SLOT2_AT : "Locked", gearSel === k, "lock");
+      return tile(it, "gSel", k, SLOT_LBL[k].replace(" orbital", ""), gearSel === k);
+    };
+    let doll = '<div class="doll">' + T1("weapon2") + T1("weapon") + T1("weapon3") + T1("armor") + '<div class="dollCore"><i></i></div>' + T1("charm") +
+      '<div class="dollStat"><b>' + fmt(ST.atk) + "</b>attack</div>" + T1("boots") + '<div class="dollStat"><b>' + fmt(ST.maxHp) + "</b>health</div></div>";
+    const k = gearSel, it = S.equip[k], bs = baseSlot(k);
+    let d = '<div class="gHd">' + SLOT_LBL[k] + (bs === "weapon" && k !== "weapon" ? " · " + slotPct(k) + "% damage" : "") + "</div>";
+    if (!slotOpen(k)) d += '<p class="note">' + (k === "weapon2" ? "Unlocks permanently when you first reach stage " + SLOT2_AT + "." : transOpen() ? "Open it with Third Orbital in the Star Forge (Transcend tab)." : "Unlocks after your first Transcend, through the Star Forge.") + "</p>";
+    else {
+      d += it ? itemCard(it, "gear", SLOT_LBL[k], '<div class="acts"><button class="btn" data-act="uneq" data-id="' + k + '" type="button">Unequip</button></div>') : '<p class="note">Empty. Gives ' + SLOT[bs].role + ". Pick something from your Pack below.</p>";
+      const cands = S.inv.filter(x => x.slot === bs).sort((a, b) => score(b) - score(a));
+      if (gearPick != null && !cands.some(x => x.id === gearPick)) gearPick = null;
+      d += '<div class="gHd">From your pack (' + cands.length + ")</div>";
+      if (!cands.length) d += '<p class="note">No ' + SLOT[bs].name.toLowerCase() + "s in your pack.</p>";
+      else {
+        d += '<div class="tileGrid">' + cands.map(x => tile(x, "gPick", x.id, it ? ((score(x) / score(it) - 1) * 100 > 0 ? "+" : "") + Math.round((score(x) / score(it) - 1) * 100) + "%" : null, x.id === gearPick)).join("") + "</div>";
+        const pk = gearPick != null && cands.find(x => x.id === gearPick);
+        if (pk) d += '<div class="pkDetail">' + itemCard(pk, "swap", "In pack", '<div class="acts"><button class="btn go" data-act="eqTo" data-id="' + pk.id + '" data-slot="' + k + '" type="button">Equip as ' + SLOT_LBL[k].toLowerCase() + '</button><button class="btn" data-act="sv" data-id="' + pk.id + '" type="button">Salvage</button></div>') + "</div>";
       }
-      return c;
-    }).join("");
-    h = '<div class="wsub list" data-sub="equip">' + h + "</div>";
+    }
+    let h = '<div class="wsub" data-sub="equip">' + doll + d + "</div>";
     const sc = ST.sets, ids = Object.keys(sc);
     h += '<div class="wsub" data-sub="sets"><div class="setsum">' + (ids.length ? ids.map(id => {
       const s = SET[id], n = sc[id];
@@ -3659,8 +3696,62 @@ body.perf .pulse { animation: none; }
       '<div class="setsum" style="margin-top:10px"><div><b>All sets</b></div>' + SETS.filter(x => !sc[x.id]).map(x => '<div style="margin-top:6px"><b style="color:' + x.cv + '">' + x.name + "</b>" + (x.myth ? " (Mythic only)" : "") + '</div><div class="off">2: ' + x.b2 + '</div><div class="off">4: ' + x.b4 + '</div><div class="off">6: ' + x.b6 + "</div>").join("") + "</div></div>";
     $("gearBody").innerHTML = h;
   }
+  // ---------- item tiles (pack grid and gear doll) ----------
+  const SLOT_LBL = { weapon: "Main orbital", weapon2: "Second orbital", weapon3: "Third orbital", armor: "Shell", boots: "Corona", charm: "Lens" };
+  const baseSlot = k => k === "weapon2" || k === "weapon3" ? "weapon" : k;
+  function tileIcon(it, slotId) {
+    if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="var(--rc)" fill-rule="evenodd"/></svg>';
+    return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
+  }
+  // how much better an item is than what it would replace (orbitals compare to your weakest orbital slot)
+  function upPct(it) {
+    const cands = it.slot === "weapon" ? wSlots().map(k => S.equip[k]) : [S.equip[it.slot]];
+    if (cands.some(c => !c)) return 999;
+    const worst = cands.reduce((a, b) => score(a) < score(b) ? a : b);
+    return Math.round((score(it) / score(worst) - 1) * 100);
+  }
+  function tile(it, act, id, label, sel, extraCls) {
+    if (!it) return '<button class="tile empty' + (sel ? " sel" : "") + (extraCls ? " " + extraCls : "") + '" data-act="' + act + '" data-id="' + id + '" type="button">' + tileIcon(null, id) + '<span class="tl">' + (label || "") + "</span></button>";
+    const up = act === "pkSel" && upPct(it) > 0;
+    return '<button class="tile r' + it.r + (sel ? " sel" : "") + '" data-act="' + act + '" data-id="' + id + '" type="button" aria-label="' + RARITY[it.r].name + " " + it.name + '">' + tileIcon(it) +
+      (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq' + (label ? " t" : "") + '">✦</span>' : "") + (label ? '<span class="tl">' + label + "</span>" : "") + "</button>";
+  }
+  let pkSel = null;
+  // bring the picked item's card into view after the panel redraws
+  const showDetail = () => setTimeout(() => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); }, 60);
+  const PK_SORT = [["up", "Upgrade"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Set"]];
+  const PK_SLOT = [["all", "All"], ["weapon", "Orbital"], ["armor", "Shell"], ["boots", "Corona"], ["charm", "Lens"]];
+  const pkView = () => S.packView || (S.packView = { slot: "all", set: "any", sort: "up", up: false });
+  function packItems() {
+    const v = pkView();
+    let L = S.inv.filter(it => (v.slot === "all" || it.slot === v.slot) && (v.set === "any" || (v.set === "sets" ? !!it.set : v.set === "none" ? !it.set : it.set === v.set)) && (!v.up || upPct(it) > 0));
+    const by = { up: (a, b) => upPct(b) - upPct(a), rar: (a, b) => b.r - a.r || score(b) - score(a), new: (a, b) => b.id - a.id, set: (a, b) => (a.set ? SET[a.set].name : "~").localeCompare(b.set ? SET[b.set].name : "~") || b.r - a.r }[v.sort] || (() => 0);
+    return L.sort(by);
+  }
   function renderPack() {
-    $("packList").innerHTML = S.inv.length ? S.inv.map(it => itemCard(it, "pack")).join("") : '<p class="note">Nothing here yet. Upgrades are equipped automatically, the rest lands here.</p>';
+    const v = pkView(), L = packItems();
+    if (pkSel != null && !S.inv.some(i => i.id === pkSel)) pkSel = null;
+    const setsIn = [...new Set(S.inv.filter(i => i.set).map(i => i.set))];
+    const cnt = k => k === "all" ? S.inv.length : S.inv.filter(i => i.slot === k).length;
+    let h = '<div class="pkBar">' +
+      '<div class="chips">' + PK_SLOT.map(([k, n]) => '<button class="chip' + (v.slot === k ? " on" : "") + '" data-act="pkSlot" data-id="' + k + '" type="button">' + n + " " + cnt(k) + "</button>").join("") + "</div>" +
+      '<div class="chips"><span>Sort</span>' + PK_SORT.map(([k, n]) => '<button class="chip' + (v.sort === k ? " on" : "") + '" data-act="pkSort" data-id="' + k + '" type="button">' + n + "</button>").join("") +
+      '<button class="chip' + (v.up ? " on" : "") + '" data-act="pkUp" type="button">Upgrades only</button></div>' +
+      '<div class="chips"><select data-act="pkSet" aria-label="Filter by set"><option value="any"' + (v.set === "any" ? " selected" : "") + '>Any set</option><option value="sets"' + (v.set === "sets" ? " selected" : "") + '>Set items only</option><option value="none"' + (v.set === "none" ? " selected" : "") + '>No set</option>' +
+      SETS.filter(x => setsIn.includes(x.id) || v.set === x.id).map(x => '<option value="' + x.id + '"' + (v.set === x.id ? " selected" : "") + ">" + x.name + "</option>").join("") + "</select><span>" + S.inv.length + " / " + PACK_CAP + " slots</span></div></div>";
+    if (!S.inv.length) h += '<p class="note">Nothing here yet. Upgrades are equipped automatically, the rest lands here.</p>';
+    else if (!L.length) h += '<p class="note">No items match these filters.</p>';
+    else {
+      let grid = "", lastSet = null;
+      L.forEach(it => {
+        if (v.sort === "set" && (it.set || "") !== lastSet) { if (grid) h += '<div class="tileGrid">' + grid + "</div>"; grid = ""; lastSet = it.set || ""; h += '<div class="gHd"' + (it.set ? ' style="color:' + SET[it.set].col + '"' : "") + ">" + (it.set ? SET[it.set].name + " · " + S.inv.filter(x => x.set === it.set).length + " in pack, " + ((ST.sets[it.set]) || 0) + " worn" : "No set") + "</div>"; }
+        grid += tile(it, "pkSel", it.id, null, it.id === pkSel);
+      });
+      h += '<div class="tileGrid">' + grid + "</div>";
+      const sel = pkSel != null && S.inv.find(i => i.id === pkSel);
+      h += '<div class="pkDetail">' + (sel ? itemCard(sel, "pack") : '<p class="note" style="margin:0">Tap an item to see it. ▲ means it beats what you wear, a dot shows its set, ✦ marks a unique effect.</p>') + "</div>";
+    }
+    $("packList").innerHTML = h;
     $("autoEq").textContent = "Auto-equip: " + (S.autoEquip ? "On" : "Off");
     $("autoSv").textContent = "Auto-salvage: " + SALV_LABEL[S.salv];
   }
@@ -3741,7 +3832,7 @@ body.perf .pulse { animation: none; }
   // things every reset keeps: settings, records, Stardust and the Star Forge
   const keepAlways = () => ({
     peak: S.peak, auto: S.auto, salv: S.salv, autoEquip: S.autoEquip, anim: S.anim, perf: S.perf, sound: S.sound, vol: S.vol, music: S.music, mvol: S.mvol,
-    bestiary: S.bestiary, bountyDone: S.bountyDone, rerollAt: 0, nextId: S.nextId, totalKills: S.totalKills, manaRes: S.manaRes, saver: S.saver, seenIntro: true,
+    bestiary: S.bestiary, bountyDone: S.bountyDone, rerollAt: 0, packView: S.packView, nextId: S.nextId, totalKills: S.totalKills, manaRes: S.manaRes, saver: S.saver, seenIntro: true,
     stardust: S.stardust || 0, stardustTotal: S.stardustTotal || 0, forge: S.forge || {}, transcends: S.transcends || 0, autoCfg: S.autoCfg, cyclePeak: S.cyclePeak || 1
   });
   function starterKit(st) {
@@ -4318,6 +4409,10 @@ body.perf .pulse { animation: none; }
     addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
   })();
   $("mode").addEventListener("click", () => { S.push = !S.push; updateUI(); save(); });
+  $("panels").addEventListener("change", e => {
+    const t = e.target.closest("select[data-act]"); if (!t) return;
+    if (t.dataset.act === "pkSet") { pkView().set = t.value; pkSel = null; markDirty("pack"); updateUI(); save(); }
+  });
   $("panels").addEventListener("click", e => {
     const b = e.target.closest("[data-act]");
     if (!b || b.disabled) return;
@@ -4329,6 +4424,22 @@ body.perf .pulse { animation: none; }
       let g = 0, sh = 0; S.inv.forEach(it => { g += salvValue(it); sh += salvShards(it); });
       bump("salvage", S.inv.length); S.inv = []; addGold(g, false); addShards(sh);
       log("Salvaged pack for " + fmt(g) + " lumen" + (sh ? " and " + sh + " shards" : ""), "good"); markDirty("pack");
+    } else if (act === "pkSel") { pkSel = pkSel === Number(id) ? null : Number(id); markDirty("pack"); if (pkSel != null) showDetail();
+    } else if (act === "pkSlot") { pkView().slot = id; pkSel = null; markDirty("pack");
+    } else if (act === "pkSort") { pkView().sort = id; markDirty("pack");
+    } else if (act === "pkUp") { pkView().up = !pkView().up; pkSel = null; markDirty("pack");
+    } else if (act === "gSel") { gearSel = id; gearPick = null; markDirty("gear");
+    } else if (act === "gPick") { gearPick = gearPick === Number(id) ? null : Number(id); markDirty("gear"); if (gearPick != null) showDetail();
+    } else if (act === "uneq") {
+      const it = S.equip[id]; if (!it) return;
+      if (S.inv.length >= PACK_CAP) { floatText("Pack is full", "info", "hero"); log("Your pack is full. Salvage something first", "bad"); return; }
+      delete S.equip[id]; S.inv.unshift(it); recalc(); markDirty("gear", "pack");
+    } else if (act === "eqTo") {
+      const k = b.dataset.slot, idx = S.inv.findIndex(i => i.id === Number(id));
+      if (idx < 0 || !slotOpen(k) || S.inv[idx].slot !== baseSlot(k)) return;
+      const it = S.inv[idx], cur = S.equip[k];
+      S.equip[k] = it; if (cur) S.inv[idx] = cur; else S.inv.splice(idx, 1);
+      gearPick = null; recalc(); markDirty("gear", "pack"); equipFlash(it.r);
     } else if (act.startsWith("rf")) { forgeAct(act, Number(id), Number(b.dataset.i)); updateUI();
     } else if (act === "eq2" || act === "eq3") {
       const idx = S.inv.findIndex(i => i.id === Number(id)), k = act === "eq2" ? "weapon2" : "weapon3";
@@ -4341,7 +4452,7 @@ body.perf .pulse { animation: none; }
       const idx = S.inv.findIndex(i => i.id === Number(id));
       if (idx < 0) return;
       const it = S.inv[idx];
-      if (act === "sv") { S.inv.splice(idx, 1); salvage(it); }
+      if (act === "sv") { S.inv.splice(idx, 1); salvage(it); markDirty("gear"); }
       else {
         const cur = S.equip[it.slot];
         S.equip[it.slot] = it;
