@@ -552,6 +552,7 @@ body.perf .pulse { animation: none; }
               <g class="spinRev"><g id="hLens"></g></g>
               <g id="hBladeOrbit"><g id="hWpn1" transform="translate(0 -31)"><path id="hWeapon" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
               <g id="hBladeOrbit2"><g id="hWpn2" transform="translate(0 37)"><path id="hWeapon2" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
+              <g id="hBladeOrbit3" style="display:none"><g id="hWpn3" transform="translate(-42 0)"><path id="hWeapon3" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
             </g>
           </g>
           <g id="hRing" fill="none">
@@ -805,7 +806,8 @@ body.perf .pulse { animation: none; }
     leech: { per: .03, stat: "life steal heal limit" },
     fortune: { per: .01, stat: "rare luck" }
   };
-  const OC_G = 1.45;
+  // Overcharge cost growth per level: x2.0, lowered by Overcharge Discount in the Star Forge
+  const ocG = () => 2 - .1 * FR("ocd");
   // ----- Transcend: Stardust and the Star Forge -----
   const FR = id => (S.forge && S.forge[id]) || 0;
   const tmax = t => t.max ? t.max + 10 * FR("capT") : 0;
@@ -815,11 +817,17 @@ body.perf .pulse { animation: none; }
     { id: "gild", grp: "Gear", name: "Gilded Gear", max: 3, cost: r => [10, 25, 60][r] || 999, desc: r => ["No extra bonus stats yet", "Rare and better roll 1 extra bonus stat", "Magic items also roll 1 extra", "Legendaries roll another (5 total)"][r], nx: ["Rare+ +1 stat", "Magic +1 stat", "Legendary +1 more"] },
     { id: "craft", grp: "Gear", name: "Fine Craft", max: 5, cost: r => Math.ceil(4 * Math.pow(1.6, r)), desc: r => "+" + 10 * r + "% bonus stat values on new items", nx: "+10%" },
     { id: "head", grp: "Start", name: "Head Start", max: 10, cost: r => Math.ceil(5 * Math.pow(1.5, r)), desc: r => r ? "Each ascension starts at stage " + (1 + 10 * r) + " with a Rare starter kit" : "Ascensions start at stage 1", nx: "+10 stages" },
-    { id: "aTrain", grp: "Automation", name: "Auto-Train", max: 1, cost: () => 12, desc: r => r ? "Buys training for you every 2 seconds (choose which below)" : "Buys training for you automatically" },
-    { id: "aPush", grp: "Automation", name: "Auto-Push", max: 1, cost: () => 8, desc: r => r ? "Goes back to pushing after farming for a while" : "Goes back to pushing after a death" },
-    { id: "aAsc", grp: "Automation", name: "Auto-Ascend", max: 1, cost: () => 15, desc: r => r ? "Ascends for you at a stage you choose, or when stuck" : "Ascends for you at a stage you choose" },
-    { id: "smart", grp: "Automation", name: "Smart Cast", max: 1, cost: () => 10, desc: r => r ? "Auto-cast saves big skills for elites, bosses and groups" : "Smarter auto-cast for big skills" }
+    { id: "orb3", grp: "Combat", name: "Third Orbital", max: 3, cost: r => [25, 50, 90][r] || 999, desc: r => r ? "A third orbital slot, firing at " + SLOT3_DMG[r] * 100 + "% damage" : "Opens a third orbital slot", nx: ["40% damage", "70% damage", "100% damage"] },
+    { id: "boss", grp: "Combat", name: "Boss Hunter", max: 5, cost: r => Math.ceil(6 * Math.pow(1.6, r)), desc: r => "+" + 5 * r + "s boss timer and +" + 10 * r + "% damage to bosses", nx: "+5s, +10%" },
+    { id: "ocd", grp: "Combat", name: "Overcharge Discount", max: 5, cost: r => Math.ceil(8 * Math.pow(1.6, r)), desc: r => "Each Overcharge level costs x" + (2 - .1 * r).toFixed(1) + " the last", nx: r => "x" + (1.9 - .1 * r).toFixed(1) },
+    { id: "bb", grp: "Economy", name: "Bounty Board+", max: 3, cost: r => [8, 16, 30][r] || 999, desc: r => r ? "+" + r + " bounty slot" + (r > 1 ? "s" : "") + ", new notices post " + 15 * r + "% faster" : "No extra bounty slots", nx: "+1 slot, 15% faster" },
+    { id: "off", grp: "Economy", name: "Offline Mastery", max: 5, cost: r => Math.ceil(5 * Math.pow(1.55, r)), desc: r => "Offline farming at " + (50 + 10 * r) + "% speed, up to " + OFF_H[r] + " hours", nx: r => (60 + 10 * r) + "%, " + OFF_H[r + 1] + "h" }
   ];
+  const SLOT3_DMG = [0, .4, .7, 1];
+  const OFF_H = [8, 12, 16, 20, 24, 24];
+  // automation is free for good once you have transcended
+  const autoOn = () => (S.transcends || 0) >= 1;
+  const AUTO_REFUND = { aTrain: 12, aPush: 8, aAsc: 15, smart: 10 };
   const FG = {}; FORGE.forEach(f => FG[f.id] = f);
   // Star Power: every Stardust ever earned gives +3% attack and health and +5% echo gain; past 50 each counts half
   const starEff = () => { const t = S.stardustTotal || 0; return Math.min(t, 50) + Math.max(0, t - 50) * .5; };
@@ -831,7 +839,7 @@ body.perf .pulse { animation: none; }
   const ocL = id => (S.oc && S.oc[id]) || 0;
   const ocV = id => { const o = OC[id], v = o.per * ocL(id); return o.cap ? Math.min(o.cap, v) : v; };
   const isOC = t => !!(t.max && OC[t.id] && S.train[t.id] >= tmax(t));
-  const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, tmax(t) - 1); let c = 0; const L = ocL(t.id); for (let i = 0; i < n; i++) c += first * Math.pow(OC_G, L + i); return Math.ceil(c); };
+  const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, tmax(t) - 1); let c = 0; const L = ocL(t.id); for (let i = 0; i < n; i++) c += first * Math.pow(ocG(), L + i); return Math.ceil(c); };
   const tm = id => TRN[id].eff((S.train && S.train[id]) || 0);
   const SKILLS = [
     { id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z" },
@@ -1067,6 +1075,7 @@ body.perf .pulse { animation: none; }
   }
   // old saves: rescale gear to the exponential curve and repost bounties with the new rewards
   function migrateEco() {
+    if (S.forge) { let back = 0; for (const k in AUTO_REFUND) if (S.forge[k]) { back += AUTO_REFUND[k]; delete S.forge[k]; } if (back) { S.stardust = (S.stardust || 0) + back; S.refundNote = back; } }
     if ((S.eco || 0) === 6) S.eco = 7;
     if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
     if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
@@ -1293,6 +1302,9 @@ body.perf .pulse { animation: none; }
     const w2 = slot2Open() ? S.equip.weapon2 : null, hw2 = $("hWeapon2");
     $("hBladeOrbit2").style.display = w2 ? "" : "none";
     if (w2) { hw2.setAttribute("d", HERO_WEAPON[noun(w2)] || HERO_WEAPON.Glaive); hw2.setAttribute("fill", ARENA_C[w2.r]); hw2.style.color = ARENA_C[w2.r]; hw2.classList.toggle("glow", w2.r >= 3); }
+    const w3 = slot3Open() ? S.equip.weapon3 : null, hw3 = $("hWeapon3");
+    $("hBladeOrbit3").style.display = w3 ? "" : "none";
+    if (w3) { hw3.setAttribute("d", HERO_WEAPON[noun(w3)] || HERO_WEAPON.Glaive); hw3.setAttribute("fill", ARENA_C[w3.r]); hw3.style.color = ARENA_C[w3.r]; hw3.classList.toggle("glow", w3.r >= 3); }
     if (a) shellSvg(noun(a), ARENA_C[a.r], a.r); else $("hShell").innerHTML = "";
     if (b) coronaSvg(noun(b), ARENA_C[b.r], b.r); else { $("hCorona").innerHTML = ""; $("hCoronaStatic").innerHTML = ""; }
     if (c) lensSvg(noun(c), ARENA_C[c.r], c.r); else $("hLens").innerHTML = "";
@@ -1805,7 +1817,7 @@ body.perf .pulse { animation: none; }
   }
 
   // ================= runtime =================
-  let enemy = null, heroCd2 = .9, heroCd = .5, enemyCd = 1.3, spawnT = .3, heroDown = false;
+  let enemy = null, heroCd2 = .9, heroCd3 = .7, heroCd = .5, enemyCd = 1.3, spawnT = .3, heroDown = false;
   let shield = 0, shieldMax = 1, shieldT = 0, odT = 0, markT = 0, swCd = 0, attackCount = 0;
   const cds = {}, dpsLog = [];
   let gAcc = 0, gTimer = 0, saveT = 0, uiT = 0, lightT = 0;
@@ -1876,7 +1888,7 @@ body.perf .pulse { animation: none; }
     const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1);
     const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
     // bosses deep in get more time: +0.75s per stage past 40, up to +45s
-    const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + 3 * T("d7");
+    const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + 3 * T("d7") + 5 * FR("boss");
     return {
       hp: hpE * v.hp, max: hpE * v.hp, fresh: true, dmg: dmg * v.dmg, boss, elite: !!elite && !boss, sides, tier, hue: v.hue, v, fill: vFill(v), stroke: vStroke(v),
       R: Math.round((boss ? 34 : elite ? 30 : 25) * (v.id === "bastion" ? 1.08 : v.id === "pale" ? .92 : 1)), weapon: ENEMY_WEAPON[v.w],
@@ -2007,7 +2019,7 @@ body.perf .pulse { animation: none; }
       const [ex, ey] = shotEnd(sh);
       if (o.glaive) {
         // out to the target, a quick spin on it, then back to its spot in orbit
-        const O = ORB[o.glaive === "weapon2" ? 1 : 0], bx = HERO_X + O.x, by = HERO_Y + O.y;
+        const O = ORB[oi(o.glaive)], bx = HERO_X + O.x, by = HERO_Y + O.y;
         if (el < 1) { const u = 1 - (1 - el) * (1 - el); x = sh.x0 + (ex - sh.x0) * u; y = sh.y0 + (ey - sh.y0) * u; }
         else if (el < 1.4) { x = ex; y = ey; }
         else { const u = Math.min(1, (el - 1.4) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
@@ -2025,28 +2037,39 @@ body.perf .pulse { animation: none; }
   }
   const slot2Open = () => S.peak >= SLOT2_AT;
   const has2 = () => slot2Open() && !!S.equip.weapon2;
-  const orbitEl = slot => slot === "weapon2" ? $("hBladeOrbit2") : hBladeOrbit;
+  const slot3Open = () => FR("orb3") > 0;
+  const has3 = () => slot3Open() && !!S.equip.weapon3;
+  const slotDmg = slot => slot === "weapon2" ? SLOT2_DMG : slot === "weapon3" ? SLOT3_DMG[FR("orb3")] : 1;
+  const oi = slot => slot === "weapon2" ? 1 : slot === "weapon3" ? 2 : 0;
+  const orbitEl = slot => slot === "weapon2" ? $("hBladeOrbit2") : slot === "weapon3" ? $("hBladeOrbit3") : hBladeOrbit;
+  const wSlots = () => ["weapon"].concat(slot2Open() ? ["weapon2"] : [], slot3Open() ? ["weapon3"] : []);
   function slotAtk(slot) {
-    if (slot !== "weapon2") return ST.atk;
-    const p1 = S.equip.weapon ? S.equip.weapon.power : 0, p2 = S.equip.weapon2 ? S.equip.weapon2.power : 0;
-    return ST.atk * (5 + p2) / (5 + p1) * SLOT2_DMG;
+    if (slot !== "weapon2" && slot !== "weapon3") return ST.atk;
+    const p1 = S.equip.weapon ? S.equip.weapon.power : 0, p2 = S.equip[slot] ? S.equip[slot].power : 0;
+    return ST.atk * (5 + p2) / (5 + p1) * slotDmg(slot);
   }
   // orbitals glide around the core toward the target's side and keep their muzzles pointed at it
-  const ORB = [{ a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 }, { a: 1.57, r: 37, x: 0, y: 37, ux: 0, uy: 1, sp: 0 }];
+  const ORB = [{ a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 }, { a: 1.57, r: 37, x: 0, y: 37, ux: 0, uy: 1, sp: 0 }, { a: 3.14, r: 43, x: -43, y: 0, ux: -1, uy: 0, sp: 0 }];
   const MUZ = { Drone: 6, Laser: 10, Swarm: 10, Coil: 10, Hammer: 7, Glaive: 0, Mote: 3 };
-  const hWpn = [$("hWpn1"), $("hWpn2")];
+  const hWpn = [$("hWpn1"), $("hWpn2"), $("hWpn3")];
+  const WS = ["weapon", "weapon2", "weapon3"];
   let orbT = 0;
   function poseOrbitals(dt) {
-    const t = enemy && !enemy.dead ? enemy : null, two = has2(), od = odT > 0;
+    const t = enemy && !enemy.dead ? enemy : null, od = odT > 0;
+    const act = [true, has2(), has3()], n = act.filter(Boolean).length;
     if (!reduce) orbT += dt * (od ? 2.4 : 1);
-    for (let i = 0; i < 2; i++) {
-      if (i && !two) continue;
-      const o = ORB[i], type = wType(i ? "weapon2" : "weapon");
+    let k = -1;
+    for (let i = 0; i < 3; i++) {
+      if (!act[i]) continue;
+      k++;
+      const o = ORB[i], type = wType(WS[i]);
+      // fan the active orbitals out around the line to the target
+      const spread = n === 1 ? 0 : n === 2 ? (k ? .55 : -.55) : [-.8, 0, .8][k];
       if (t) {
-        const goal = Math.atan2(t.py - HERO_Y, t.px - HERO_X) + (two ? (i ? .55 : -.55) : 0) + (reduce ? 0 : Math.sin(orbT * (i ? .9 : 1.2) + i * 2.1) * (two ? .3 : .55));
+        const goal = Math.atan2(t.py - HERO_Y, t.px - HERO_X) + spread + (reduce ? 0 : Math.sin(orbT * [1.2, .9, 1.05][i] + i * 2.1) * (n > 1 ? .3 : .55));
         let d = goal - o.a; d = Math.atan2(Math.sin(d), Math.cos(d));
         o.a += reduce ? d : Math.max(-7 * dt, Math.min(7 * dt, d * (1 - Math.exp(-dt * 5))));
-      } else if (!reduce) o.a += (i ? -.7 : .9) * dt * (od ? 2.5 : 1);
+      } else if (!reduce) o.a += [.9, -.7, .6][i] * dt * (od ? 2.5 : 1);
       o.x = Math.cos(o.a) * o.r; o.y = Math.sin(o.a) * o.r;
       const aim = t ? Math.atan2(t.py - (HERO_Y + o.y), t.px - (HERO_X + o.x)) : o.a;
       o.ux = Math.cos(aim); o.uy = Math.sin(aim);
@@ -2056,7 +2079,7 @@ body.perf .pulse { animation: none; }
     }
   }
   function orbitPos(slot = "weapon") {
-    const o = ORB[slot === "weapon2" ? 1 : 0], L = MUZ[wType(slot)] || 0;
+    const o = ORB[oi(slot)], L = MUZ[wType(slot)] || 0;
     return [HERO_X + o.x + o.ux * L, HERO_Y + o.y + o.uy * L];
   }
   function moveFx(el, x0, y0, x1, y1, ms, mid, spin, ease) {
@@ -2082,11 +2105,11 @@ body.perf .pulse { animation: none; }
     if (reduce || !enemy) return;
     const hBladeOrbit = orbitEl(slot), tgt = enemy, T = wDelay(slot);
     const w = S.equip[slot], type = wType(slot), col = w ? ARENA_C[w.r] : "#effffc", glowC = w ? col : "#7be0d0";
-    const off = idx ? ((idx % 3) - 1) * 14 : 0, [ox, oy] = orbitPos(slot), O = ORB[slot === "weapon2" ? 1 : 0];
+    const off = idx ? ((idx % 3) - 1) * 14 : 0, [ox, oy] = orbitPos(slot), O = ORB[oi(slot)];
     let tx = tgt.px, ty = tgt.py + off;
     { const dd = Math.hypot(tx - ox, ty - oy) || 1, pull = tgt.R * .35; tx -= (tx - ox) / dd * pull; ty -= (ty - oy) / dd * pull; }
     if (type !== "Glaive" && type !== "Hammer") {
-      anim($(slot === "weapon2" ? "hWeapon2" : "hWeapon"), [{ transform: "translate(0px,0px)" }, { transform: "translate(0px,3.5px)", offset: .25 }, { transform: "translate(0px,0px)" }], 160);
+      anim($(["hWeapon", "hWeapon2", "hWeapon3"][oi(slot)]), [{ transform: "translate(0px,0px)" }, { transform: "translate(0px,3.5px)", offset: .25 }, { transform: "translate(0px,0px)" }], 160);
       tempFx(svgEl("circle", { cx: ox, cy: oy, r: crit ? 5 : 3.5, fill: "#fff" }), [{ opacity: .95 }, { opacity: 0 }], 120);
     }
     if (type === "Glaive") {
@@ -2299,14 +2322,12 @@ body.perf .pulse { animation: none; }
     S.inv.unshift(it); markDirty("pack");
   }
   function placeWeapon(it) {
-    const m = S.equip.weapon, o = S.equip.weapon2;
-    if (!m || score(it) > score(m)) {
-      S.equip.weapon = it;
-      if (m) { if (!o || score(m) > score(o)) { S.equip.weapon2 = m; if (o) stash(o); } else stash(m); }
-      return "main";
-    }
-    if (!o || score(it) > score(o)) { S.equip.weapon2 = it; if (o) stash(o); return "second"; }
-    return null;
+    const sl = wSlots(), all = sl.map(k => S.equip[k]).filter(Boolean).concat(it).sort((a, b) => score(b) - score(a));
+    const at = all.indexOf(it);
+    if (at >= sl.length) return null;
+    sl.forEach((k, i) => { if (all[i]) S.equip[k] = all[i]; else delete S.equip[k]; });
+    all.slice(sl.length).forEach(stash);
+    return ["main", "second", "third"][at];
   }
   function receive(it, quiet) {
     const cur = S.equip[it.slot];
@@ -2316,7 +2337,7 @@ body.perf .pulse { animation: none; }
       if (where) {
         recalc(); markDirty("gear", "pack");
         setTimeout(() => equipFlash(it.r), quiet ? 0 : 600);
-        if (it.r >= 2) log("Equipped " + RARITY[it.r].name + " " + it.name + (where === "second" ? " as your second orbital" : ""), "r" + it.r);
+        if (it.r >= 2) log("Equipped " + RARITY[it.r].name + " " + it.name + (where === "second" ? " as your second orbital" : where === "third" ? " as your third orbital" : ""), "r" + it.r);
       } else { stash(it); if (it.r >= 2) log("Found " + RARITY[it.r].name + " " + it.name, "r" + it.r); }
       return it;
     }
@@ -2342,10 +2363,10 @@ body.perf .pulse { animation: none; }
       item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: (3 + 3 * tier) * shardAmt(S.maxStage)
     };
   }
-  const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenAt(S.maxStage) * 2 * (1 + .8 * b.tier) * (1 + .2 * T("f6")) * ST.gold) : (b.gold || 0);
+  const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenAt(S.maxStage) * (1 + .5 * b.tier) * (1 + .2 * T("f6")) * ST.gold) : (b.gold || 0);
   function ensureBoard() {
     let changed = false;
-    const size = 3 + T("f11");
+    const size = 3 + T("f11") + FR("bb");
     if (S.bounties.length > size) { S.bounties.length = size; changed = true; }
     while (S.bounties.length < size) { S.bounties.push(newBounty()); changed = true; }
     S.bounties.forEach((b, i) => { if (b.empty && Date.now() >= b.at) { S.bounties[i] = newBounty(); changed = true; log("A new bounty was posted", "r4"); } });
@@ -2368,7 +2389,7 @@ body.perf .pulse { animation: none; }
     if (b.echo) { S.echoes += b.echo; S.echoesTotal += b.echo; msg += " and " + b.echo + " echo"; markDirty("tree"); }
     log(msg, "good");
     if (b.item) receive(makeItem(S.maxStage, false, b.tier === 2 ? 3 : 2), true);
-    S.bounties[i] = { empty: true, at: Date.now() + POST_CD * (1 - .1 * T("f13")) };
+    S.bounties[i] = { empty: true, at: Date.now() + POST_CD * (1 - .1 * T("f13")) * (1 - .15 * FR("bb")) };
     S.bountyDone++;
     markDirty("board");
   }
@@ -2403,7 +2424,7 @@ body.perf .pulse { animation: none; }
     if (e.hp / e.max < .3) dmg *= 1 + .1 * T("e6");
     if (e.fresh) { e.fresh = false; dmg *= 1 + .5 * T("e13"); }
     if (hp > ST.maxHp * .8) dmg *= 1 + .06 * T("x1");
-    if (e.boss) dmg *= (1 + .1 * T("e7")) * (1 + .03 * IT("triad", "b"));
+    if (e.boss) dmg *= (1 + .1 * T("e7")) * (1 + .03 * IT("triad", "b")) * (1 + .1 * FR("boss"));
     if (e.elite) dmg *= ST.eliteDmg;
     if (T("w8") && hp < ST.maxHp * .3) dmg *= 1.5;
     if (e.mods.includes("armored") && kind !== "tap" && wt !== "Laser") dmg *= .7;
@@ -2957,7 +2978,7 @@ body.perf .pulse { animation: none; }
       else {
         go = foe && mp - skillCost(sk) >= ST.maxMp * (S.manaRes == null ? .3 : S.manaRes);
         // Smart Cast: big skills wait for elites, bosses or a group of 3+ on screen
-        if (go && FR("smart") && S.autoCfg.smart !== false && ["nova", "storm", "overdrive", "shatter"].includes(sk.id)) {
+        if (go && autoOn() && S.autoCfg.smart !== false && ["nova", "storm", "overdrive", "shatter"].includes(sk.id)) {
           const big = enemy && (enemy.boss || enemy.elite), crowd = foes.filter(f => !f.dead && inView(f)).length;
           go = big || crowd >= (sk.id === "storm" ? 2 : 3);
         }
@@ -3238,6 +3259,10 @@ body.perf .pulse { animation: none; }
       heroCd2 -= dt;
       if (heroCd2 <= 0) { heroCd2 += 1 / (effSpd() * orbRate("weapon2")); fireOrbital("weapon2"); }
     }
+    if (alive() && has3()) {
+      heroCd3 -= dt;
+      if (heroCd3 <= 0) { heroCd3 += 1 / (effSpd() * orbRate("weapon3")); fireOrbital("weapon3"); }
+    }
   }
   function stepFoe(e, dt) {
     if (e.dead || !foes.includes(e)) return;
@@ -3281,8 +3306,12 @@ body.perf .pulse { animation: none; }
       if (two) {
         const o = S.equip.weapon2, d2 = o ? Math.round((score(it) / score(o) - 1) * 100) : 0;
         cmp += o ? ', <span class="' + (d2 > 0 ? "up" : "dn") + '">' + (d2 > 0 ? "+" : "") + fmt(d2) + "% vs second</span>" : ', <span class="up">second slot empty</span>';
+        if (slot3Open()) {
+          const o3 = S.equip.weapon3, d3 = o3 ? Math.round((score(it) / score(o3) - 1) * 100) : 0;
+          cmp += o3 ? ', <span class="' + (d3 > 0 ? "up" : "dn") + '">' + (d3 > 0 ? "+" : "") + fmt(d3) + "% vs third</span>" : ', <span class="up">third slot empty</span>';
+        }
       }
-      acts = '<div class="acts"><button class="btn go" data-act="eq" data-id="' + it.id + '">' + (two ? "Equip main" : "Equip") + "</button>" + (two ? '<button class="btn go" data-act="eq2" data-id="' + it.id + '">Equip second</button>' : "") + '<button class="btn" data-act="sv" data-id="' + it.id + '">Salvage +' + fmt(salvValue(it)) + " lumen" + (salvShards(it) ? ", +" + salvShards(it) + (salvShards(it) > 1 ? " shards" : " shard") : "") + "</button></div>";
+      acts = '<div class="acts"><button class="btn go" data-act="eq" data-id="' + it.id + '">' + (two ? "Equip main" : "Equip") + "</button>" + (two ? '<button class="btn go" data-act="eq2" data-id="' + it.id + '">Equip second</button>' : "") + (two && slot3Open() ? '<button class="btn go" data-act="eq3" data-id="' + it.id + '">Equip third</button>' : "") + '<button class="btn" data-act="sv" data-id="' + it.id + '">Salvage +' + fmt(salvValue(it)) + " lumen" + (salvShards(it) ? ", +" + salvShards(it) + (salvShards(it) > 1 ? " shards" : " shard") : "") + "</button></div>";
     }
     return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + "</div>";
   }
@@ -3295,9 +3324,9 @@ body.perf .pulse { animation: none; }
     return "+" + (3.5 * qq).toFixed(1) + "% crit chance";
   }
   function renderStats() {
-    const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
+    const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
     $("statsBody").innerHTML =
-      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+      G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ["Second orbital", !slot2Open() ? "Unlocks at stage " + SLOT2_AT : has2() ? wType("weapon2") + " (" + WTRAIT[wType("weapon2")].name + "), " + fmt(slotAtk("weapon2")) + " attack" : "Empty"], slot3Open() ? ["Third orbital", has3() ? wType("weapon3") + " (" + WTRAIT[wType("weapon3")].name + "), " + fmt(slotAtk("weapon3")) + " attack" : "Empty"] : null, ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
       G("Defense", [["Health", fmt(Math.max(0, hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((.7 + ocV("guard")) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
       G("Mana and skills", [["Mana", fmt(Math.max(0, mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
       G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
@@ -3309,8 +3338,11 @@ body.perf .pulse { animation: none; }
       let c = it ? itemCard(it, "gear", s.id === "weapon" ? "Main orbital" : null) : '<div class="card empty">' + glyph(s.id) + '<div class="nm" style="color:var(--muted)">' + s.name + '</div><div class="meta">Empty. Gives ' + s.role + ".</div></div>";
       if (s.id === "weapon") {
         const w2 = S.equip.weapon2;
-        c += slot2Open() && w2 ? itemCard(w2, "gear", "Second orbital, " + Math.round(SLOT2_DMG * 100) + "% damage,")
+        c += slot2Open() && w2 ? itemCard(w2, "gear", "Second orbital (" + Math.round(SLOT2_DMG * 100) + "% damage)")
           : '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Second orbital</div><div class="meta">' + (slot2Open() ? "Empty. Equip any orbital from your Pack. It fires on its own timer at " + Math.round(SLOT2_DMG * 100) + "% damage." : "Locked. Unlocks permanently when you first reach stage " + SLOT2_AT + ".") + "</div></div>";
+        const w3 = S.equip.weapon3, p3 = Math.round(SLOT3_DMG[FR("orb3")] * 100);
+        if (slot3Open()) c += w3 ? itemCard(w3, "gear", "Third orbital (" + p3 + "% damage)") : '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Third orbital</div><div class="meta">Empty. Equip any orbital from your Pack. It fires on its own timer at ' + p3 + "% damage.</div></div>";
+        else if (transOpen()) c += '<div class="card empty">' + glyph("weapon") + '<div class="nm" style="color:var(--muted)">Third orbital</div><div class="meta">Locked. Open it with Third Orbital in the Star Forge (Transcend tab).</div></div>';
       }
       return c;
     }).join("");
@@ -3461,15 +3493,22 @@ body.perf .pulse { animation: none; }
     let grp = "";
     FORGE.forEach(f => {
       if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
-      const r = FR(f.id), maxed = r >= f.max, c = f.cost(r), nx = Array.isArray(f.nx) ? f.nx[r] : f.nx;
+      const r = FR(f.id), maxed = r >= f.max, c = f.cost(r), nx = Array.isArray(f.nx) ? f.nx[r] : typeof f.nx === "function" ? f.nx(r) : f.nx;
       let extra = "";
-      if (f.id === "aTrain" && r) extra = '<div class="chips"><button class="chip' + (S.autoCfg.trainOn !== false ? " on" : "") + '" data-act="aTrainOn">' + (S.autoCfg.trainOn !== false ? "On" : "Off") + "</button>" + TRAIN.map(t => '<button class="chip' + (S.autoCfg.train[t.id] === false ? "" : " on") + '" data-act="aTrainT" data-id="' + t.id + '">' + t.name + "</button>").join("") + "</div>";
-      if (f.id === "aPush" && r) extra = '<div class="chips"><span>Push again after</span>' + [30, 60, 120].map(v => '<button class="chip' + ((S.autoCfg.push || 60) === v ? " on" : "") + '" data-act="aPushD" data-id="' + v + '">' + (v < 60 ? v + "s" : v / 60 + " min") + "</button>").join("") + "</div>";
-      if (f.id === "aAsc" && r) extra = '<div class="chips"><span>Ascend at stage</span>' + [0, 40, 60, 80, 100, 120, 150, 200].map(v => '<button class="chip' + ((S.autoCfg.ascAt || 0) === v ? " on" : "") + '" data-act="aAscAt" data-id="' + v + '">' + (v ? v : "Off") + "</button>").join("") + '<button class="chip' + (S.autoCfg.ascStall ? " on" : "") + '" data-act="aAscStall">When stuck 5 min</button></div>';
-      if (f.id === "smart" && r) extra = '<div class="chips"><button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button></div>";
+      if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.trainOn !== false ? " on" : "") + '" data-act="aTrainOn">' + (S.autoCfg.trainOn !== false ? "On" : "Off") + "</button>" + TRAIN.map(t => '<button class="chip' + (S.autoCfg.train[t.id] === false ? "" : " on") + '" data-act="aTrainT" data-id="' + t.id + '">' + t.name + "</button>").join("") + "</div>";
+      if (false) extra = '<div class="chips"><span>Push again after</span>' + [30, 60, 120].map(v => '<button class="chip' + ((S.autoCfg.push || 60) === v ? " on" : "") + '" data-act="aPushD" data-id="' + v + '">' + (v < 60 ? v + "s" : v / 60 + " min") + "</button>").join("") + "</div>";
+      if (false) extra = '<div class="chips"><span>Ascend at stage</span>' + [0, 40, 60, 80, 100, 120, 150, 200].map(v => '<button class="chip' + ((S.autoCfg.ascAt || 0) === v ? " on" : "") + '" data-act="aAscAt" data-id="' + v + '">' + (v ? v : "Off") + "</button>").join("") + '<button class="chip' + (S.autoCfg.ascStall ? " on" : "") + '" data-act="aAscStall">When stuck 5 min</button></div>';
+      if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button></div>";
       h += '<div class="row forge"><span class="n">' + f.name + (f.max > 1 ? " · Rank " + r + " / " + f.max : r ? " · Unlocked" : "") + '</span><span class="d">' + f.desc(r) + (maxed || !nx ? "" : '<span class="nx"> → ' + nx + "</span>") + "</span>" +
         '<div class="side">' + (maxed ? '<button class="btn" disabled>' + (f.max > 1 ? "Maxed" : "Owned") + "</button>" : '<button class="btn dustb" data-act="forge" data-id="' + f.id + '" data-cost="' + c + '" data-cur="dust">' + c + " Stardust</button>") + "</div>" + extra + "</div>";
     });
+    h += '<h4 class="forgeH">Automation</h4>';
+    if (!autoOn()) return h + '<p class="note">Auto-Train, Auto-Push, Auto-Ascend and Smart Cast unlock for free on your first Transcend.</p>';
+    const row = (n, d, chips) => '<div class="row forge"><span class="n">' + n + '</span><span class="d">' + d + '</span><div class="chips">' + chips + "</div></div>";
+    h += row("Auto-Train", "Buys training for you every 2 seconds. Tap a name to skip it.", '<button class="chip' + (S.autoCfg.trainOn !== false ? " on" : "") + '" data-act="aTrainOn">' + (S.autoCfg.trainOn !== false ? "On" : "Off") + "</button>" + TRAIN.map(t => '<button class="chip' + (S.autoCfg.train[t.id] === false ? "" : " on") + '" data-act="aTrainT" data-id="' + t.id + '">' + t.name + "</button>").join(""));
+    h += row("Auto-Push", "Goes back to pushing after farming for a while.", '<span>Push again after</span>' + [0, 30, 60, 120].map(v => '<button class="chip' + ((S.autoCfg.push ?? 60) === v ? " on" : "") + '" data-act="aPushD" data-id="' + v + '">' + (!v ? "Off" : v < 60 ? v + "s" : v / 60 + " min") + "</button>").join(""));
+    h += row("Auto-Ascend", "Ascends for you at a stage you choose, or when stuck.", '<span>Ascend at stage</span>' + [0, 40, 60, 80, 100, 120, 150, 200].map(v => '<button class="chip' + ((S.autoCfg.ascAt || 0) === v ? " on" : "") + '" data-act="aAscAt" data-id="' + v + '">' + (v ? v : "Off") + "</button>").join("") + '<button class="chip' + (S.autoCfg.ascStall ? " on" : "") + '" data-act="aAscStall">When stuck 5 min</button>');
+    h += row("Smart Cast", "Auto-cast saves big skills for elites, bosses and groups.", '<button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button>");
     return h;
   }
   function renderTree() {
@@ -3618,7 +3657,7 @@ body.perf .pulse { animation: none; }
       <p>The Pushing button controls progress. Pushing moves to the next stage after each clear. Farming repeats the current stage, which is handy for lumen and loot when you're stuck.</p>
       <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
       <p><b>Dodging</b>: enemy shots you can see on screen are real projectiles. Darts are fast and aim where you're heading, saws curve after you, mortars land where you're about to be, and a Lance's aim line follows you then locks solid just before the beam fires, so change direction at the right moment. Deeper stages, elites and bosses aim and track better. Dash makes you untouchable for a moment. Shots fired from off screen still land, softer.</p>
-      <p><b>Offline</b>: while the game is closed or in the background, your core keeps farming your current stage at half speed, for up to 8 hours. You collect lumen, shards and a few items when you come back.</p>
+      <p><b>Offline</b>: while the game is closed or in the background, your core keeps farming your current stage at half speed, for up to 8 hours (Offline Mastery in the Star Forge raises both). You collect lumen, shards and a few items when you come back.</p>
       <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The plane is endless, so roam as far as you like; the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
       <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
     ["Health and mana", `<p><b>Health</b> (green bar) is your life. It regenerates 1% per second, and each kill heals 5%. If it hits zero your core collapses, you drop back one stage and switch to Farming.</p>
@@ -3631,7 +3670,7 @@ body.perf .pulse { animation: none; }
       <ul><li><b>Nova</b> (stage 1): a burst of heavy damage.</li><li><b>Barrier</b> (stage 5): a shield that absorbs damage. Use it on boss Crushes.</li><li><b>Surge</b> (stage 12): a big burst of attack speed.</li><li><b>Storm</b> (stage 20): a volley of blades.</li><li><b>Dash</b> (stage 30): a quick burst in the direction you're moving (or away from the nearest enemy). You're untouchable while it lasts, it slices every enemy you pass through, and it shakes off all statuses. On auto-cast it only fires to escape a boss Crush or when your health is low.</li><li><b>Shatter</b> (stage 45): every hit crits for a few seconds.</li></ul>
       <p>Skills unlock by the best stage you reach each run, and they relock when you ascend.</p>`],
     ["Gear and loot", `<p>Your core has four slots, each shown on the core itself:</p>
-      <ul><li><b>Orbital</b>: attack. A weapon that circles your core and fires on its own. Each type attacks differently and has its own trait:<ul><li><b>Drone</b> (Rapid): twin bolts, 30% faster at 80% damage.</li><li><b>Glaive</b> (Returning): thrown and spins back, hitting twice for 55% each.</li><li><b>Laser</b> (Piercing): instant beam that ignores Shielded and Armored.</li><li><b>Swarm</b> (Seeking): three homing shards that Umbrals can't dodge, and they pop boss motes.</li><li><b>Hammer</b> (Crushing): drops from above, slower but 160% damage, with a 20% chance to stun.</li><li><b>Coil</b> (Chaining): lightning with a 30% chance to arc a second strike.</li></ul>From stage 25 you permanently unlock a <b>second orbital</b> slot. It orbits the other way, fires on its own timer at 60% damage, and auto-equip fills it with your second-best orbital. Mix traits, like a Laser for armored foes and a Swarm for Umbrals.</li><li><b>Shell</b>: health. A spinning barrier around the core.</li><li><b>Corona</b>: attack speed and evasion rating. A ring of light.</li><li><b>Lens</b>: crit chance. A small satellite.</li></ul>
+      <ul><li><b>Orbital</b>: attack. A weapon that circles your core and fires on its own. Each type attacks differently and has its own trait:<ul><li><b>Drone</b> (Rapid): twin bolts, 30% faster at 80% damage.</li><li><b>Glaive</b> (Returning): thrown and spins back, hitting twice for 55% each.</li><li><b>Laser</b> (Piercing): instant beam that ignores Shielded and Armored.</li><li><b>Swarm</b> (Seeking): three homing shards that Umbrals can't dodge, and they pop boss motes.</li><li><b>Hammer</b> (Crushing): drops from above, slower but 160% damage, with a 20% chance to stun.</li><li><b>Coil</b> (Chaining): lightning with a 30% chance to arc a second strike.</li></ul>From stage 25 you permanently unlock a <b>second orbital</b> slot (and after transcending, the Star Forge can open a third). It orbits the other way, fires on its own timer at 60% damage, and auto-equip fills it with your second-best orbital. Mix traits, like a Laser for armored foes and a Swarm for Umbrals.</li><li><b>Shell</b>: health. A spinning barrier around the core.</li><li><b>Corona</b>: attack speed and evasion rating. A ring of light.</li><li><b>Lens</b>: crit chance. A small satellite.</li></ul>
       <p>Rarity goes Common, Magic, Rare, Epic, Legendary. Higher rarity means much more power: Magic 1.5x, Rare 2.3x, Epic 3.5x, Legendary 5.5x. Magic rolls 1 bonus stat, Rare and Epic roll 2, and Legendary rolls 3. Item power also grows 13% per stage, so drops from deeper stages quickly beat old gear. Each item card shows exactly what it gives and how it compares to what you wear, in percent.</p>
       <p><b>Sets</b> drop at Rare or better: Voidforged, Sunwake, Tidecaller, Bloodglass and Gilded Choir. Wearing 2 or 4 pieces of one set gives bonuses and an aura around your core.</p>
       <p>Better items equip themselves. The rest go to your Pack, where you can equip or salvage them for lumen. Auto-salvage clears low-rarity junk for you.</p>`],
@@ -3639,7 +3678,7 @@ body.perf .pulse { animation: none; }
       <p>Lumen and shards reset when you ascend, along with training and skills. Echoes never do.</p>`],
     ["Training", `<p>Train spends lumen on upgrades that last for the current run. Each level costs more than the last. New training unlocks as you reach deeper stages, and ascending locks it all again and resets the levels.</p>
       <p><b>Might</b> and <b>Vigor</b> double at levels 25, 50 and 100, then every 50 levels after that. <b>Greed</b> gets x1.25 at the same levels. The other upgrades have a level cap. Use the x1, x10 and Max buttons at the top to buy in bulk.</p>
-      <p><b>Overcharge</b>: once a capped upgrade is maxed, its button turns gold and keeps going with no level limit. Each Overcharge level costs 1.45x the last and adds a little more: tap damage, attack speed, crit chance, red crit power, skill power, mana, regen, cooldowns, block strength, status resistance, life steal limit or rare luck. Overcharge resets when you ascend, like the rest of training.</p>
+      <p><b>Overcharge</b>: once a capped upgrade is maxed, its button turns gold and keeps going with no level limit. Each Overcharge level costs 2x the last (Overcharge Discount in the Star Forge brings it down to 1.5x) and adds a little more: tap damage, attack speed, crit chance, red crit power, skill power, mana, regen, cooldowns, block strength, status resistance, life steal limit or rare luck. Overcharge resets when you ascend, like the rest of training.</p>
       <p><b>Red crits</b>: crit chance has no cap, and anything past 100% becomes red crit chance. A red crit deals your crit damage times your red crit power (x2 to start, more from Ferocity Overcharge), shown as a big red number with "!!". While Shatter forces crits, your normal crit chance counts as red crit chance.</p>
       <p>Block, life steal and drop chance are capped so they can't reach 100%. Crit chance has no cap.</p>`],
     ["Defense", `<ul><li><b>Block chance</b>: a blocked hit loses 70% of its damage.</li><li><b>Evasion rating</b>: turns into a chance to dodge a hit completely. The same rating dodges less as stages get harder, so it needs to keep growing. Boss Crushes can't be dodged.</li><li><b>Life steal</b>: heals you for a share of the damage you deal, capped at 15%. It can't heal more than four times your life steal percent of max health each second.</li></ul>
@@ -3655,7 +3694,7 @@ body.perf .pulse { animation: none; }
       <ul><li><b>Pale</b> (swift, from stage 1): icy white with a dashed core and speed lines. Fires twin darts from a needler. Attacks 60% faster but has 30% less health.</li><li><b>Bastion</b> (warden, from stage 4): slate green, thick armored outline, solid core and rivets. Lobs slow, heavy shells from a mortar. 70% more health and slow, but carries an extra status and lands statuses 50% more often.</li><li><b>Crimson</b> (brute, from stage 7): blood red with edge spikes and a scar. Launches spinning sawblades from its rails. Slow, heavy hits with a 25% chance to crit for double damage.</li><li><b>Umbral</b> (phantom, from stage 12): deep violet, flickering dashed outline and a void core. Charges up and fires void beams from a crystal lance. Dodges 25% of blades and skills, so taps are your best answer, and burns 8% of your mana on each hit.</li></ul>`],
     ["Index", `<p>There are 6 enemy families, one per shape: Triad (3 sides), Quadrant (4), Pentad (5), Hexen (6), Heptarch (7) and Octave (8). Each 10-stage zone uses the next family in order, and the cycle repeats after stage 60. Every family comes in three forms: normal, Elite (horns and a red ring, from stage 11) and Grand boss (crowned, every 10th stage).</p>
       <p>The Index window records every kill. Each of the 18 entries has three milestone tiers, and each tier adds a permanent bonus themed to that family. Index progress and its bonuses are never reset, not even by ascending.</p>`],
-    ["Bounty board", `<p>The Board holds 3 bounties, like destroying shapes or landing crits. Finish one and claim it for lumen. The payout is set when you claim: it matches how long the bounty takes and grows with your best stage this run. Rare notices pay more and add a Rare+ item, and Gold seals add an Epic+ item and an echo.</p>
+    ["Bounty board", `<p>The Board holds 3 bounties (more with the Extra Pin node and Bounty Board+), like destroying shapes or landing crits. Finish one and claim it for lumen. The payout is set when you claim: it matches how long the bounty takes and grows with your best stage this run. Rare notices pay more and add a Rare+ item, and Gold seals add an Epic+ item and an echo.</p>
       <p>A claimed bounty leaves an empty pin, and a new one is posted 5 minutes later. You can reroll unfinished bounties for lumen, once every 10 minutes. A dot on the Board button means something is ready to claim. When you ascend, finished bounties stay on the board for you to claim in the new run, and the rest are reposted with rewards sized for the new run.</p>`],
     ["Ascension and the web", `<p>From stage 20 you can <b>ascend</b> in the Tree window. You restart at stage 1 and lose lumen, gear, training and skills. In return you earn <b>echoes</b> based on the highest stage you reached. Echoes and the web are permanent.</p>
       <p>Spend echoes on the web. You can only learn a node connected to one you already own, starting from the Core. The four branches are Edge (damage), Ward (survival), Drive (speed and skills) and Fortune (loot and lumen). Bridge nodes link neighboring branches.</p>
@@ -3665,7 +3704,8 @@ body.perf .pulse { animation: none; }
     ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
       <p>In return you earn <b>Stardust</b>: the square root of the echoes you earned this cycle, times your best stage this cycle divided by 150. The Transcend tab shows exactly how much you'd get before you commit.</p>
       <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +5% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
-      <p>Spend Stardust in the <b>Star Forge</b>: <b>Expanded Training</b> (+10 level cap on capped training per rank), <b>Skill Mastery</b> (+5 skill level cap), <b>Gilded Gear</b> (extra bonus stats on items), <b>Fine Craft</b> (stronger bonus stats), <b>Head Start</b> (each ascension starts 10 stages further in with a Rare starter kit), and automation: <b>Auto-Train</b>, <b>Auto-Push</b>, <b>Auto-Ascend</b> and <b>Smart Cast</b>. Their settings appear under each one once bought.</p>`],
+      <p>Spend Stardust in the <b>Star Forge</b>: <b>Expanded Training</b> (+10 level cap on capped training per rank), <b>Skill Mastery</b> (+5 skill level cap), <b>Gilded Gear</b> (extra bonus stats on items), <b>Fine Craft</b> (stronger bonus stats), <b>Head Start</b> (each ascension starts 10 stages further in with a Rare starter kit), <b>Third Orbital</b> (a third weapon slot at 40%, 70%, then 100% damage), <b>Boss Hunter</b> (+5s boss timer and +10% boss damage per rank), <b>Overcharge Discount</b> (cheaper Overcharge growth), <b>Bounty Board+</b> (an extra bounty slot per rank, faster postings) and <b>Offline Mastery</b> (offline farming up to full speed and 24 hours).</p>
+      <p>Your first Transcend also unlocks <b>automation</b> for free: <b>Auto-Train</b>, <b>Auto-Push</b>, <b>Auto-Ascend</b> and <b>Smart Cast</b>. Their settings are at the bottom of the Transcend tab.</p>`],
     ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li></ul>`]
   ];
   const INTRO = [
@@ -3967,11 +4007,11 @@ body.perf .pulse { animation: none; }
       let g = 0, sh = 0; S.inv.forEach(it => { g += salvValue(it); sh += salvShards(it); });
       bump("salvage", S.inv.length); S.inv = []; addGold(g, false); addShards(sh);
       log("Salvaged pack for " + fmt(g) + " lumen" + (sh ? " and " + sh + " shards" : ""), "good"); markDirty("pack");
-    } else if (act === "eq2") {
-      const idx = S.inv.findIndex(i => i.id === Number(id));
-      if (idx < 0 || !slot2Open()) return;
-      const it = S.inv[idx], cur = S.equip.weapon2;
-      S.equip.weapon2 = it;
+    } else if (act === "eq2" || act === "eq3") {
+      const idx = S.inv.findIndex(i => i.id === Number(id)), k = act === "eq2" ? "weapon2" : "weapon3";
+      if (idx < 0 || !(k === "weapon2" ? slot2Open() : slot3Open())) return;
+      const it = S.inv[idx], cur = S.equip[k];
+      S.equip[k] = it;
       if (cur) S.inv[idx] = cur; else S.inv.splice(idx, 1);
       recalc(); markDirty("gear", "pack"); equipFlash(it.r);
     } else if (act === "eq" || act === "sv") {
@@ -4058,7 +4098,10 @@ body.perf .pulse { animation: none; }
     } else if (act === "forge") {
       const f = FG[id], r = FR(id), c = f.cost(r);
       if (r >= f.max || S.stardust < c) return;
-      S.stardust -= c; S.forge[id] = r + 1; sfx("chord", 0, 0); recalc(); markDirty("tree", "train", "skills", "stats"); buildSkillbar();
+      S.stardust -= c; S.forge[id] = r + 1; sfx("chord", 0, 0);
+      if (id === "orb3" && !S.equip.weapon3) { const best = S.inv.filter(i => i.slot === "weapon").sort((a, b) => score(b) - score(a))[0]; if (best) { S.inv.splice(S.inv.indexOf(best), 1); S.equip.weapon3 = best; } }
+      if (id === "bb") ensureBoard();
+      recalc(); markDirty("tree", "train", "skills", "stats", "gear", "pack", "board"); buildSkillbar();
       log("Star Forge: " + f.name + " rank " + (r + 1), "r4");
     } else if (act === "aTrainT") { S.autoCfg.train[id] = S.autoCfg.train[id] === false; markDirty("tree"); }
     else if (act === "aTrainOn") { S.autoCfg.trainOn = S.autoCfg.trainOn === false; markDirty("tree"); }
@@ -4082,10 +4125,10 @@ body.perf .pulse { animation: none; }
   requestAnimationFrame(frame);
   buildSkillbar();
   // ---- offline progress: your core keeps farming at half speed while you're away (up to 8 hours) ----
-  const OFF_CAP = 8 * 3600, OFF_EFF = .5;
+  const offCap = () => OFF_H[FR("off")] * 3600, offEff = () => .5 + .1 * FR("off");
   function offlineGains(sec) {
-    sec = Math.min(sec, OFF_CAP);
-    const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * OFF_EFF, st = Math.max(1, S.stage);
+    sec = Math.min(sec, offCap());
+    const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * offEff(), st = Math.max(1, S.stage);
     const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
     const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
     const items = Math.min(3, Math.floor(kills * ST.drop / 40));
@@ -4099,7 +4142,7 @@ body.perf .pulse { animation: none; }
     const found = []; for (let i = 0; i < g.items; i++) { const it = makeItem(S.stage, false, 1); found.push(RARITY[it.r].name); receive(it, true); }
     S.totalKills += g.kills;
     const h = Math.floor(g.sec / 3600), m = Math.floor(g.sec % 3600 / 60), t = (h ? h + "h " : "") + m + "m";
-    $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > OFF_CAP ? " (the most it can store is 8 hours)" : "") + ".";
+    $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > offCap() ? " (the most it can store is " + OFF_H[FR("off")] + " hours)" : "") + ".";
     $("awayList").innerHTML = '<div><span>Shapes destroyed</span><b>' + fmt(g.kills) + '</b></div><div><span>Lumen</span><b class="g">+' + fmt(g.gold) + '</b></div>' +
       (g.shards ? '<div><span>Shards</span><b class="s">+' + fmt(g.shards) + "</b></div>" : "") + (found.length ? "<div><span>Items</span><b>" + found.join(", ") + "</b></div>" : "");
     $("away").hidden = false; paused = true;
@@ -4108,6 +4151,7 @@ body.perf .pulse { animation: none; }
   }
   $("awayOk").addEventListener("click", () => { $("away").hidden = true; if ($("intro").hidden) paused = false; updateUI(); });
   log("The loop begins.", "r0");
+  if (S.refundNote) { log("Automation is now free once you Transcend: refunded " + S.refundNote + " Stardust", "r4"); delete S.refundNote; }
   let introPage = 0, paused = false;
   function drawIntro() {
     const pg = INTRO[introPage];
@@ -4149,9 +4193,10 @@ body.perf .pulse { animation: none; }
   function autoTick(dt) {
     if (heroDown) return;
     autoT += dt;
-    if (FR("aTrain") && S.autoCfg.trainOn !== false && autoT >= 2) { autoT = 0; autoTrain(); }
-    if (FR("aPush") && !S.push) { farmT += dt; if (farmT >= (S.autoCfg.push || 60)) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
-    if (FR("aAsc")) {
+    if (!autoOn()) return;
+    if (S.autoCfg.trainOn !== false && autoT >= 2) { autoT = 0; autoTrain(); }
+    if ((S.autoCfg.push ?? 60) > 0 && !S.push) { farmT += dt; if (farmT >= (S.autoCfg.push ?? 60)) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
+    {
       if (S.maxStage > stallMax) { stallMax = S.maxStage; stallT = 0; } else stallT += dt;
       const at = S.autoCfg.ascAt || 0;
       // never ascend right where a run starts (Head Start), or it would loop forever
