@@ -444,16 +444,30 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .dollStat { align-self: center; text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 .dollStat b { display: block; font-size: 14px; color: var(--ink); }
 .tile { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border-radius: 12px; border: 2px solid var(--rc, var(--line)); background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.25)); color: var(--ink); cursor: pointer; min-width: 0; }
-.tile svg { width: 56%; height: 56%; }
-.tile.r3 svg, .tile.r4 svg, .tile.r5 svg { filter: drop-shadow(0 0 5px var(--rc)); }
+.tile::before { content: ""; position: absolute; inset: 0; border-radius: 10px; background: var(--rc, transparent); opacity: .16; pointer-events: none; }
+.tile svg { width: 46%; height: 46%; margin-bottom: 10px; }
+.tile.r3 svg, .tile.r4 svg, .tile.r5 svg { filter: drop-shadow(0 0 4px var(--rc)); }
 .tile.empty { border-style: dashed; color: var(--muted); }
 .tile.empty svg path { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 3 3; }
 .tile.lock { opacity: .45; }
 .tile.sel { outline: 2px solid #fff; outline-offset: 2px; }
-.tile .tl { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 10px; line-height: 1; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 3px; }
+.tile .tl { position: absolute; left: 0; right: 0; bottom: 5px; font-size: 10.5px; font-weight: 600; line-height: 1; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 3px; }
 .tile .sd { position: absolute; top: 5px; left: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--sc); box-shadow: 0 0 0 1.5px rgba(0,0,0,.5); }
 .tile .ua { position: absolute; top: 2px; right: 5px; font-size: 12px; font-weight: 800; color: #5fd38d; }
-.tile .uq { position: absolute; bottom: 3px; right: 5px; font-size: 10px; color: var(--rc); }
+.tile .bd { position: absolute; top: 4px; right: 5px; font-size: 10px; font-weight: 800; }
+.tile .bd.up { color: #5fd38d; } .tile .bd.dn { color: #ff8a8a; }
+.tw { display: grid; gap: 4px; min-width: 0; }
+.tw .pc { text-align: center; font-size: 11.5px; font-weight: 700; }
+.pc.up { color: #5fd38d; } .pc.dn { color: #ff8a8a; }
+.seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.seg button { display: grid; justify-items: center; gap: 3px; padding: 7px 0 6px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; }
+.seg button svg { width: 18px; height: 18px; }
+.seg button.on { border-color: rgba(255,231,163,.7); color: #ffe7a3; background: rgba(255,231,163,.1); }
+.pkRow { display: flex; gap: 8px; align-items: center; }
+.pkRow label { flex: 1; display: grid; gap: 3px; font-size: 11px; color: var(--muted); min-width: 0; }
+.pkRow select { width: 100%; border-radius: 10px !important; padding: 7px 8px !important; }
+.pkRow .cap { flex: none; font-size: 11px; color: var(--muted); text-align: right; align-self: end; padding-bottom: 8px; }
+.tile .uq { position: absolute; top: 18px; right: 6px; font-size: 10px; color: var(--rc); }
 .tile .uq.t { top: 3px; bottom: auto; }
 .tileGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pkBar { display: grid; gap: 7px; margin-bottom: 10px; }
@@ -3682,7 +3696,7 @@ body.perf .pulse { animation: none; }
       d += '<div class="gHd">From your pack (' + cands.length + ")</div>";
       if (!cands.length) d += '<p class="note">No ' + SLOT[bs].name.toLowerCase() + "s in your pack.</p>";
       else {
-        d += '<div class="tileGrid">' + cands.map(x => tile(x, "gPick", x.id, it ? ((score(x) / score(it) - 1) * 100 > 0 ? "+" : "") + Math.round((score(x) / score(it) - 1) * 100) + "%" : null, x.id === gearPick)).join("") + "</div>";
+        d += '<div class="tileGrid">' + cands.map(x => { const d = it ? Math.round((score(x) / score(it) - 1) * 100) : null; return '<div class="tw">' + tile(x, "gPick", x.id, null, x.id === gearPick) + (d == null ? '<span class="pc up">new</span>' : '<span class="pc ' + (d > 0 ? "up" : "dn") + '">' + (d > 0 ? "+" : "") + fmt(d) + "%</span>") + "</div>"; }).join("") + "</div>";
         const pk = gearPick != null && cands.find(x => x.id === gearPick);
         if (pk) d += '<div class="pkDetail">' + itemCard(pk, "swap", "In pack", '<div class="acts"><button class="btn go" data-act="eqTo" data-id="' + pk.id + '" data-slot="' + k + '" type="button">Equip as ' + SLOT_LBL[k].toLowerCase() + '</button><button class="btn" data-act="sv" data-id="' + pk.id + '" type="button">Salvage</button></div>') + "</div>";
       }
@@ -3700,8 +3714,9 @@ body.perf .pulse { animation: none; }
   const SLOT_LBL = { weapon: "Main orbital", weapon2: "Second orbital", weapon3: "Third orbital", armor: "Shell", boots: "Corona", charm: "Lens" };
   const baseSlot = k => k === "weapon2" || k === "weapon3" ? "weapon" : k;
   function tileIcon(it, slotId) {
-    if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="var(--rc)" fill-rule="evenodd"/></svg>';
-    return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
+    const col = it ? "#efeaff" : "var(--line)";
+    if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
+    return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
   }
   // how much better an item is than what it would replace (orbitals compare to your weakest orbital slot)
   function upPct(it) {
@@ -3710,21 +3725,23 @@ body.perf .pulse { animation: none; }
     const worst = cands.reduce((a, b) => score(a) < score(b) ? a : b);
     return Math.round((score(it) / score(worst) - 1) * 100);
   }
-  function tile(it, act, id, label, sel, extraCls) {
+  // a tile: white icon of the item's shape, rarity as the border and tint, the shape's name underneath.
+  // badge: an optional +/-% in the corner (gear picks); in the pack a green arrow marks an upgrade
+  function tile(it, act, id, label, sel, extraCls, badge) {
     if (!it) return '<button class="tile empty' + (sel ? " sel" : "") + (extraCls ? " " + extraCls : "") + '" data-act="' + act + '" data-id="' + id + '" type="button">' + tileIcon(null, id) + '<span class="tl">' + (label || "") + "</span></button>";
-    const up = act === "pkSel" && upPct(it) > 0;
+    const up = act === "pkSel" && upPct(it) > 0, lbl = label || noun(it);
     return '<button class="tile r' + it.r + (sel ? " sel" : "") + '" data-act="' + act + '" data-id="' + id + '" type="button" aria-label="' + RARITY[it.r].name + " " + it.name + '">' + tileIcon(it) +
-      (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq' + (label ? " t" : "") + '">✦</span>' : "") + (label ? '<span class="tl">' + label + "</span>" : "") + "</button>";
+      (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (badge != null ? '<b class="bd ' + (badge > 0 ? "up" : "dn") + '">' + (badge > 0 ? "+" : "") + badge + "%</b>" : up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq">✦</span>' : "") + '<span class="tl">' + lbl + "</span></button>";
   }
   let pkSel = null;
   // bring the picked item's card into view after the panel redraws
   const showDetail = () => setTimeout(() => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); }, 60);
-  const PK_SORT = [["up", "Upgrade"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Set"]];
+  const PK_SORT = [["up", "Best for you"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Grouped by set"]];
   const PK_SLOT = [["all", "All"], ["weapon", "Orbital"], ["armor", "Shell"], ["boots", "Corona"], ["charm", "Lens"]];
   const pkView = () => S.packView || (S.packView = { slot: "all", set: "any", sort: "up", up: false });
   function packItems() {
     const v = pkView();
-    let L = S.inv.filter(it => (v.slot === "all" || it.slot === v.slot) && (v.set === "any" || (v.set === "sets" ? !!it.set : v.set === "none" ? !it.set : it.set === v.set)) && (!v.up || upPct(it) > 0));
+    let L = S.inv.filter(it => (v.slot === "all" || it.slot === v.slot) && (v.set === "any" || (v.set === "sets" ? !!it.set : v.set === "none" ? !it.set : it.set === v.set)));
     const by = { up: (a, b) => upPct(b) - upPct(a), rar: (a, b) => b.r - a.r || score(b) - score(a), new: (a, b) => b.id - a.id, set: (a, b) => (a.set ? SET[a.set].name : "~").localeCompare(b.set ? SET[b.set].name : "~") || b.r - a.r }[v.sort] || (() => 0);
     return L.sort(by);
   }
@@ -3732,13 +3749,12 @@ body.perf .pulse { animation: none; }
     const v = pkView(), L = packItems();
     if (pkSel != null && !S.inv.some(i => i.id === pkSel)) pkSel = null;
     const setsIn = [...new Set(S.inv.filter(i => i.set).map(i => i.set))];
-    const cnt = k => k === "all" ? S.inv.length : S.inv.filter(i => i.slot === k).length;
-    let h = '<div class="pkBar">' +
-      '<div class="chips">' + PK_SLOT.map(([k, n]) => '<button class="chip' + (v.slot === k ? " on" : "") + '" data-act="pkSlot" data-id="' + k + '" type="button">' + n + " " + cnt(k) + "</button>").join("") + "</div>" +
-      '<div class="chips"><span>Sort</span>' + PK_SORT.map(([k, n]) => '<button class="chip' + (v.sort === k ? " on" : "") + '" data-act="pkSort" data-id="' + k + '" type="button">' + n + "</button>").join("") +
-      '<button class="chip' + (v.up ? " on" : "") + '" data-act="pkUp" type="button">Upgrades only</button></div>' +
-      '<div class="chips"><select data-act="pkSet" aria-label="Filter by set"><option value="any"' + (v.set === "any" ? " selected" : "") + '>Any set</option><option value="sets"' + (v.set === "sets" ? " selected" : "") + '>Set items only</option><option value="none"' + (v.set === "none" ? " selected" : "") + '>No set</option>' +
-      SETS.filter(x => setsIn.includes(x.id) || v.set === x.id).map(x => '<option value="' + x.id + '"' + (v.set === x.id ? " selected" : "") + ">" + x.name + "</option>").join("") + "</select><span>" + S.inv.length + " / " + PACK_CAP + " slots</span></div></div>";
+    const ico = k => k === "all" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" fill="currentColor"/></svg>' : k === "weapon" ? '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON.Drone + '" fill="currentColor"/></svg>' : '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[k].shape + '" fill="currentColor" fill-rule="evenodd"/></svg>';
+    let h = '<div class="pkBar"><div class="seg">' + PK_SLOT.map(([k, n]) => '<button class="' + (v.slot === k ? "on" : "") + '" data-act="pkSlot" data-id="' + k + '" type="button">' + ico(k) + n + "</button>").join("") + "</div>" +
+      '<div class="pkRow"><label>Sort<select data-act="pkSort" aria-label="Sort">' + PK_SORT.map(([k, n]) => '<option value="' + k + '"' + (v.sort === k ? " selected" : "") + ">" + n + "</option>").join("") + "</select></label>" +
+      '<label>Set<select data-act="pkSet" aria-label="Filter by set"><option value="any"' + (v.set === "any" ? " selected" : "") + '>All items</option><option value="sets"' + (v.set === "sets" ? " selected" : "") + '>Set items only</option><option value="none"' + (v.set === "none" ? " selected" : "") + '>No set</option>' +
+      SETS.filter(x => setsIn.includes(x.id) || v.set === x.id).map(x => '<option value="' + x.id + '"' + (v.set === x.id ? " selected" : "") + ">" + x.name + "</option>").join("") + "</select></label>" +
+      '<span class="cap">' + S.inv.length + "/" + PACK_CAP + "</span></div></div>";
     if (!S.inv.length) h += '<p class="note">Nothing here yet. Upgrades are equipped automatically, the rest lands here.</p>';
     else if (!L.length) h += '<p class="note">No items match these filters.</p>';
     else {
@@ -3749,7 +3765,7 @@ body.perf .pulse { animation: none; }
       });
       h += '<div class="tileGrid">' + grid + "</div>";
       const sel = pkSel != null && S.inv.find(i => i.id === pkSel);
-      h += '<div class="pkDetail">' + (sel ? itemCard(sel, "pack") : '<p class="note" style="margin:0">Tap an item to see it. ▲ means it beats what you wear, a dot shows its set, ✦ marks a unique effect.</p>') + "</div>";
+      h += '<div class="pkDetail">' + (sel ? itemCard(sel, "pack") : '<p class="note" style="margin:0">Tap an item to see it. Border color is rarity. <b style="color:#5fd38d">▲</b> beats what you wear, a colored dot is its set, ✦ is a unique effect.</p>') + "</div>";
     }
     $("packList").innerHTML = h;
     $("autoEq").textContent = "Auto-equip: " + (S.autoEquip ? "On" : "Off");
@@ -4412,10 +4428,11 @@ body.perf .pulse { animation: none; }
   $("panels").addEventListener("change", e => {
     const t = e.target.closest("select[data-act]"); if (!t) return;
     if (t.dataset.act === "pkSet") { pkView().set = t.value; pkSel = null; markDirty("pack"); updateUI(); save(); }
+    if (t.dataset.act === "pkSort") { pkView().sort = t.value; markDirty("pack"); updateUI(); save(); }
   });
   $("panels").addEventListener("click", e => {
     const b = e.target.closest("[data-act]");
-    if (!b || b.disabled) return;
+    if (!b || b.disabled || b.tagName === "SELECT") return;
     const act = b.dataset.act, id = b.dataset.id;
     if (act === "autoEq") { S.autoEquip = !S.autoEquip; markDirty("pack"); }
     else if (act === "autoSv") { S.salv = (S.salv + 1) % SALV_LABEL.length; markDirty("pack"); }
