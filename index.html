@@ -829,10 +829,10 @@ body.perf .pulse { animation: none; }
   const autoOn = () => (S.transcends || 0) >= 1;
   const AUTO_REFUND = { aTrain: 12, aPush: 8, aAsc: 15, smart: 10 };
   const FG = {}; FORGE.forEach(f => FG[f.id] = f);
-  // Star Power: every Stardust ever earned gives +3% attack and health and +5% echo gain; past 50 each counts half
+  // Star Power: every Stardust ever earned gives +3% attack and health and +2% echo gain; past 50 each counts half
   const starEff = () => { const t = S.stardustTotal || 0; return Math.min(t, 50) + Math.max(0, t - 50) * .5; };
   const starPow = () => 1 + .03 * starEff();
-  const starEcho = () => 1 + .05 * starEff();
+  const starEcho = () => 1 + .02 * starEff();
   const TRANS_AT = 150;
   const transOpen = () => (S.peak || 1) >= TRANS_AT || (S.stardustTotal || 0) > 0;
   const dustGain = () => Math.floor(Math.sqrt(S.echoesTotal || 0) * Math.max(S.cyclePeak || 1, S.maxStage || 1) / TRANS_AT);
@@ -3703,7 +3703,7 @@ body.perf .pulse { animation: none; }
       <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
     ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
       <p>In return you earn <b>Stardust</b>: the square root of the echoes you earned this cycle, times your best stage this cycle divided by 150. The Transcend tab shows exactly how much you'd get before you commit.</p>
-      <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +5% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
+      <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +2% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
       <p>Spend Stardust in the <b>Star Forge</b>: <b>Expanded Training</b> (+10 level cap on capped training per rank), <b>Skill Mastery</b> (+5 skill level cap), <b>Gilded Gear</b> (extra bonus stats on items), <b>Fine Craft</b> (stronger bonus stats), <b>Head Start</b> (each ascension starts 10 stages further in with a Rare starter kit), <b>Third Orbital</b> (a third weapon slot at 40%, 70%, then 100% damage), <b>Boss Hunter</b> (+5s boss timer and +10% boss damage per rank), <b>Overcharge Discount</b> (cheaper Overcharge growth), <b>Bounty Board+</b> (an extra bounty slot per rank, faster postings) and <b>Offline Mastery</b> (offline farming up to full speed and 24 hours).</p>
       <p>Your first Transcend also unlocks <b>automation</b> for free: <b>Auto-Train</b>, <b>Auto-Push</b>, <b>Auto-Ascend</b> and <b>Smart Cast</b>. Their settings are at the bottom of the Transcend tab.</p>`],
     ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li></ul>`]
