@@ -2625,7 +2625,12 @@ body.perf .pulse { animation: none; }
       e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
       floatText("Stunned", "info", e);
     }
-    if (e.m && e.m.mirror && e.m.mirror.on > 0 && dmg > 0) trueDamage(dmg * .25, "Mirror");
+    // Mirror reflects a slice of each hit, but scaled to your health so huge damage can't one-shot you:
+    // at most 2% of your max health per hit and 30% per Mirror phase
+    if (e.m && e.m.mirror && e.m.mirror.on > 0 && dmg > 0) {
+      const R = e.m.mirror, room = ST.maxHp * .3 - (R.dealt || 0);
+      if (room > 0) { const r = Math.min(dmg * .25, ST.maxHp * .02, room); R.dealt = (R.dealt || 0) + r; trueDamage(r, "Mirror"); }
+    }
     if (ST.leech > 0 && dmg > 0 && leechPool > 0) {
       // life steal heals from a pool that refills at twice your life steal % of max health per second
       const got = Math.min(dmg * ST.leech, leechPool); leechPool -= got;
@@ -2654,7 +2659,7 @@ body.perf .pulse { animation: none; }
   const effSpd = () => ST.spd * (odT > 0 ? 1 + surgePct(lvl("overdrive")) / 100 : 1) * (st("gravity") ? .7 : 1) * (ST.U.has("tail") ? 1 + .01 * tailT : 1);
   // ---------- gear effects ----------
   let heatE = null, heatN = 0, bloodT = 0, gravN = 0, blockStk = 0, blockStkT = 0, evadeBuffT = 0, tailT = 0, flareT = 0, cometT = 0, prismT = 0, phoenixT = 0, bastT = 0, manaSpent = 0;
-  let decoy = null;
+  let decoy = null, blastWinT = 0, blastSum = 0;
   const trail = [], fields = [];
   // damage that skips crits and floats (bleeds, burns, trails, fields, blasts)
   function dotDmg(e, d) {
@@ -3074,7 +3079,7 @@ body.perf .pulse { animation: none; }
     if (M.mirror) {
       const R = M.mirror;
       if (R.on > 0) { R.on -= dt; if (R.on <= 0) em.classList.remove("mir"); }
-      else if (R.tele > 0) { R.tele -= dt; if (R.tele <= 0) { R.on = 3; em.classList.add("mir"); log("Mirror up: your damage reflects", "bad"); } }
+      else if (R.tele > 0) { R.tele -= dt; if (R.tele <= 0) { R.on = 3; R.dealt = 0; em.classList.add("mir"); log("Mirror up: your damage reflects", "bad"); } }
       else { R.t -= dt; if (R.t <= 0) { R.t = 11; R.tele = 1.2; floatText("Mirror forming", "info", e); } }
     }
     if (M.well) {
@@ -3118,7 +3123,13 @@ body.perf .pulse { animation: none; }
     if (e.removed) return;
     e.removed = true;
     const boss = e.boss, elite = e.elite;
-    if (e.mods.includes("volatile")) setTimeout(() => { burst(e.px, e.py, "#ff8463", 12); shake(6, 300); trueDamage(ST.maxHp * .25 * modPow(), "Blast"); }, 150);
+    // Volatile: blasts hit for 25% of your health (more after many ascensions, up to 35%), and several at once can't add up past 50% in 1.5s
+    if (e.mods.includes("volatile")) setTimeout(() => {
+      burst(e.px, e.py, "#ff8463", 12); shake(6, 300);
+      const pn = performance.now(); if (pn > blastWinT) { blastWinT = pn + 1500; blastSum = 0; }
+      const d = Math.min(ST.maxHp * .25 * Math.min(1.4, modPow()), ST.maxHp * .5 - blastSum);
+      if (d > 0) { blastSum += d; trueDamage(d, "Blast"); }
+    }, 150);
     const g = Math.ceil(lumenAt(S.stage) * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
     addGold(g, true); S.totalKills++;
     if (!e.child) { const sa = shardAmt(S.stage) * ST.shardF; if (boss) addShards(Math.round(4 * sa * (has("choir", 6) ? 2 : 1)), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
@@ -4144,7 +4155,7 @@ body.perf .pulse { animation: none; }
       <ul><li><b>Dim</b>: your light fades. Healing from regen, kills and life steal is cut by 60%.</li><li><b>Fracture</b>: your shell cracks. No block, and 20% more damage taken.</li><li><b>Static</b>: interference. Half mana regen, and skills cost 25% more.</li><li><b>Gravity</b>: you're weighed down. 30% slower attacks and no evasion.</li><li><b>Eclipse</b>: your light is covered. Your crit chance is halved, though Shatter still forces crits.</li></ul>
       <p>Counters: an active Barrier stops new statuses, Dash clears them all, and Clarity training shortens them.</p>`],
     ["Boss mechanics", `<p>Every boss uses Crush. From stage 20, each zone's boss adds a signature mechanic. From stage 60, bosses combine two. The line under the boss's health bar tells you what's happening.</p>
-      <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and 25% of the damage you deal reflects back at you. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
+      <ul><li><b>Facet shield</b> (stage 20): 8 crystal facets orbit the boss and cut blade damage by 90%. Taps break 2 facets, blades break 1, and Nova breaks 4.</li><li><b>Mirror</b> (stage 30): after a short warning the boss turns silver for 3 seconds, and your hits reflect back at you: 25% of each hit, but never more than 2% of your max health per hit or 30% per Mirror. Barrier absorbs it.</li><li><b>Gravity Well</b> (stage 40): the boss channels for 4 seconds. Deal 10% of its health in that time with taps and skills to stun it. Fail and it hits for 40% of your health and inflicts Gravity.</li><li><b>Shard motes</b> (stage 50): green motes orbit and heal the boss while reducing your damage. Taps and Storm blades pop one each, and Nova pops them all.</li></ul>`],
     ["Ascension modifiers", `<p>Your first ascension makes enemies start rolling modifiers, shown as orange tags under their health bar and orange diamonds at their base. Each ascension adds more: bosses and elites get extra modifiers, normal enemies start getting them from the second ascension, and modifier effects grow 10% stronger each time. To compensate, each ascension gives +5% echoes.</p>
       <ul><li><b>Shielded</b>: every 4th hit is blocked.</li><li><b>Hasted</b>: attacks 40% faster.</li><li><b>Vampiric</b>: heals a little each time it hits you (dodge its shots to stop it).</li><li><b>Armored</b>: takes less damage from blades and skills, but taps ignore it.</li><li><b>Volatile</b>: explodes when destroyed.</li><li><b>Regenerating</b>: heals over time, but only after a couple of seconds without being hit, so steady damage keeps it from healing.</li><li><b>Splitting</b>: breaks into a smaller copy you also have to destroy.</li><li><b>Draining</b>: every hit that lands inflicts a random status.</li></ul>`],
     ["Enemy variants", `<p>Every shape comes in four variants with their own colors, designs, weapons and fighting styles. Variants unlock as you go deeper, and elites and bosses can be any variant.</p>
@@ -4391,7 +4402,7 @@ body.perf .pulse { animation: none; }
       if (enemy.stun > 0) mt = "Stunned";
       else if (M && M.well && M.well.ch > 0) { mt = "Gravity Well: deal " + fmt(Math.max(0, M.well.need - M.well.dealt)) + " more to break it"; mb = Math.min(1, M.well.dealt / M.well.need); }
       else if (M && M.facets && M.facets.n > 0) mt = "Facet shield: " + M.facets.n + " left, tap to break it";
-      else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: 25% of your damage reflects";
+      else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: your hits reflect back";
       else if (M && M.mirror && M.mirror.tele > 0) mt = "Mirror forming";
       else if (M && M.motes && M.motes.n > 0) mt = M.motes.n + " motes healing the boss, tap them";
     }
