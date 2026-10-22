@@ -2358,15 +2358,17 @@ body.perf .pulse { animation: none; }
     el.className = "ripple"; el.style.left = (x - r.left) + "px"; el.style.top = (y - r.top) + "px";
     arena.appendChild(el); setTimeout(() => el.remove(), 360);
   }
-  function ringFx(x, y, col, from, to, ms, width) {
-    if (reduce || fxBusy()) return;
+  // force: skill visuals always show, even when the particle budget is full
+  function ringFx(x, y, col, from, to, ms, width, force) {
+    if (reduce || (!force && fxBusy())) return;
     tempFx(svgEl("circle", { cx: 0, cy: 0, r: 10, fill: "none", stroke: col, "stroke-width": width || 3 }), [{ transform: "translate(" + x + "px," + y + "px) scale(" + from + ")", opacity: 1 }, { transform: "translate(" + x + "px," + y + "px) scale(" + to + ")", opacity: 0 }], ms);
   }
   function burst(x, y, col, n) { ringFx(x, y, col, .5, 3, 450); sparks(x, y, n, col, 40); }
   function novaFx() {
-    ringFx(HERO_X, HERO_Y, "#effffc", 1, 17, 320, 4);
-    ringFx(HERO_X, HERO_Y, "#7be0d0", .6, 15, 360, 8);
-    setTimeout(() => { if (enemy) burst(ENEMY_X, enemyCY(), "#effffc", 10); }, 220);
+    ringFx(HERO_X, HERO_Y, "#effffc", 1, 17, 320, 4, true);
+    ringFx(HERO_X, HERO_Y, "#7be0d0", .6, 15, 360, 8, true);
+    const tg = enemy;
+    setTimeout(() => { if (tg && !tg.dead) { ringFx(tg.px, tg.py, "#effffc", .5, 4, 420, 3, true); sparks(tg.px, tg.py, 10, "#effffc", 40); } }, 220);
   }
   function dashFx(x0, y0, x1, y1) {
     if (reduce) return;
@@ -2690,7 +2692,7 @@ body.perf .pulse { animation: none; }
     if (U.has("tail")) { if (alive()) tailT = Math.min(30, tailT + dt); } else tailT = 0;
     if (U.has("flare") && moving && alive()) {
       flareT += dt;
-      if (flareT >= 5) { flareT = 0; ringFx(HERO_X, HERO_Y, "#ffd04d", 1, 12, 380, 3); foes.forEach(f => { if (!f.dead && Math.hypot(f.px - HERO_X, f.py - HERO_Y) < 130) land(f, ST.atk, "aoe"); }); }
+      if (flareT >= 5) { flareT = 0; ringFx(HERO_X, HERO_Y, "#ffd04d", 1, 12, 380, 3, true); foes.forEach(f => { if (!f.dead && Math.hypot(f.px - HERO_X, f.py - HERO_Y) < 130) land(f, ST.atk, "aoe"); }); }
     }
     if (U.has("comet") && moving) {
       cometT += dt;
@@ -3279,7 +3281,7 @@ body.perf .pulse { animation: none; }
   }
   function tideWave() {
     if (heroDown) return;
-    ringFx(HERO_X, HERO_Y, "#4fd3e4", 1, 26, 520, 4);
+    ringFx(HERO_X, HERO_Y, "#4fd3e4", 1, 26, 520, 4, true);
     foes.forEach(f => { if (!f.dead && inView(f)) land(f, ST.atk * 3, "aoe"); });
   }
   function autoCast() {
