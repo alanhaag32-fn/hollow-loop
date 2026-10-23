@@ -519,6 +519,8 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 .hudCur .dust:empty { display: none; }
 .forgeH { margin: 14px 0 6px; font-family: "Syne", Impact, sans-serif; font-size: 14px; color: #ffe7a3; letter-spacing: .02em; }
 .row.forge .chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.voidC { color: var(--c5); }
+.btn.voidb { border-color: rgba(255,95,168,.6); color: #ffc2de; }
 .chip { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.05); color: var(--muted); border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
 .chip.on { border-color: rgba(255,231,163,.7); color: #ffe7a3; background: rgba(255,231,163,.1); }
 .btn.dustb.afford { border-color: #ffe7a3; color: #ffe7a3; }
@@ -696,6 +698,7 @@ body.perf .pulse { animation: none; }
           <div class="legend"><span><i style="background:var(--c3)"></i>Edge</span><span><i style="background:var(--c1)"></i>Ward</span><span><i style="background:var(--c2)"></i>Drive</span><span><i style="background:var(--c4)"></i>Fortune</span><span><i style="background:var(--hero)"></i>Bridge</span></div>
           <p class="note">The web keeps every node you learn through ascensions. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
           <div class="wsub" data-sub="trans"><div id="transBody"></div></div>
+          <div class="wsub" data-sub="abyss"><div id="abyssBody"></div></div>
           <div class="wsub" data-sub="web">
           <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom. Tap a node for details</div><div id="nodeCard"></div></div>
           </div>
@@ -794,7 +797,7 @@ body.perf .pulse { animation: none; }
     // Mythic: only after your first Transcend, only from bosses at stage 150+. Always a set item, always has a unique effect
     { name: "Mythic", mult: 8, w: .1, aff: [40, 60], n: 4, myth: true }
   ];
-  const mythOk = (boss, stage) => (S.transcends || 0) >= 1 && boss && stage >= 150;
+  const mythOk = (boss, stage) => ((S.transcends || 0) >= 1 && boss && stage >= 150) || (abyssOn && boss);
   const ARENA_C = ["#b9b5c9", "#4fd3e4", "#b48cff", "#ff8463", "#ffd04d", "#ff5fa8"];
   // f: how a roll turns into the stat (a Legendary roll of 25-40 is 25-40% attack, but 2.5-4% life steal)
   const AFF = {
@@ -948,7 +951,7 @@ body.perf .pulse { animation: none; }
     { id: "mast", grp: "Caps", name: "Skill Mastery", max: 5, cost: r => Math.ceil(6 * Math.pow(1.7, r)), desc: r => "Skill level cap " + (40 + 5 * r) + ", and the stage cap runs " + 2 * r + " levels ahead", nx: "+5 cap" },
     { id: "gild", grp: "Gear", name: "Gilded Gear", max: 3, cost: r => [10, 25, 60][r] || 999, desc: r => ["No extra bonus stats yet", "Rare and better roll 1 extra bonus stat", "Magic items also roll 1 extra", "Legendaries roll another (5 total)"][r], nx: ["Rare+ +1 stat", "Magic +1 stat", "Legendary +1 more"] },
     { id: "craft", grp: "Gear", name: "Fine Craft", max: 5, cost: r => Math.ceil(4 * Math.pow(1.6, r)), desc: r => "+" + 10 * r + "% bonus stat values on new items", nx: "+10%" },
-    { id: "head", grp: "Start", name: "Head Start", max: 10, cost: r => Math.ceil(5 * Math.pow(1.5, r)), desc: r => r ? "Each ascension starts at stage " + (1 + 10 * r) + " with a Rare starter kit" : "Ascensions start at stage 1", nx: "+10 stages" },
+    { id: "head", grp: "Start", name: "Head Start", max: 13, cost: r => Math.ceil(5 * Math.pow(1.5, r)), desc: r => r ? "Each ascension starts at stage " + (1 + 10 * r) + " with a Rare starter kit" : "Ascensions start at stage 1", nx: "+10 stages" },
     { id: "orb3", grp: "Combat", name: "Third Orbital", max: 3, cost: r => [25, 50, 90][r] || 999, desc: r => r ? "A third orbital slot, firing at " + SLOT3_DMG[r] * 100 + "% damage" : "Opens a third orbital slot", nx: ["40% damage", "70% damage", "100% damage"] },
     { id: "boss", grp: "Combat", name: "Boss Hunter", max: 5, cost: r => Math.ceil(6 * Math.pow(1.6, r)), desc: r => "+" + 5 * r + "s boss timer and +" + 10 * r + "% damage to bosses", nx: "+5s, +10%" },
     { id: "ocd", grp: "Combat", name: "Overcharge Discount", max: 5, cost: r => Math.ceil(8 * Math.pow(1.6, r)), desc: r => "Each Overcharge level costs x" + (2 - .1 * r).toFixed(1) + " the last", nx: r => "x" + (1.9 - .1 * r).toFixed(1) },
@@ -1146,6 +1149,7 @@ body.perf .pulse { animation: none; }
 
   const fresh = () => ({
     v: 4, eco: 7, oc: {}, stardust: 0, stardustTotal: 0, forge: {}, transcends: 0, cyclePeak: 1,
+    abyss: { best: 0, depth: 1, stone: 0, total: 0, altar: {}, seed: 0 },
     autoCfg: { trainOn: true, train: {}, push: 60, ascAt: 0, ascStall: false, smart: true }, anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false, ascensions: 0, bestiary: {}, gold: 0, shards: 0, stage: 1, maxStage: 1, peak: 1, kills: 0, push: true,
     echoes: 0, echoesTotal: 0, tree: {},
     train: Object.fromEntries(TRAIN.map(t => [t.id, 0])),
@@ -1252,6 +1256,9 @@ body.perf .pulse { animation: none; }
       S.tree = d.tree || {};
       S.oc = d.oc || {};
       S.forge = d.forge || {};
+      S.abyss = Object.assign(fresh().abyss, d.abyss || {}); S.abyss.altar = S.abyss.altar || {};
+      // closed the game inside the Abyss: put the main run back where it was
+      if (S.abyss.ret) { S.stage = S.abyss.ret.stage; S.kills = S.abyss.ret.kills; S.push = S.abyss.ret.push; delete S.abyss.ret; }
       S.autoCfg = Object.assign(fresh().autoCfg, d.autoCfg || {});
       if (!d.cyclePeak) S.cyclePeak = Math.max(S.peak || 1, S.maxStage || 1);
       S.skill = d.skill || {};
@@ -1282,7 +1289,87 @@ body.perf .pulse { animation: none; }
   const has = (id, n) => ((ST && ST.sets[id]) || 0) >= n;
   // echo power: every echo you've ever earned adds +1% attack and health, permanently. It never caps,
   // so each ascension pushes you further even once the web is full
-  const echoPow = () => 1 + .01 * (S.echoesTotal || 0);
+  const echoPow = () => 1 + .01 * (S.echoesTotal || 0) * (abMile(25) ? 1.25 : 1);
+  // ===================== The Abyss: an endless second mode that never resets =====================
+  let abyssOn = false, abPhase = 1, abNeed = 0, abSpawned = 0, abPause = 0, abKind = "n";
+  const abyssOpen = () => (S.peak || 1) >= 150;
+  const AL = id => (S.abyss && S.abyss.altar && S.abyss.altar[id]) || 0;
+  const abBest = () => (S.abyss && S.abyss.best) || 0;
+  const abMile = d => abBest() >= d;
+  const abyssStage = d => 143 + 2 * d;
+  // one new rule per depth (from depth 2); after all twelve they start stacking
+  const AB_RULES = [
+    { id: "thick", name: "Dense", d: n => "+" + 40 * n + "% enemy health" },
+    { id: "homing", name: "Seeking", d: n => "Enemy shots home in " + (50 * n) + "% harder" },
+    { id: "hasted", name: "Frenzy", d: n => "Enemies attack " + 25 * n + "% faster" },
+    { id: "pools", name: "Corrosion", d: n => "Destroyed enemies leave poison pools (" + 3 * n + "% health per second)" },
+    { id: "vicious", name: "Vicious", d: n => "+" + 30 * n + "% enemy damage" },
+    { id: "halfheal", name: "Withering", d: n => "Your healing is cut to " + Math.round(Math.max(.25, Math.pow(.5, n)) * 100) + "%" },
+    { id: "shield", name: "Warded", d: () => "Every enemy is Shielded" },
+    { id: "swarm", name: "Swarm", d: n => "+" + Math.min(4, n) + " enemies per wave" },
+    { id: "split", name: "Fission", d: () => "Elites split apart when destroyed" },
+    { id: "static", name: "Null Field", d: n => "Your mana regen is " + Math.round((1 - Math.pow(.7, n)) * 100) + "% lower" },
+    { id: "volatile", name: "Unstable", d: () => "Every enemy is Volatile" },
+    { id: "armor", name: "Plated", d: n => "Enemies take " + Math.round((1 - Math.max(.4, Math.pow(.8, n))) * 100) + "% less damage" }
+  ];
+  function abSeq() {
+    let x = (S.abyss.seed || 1) >>> 0; const ids = AB_RULES.map(r => r.id);
+    for (let i = ids.length - 1; i > 0; i--) { x = (x * 1103515245 + 12345) >>> 0; const j = x % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    return ids;
+  }
+  const ruleCountAt = (id, d) => { const seq = abSeq(), pos = seq.indexOf(id), k = Math.max(0, d - 1); return Math.floor(k / 12) + (k % 12 > pos ? 1 : 0); };
+  const ruleN = id => abyssOn ? ruleCountAt(id, S.abyss.depth) : 0;
+  const abHeal = () => Math.max(.25, Math.pow(.5, ruleN("halfheal")));
+  const ALTAR = [
+    { id: "might", name: "Abyssal Might", max: 50, cost: r => Math.ceil(3 * Math.pow(1.22, r)), desc: r => "+" + 10 * r + "% attack and health", nx: "+10%" },
+    { id: "reson", name: "Echo Resonance", max: 20, cost: r => Math.ceil(5 * Math.pow(1.3, r)), desc: r => "+" + 5 * r + "% echoes from ascending", nx: "+5%" },
+    { id: "memory", name: "Abyss Memory", max: 5, cost: r => [10, 20, 40, 70, 110][r] || 999, desc: r => "+" + r + "% attack for every depth of your best (now +" + r * abBest() + "%)", nx: "+1% per depth" },
+    { id: "lure", name: "Mythic Lure", max: 10, cost: r => Math.ceil(8 * Math.pow(1.35, r)), desc: r => "+" + 15 * r + "% Mythic drop chance", nx: "+15%" },
+    { id: "flow", name: "Momentum", max: 5, cost: r => [6, 12, 24, 40, 60][r] || 999, desc: r => "Momentum lasts until " + (50 + 5 * r) + "% of your best stage", nx: "+5%" },
+    { id: "stone", name: "Deep Pockets", max: 10, cost: r => Math.ceil(4 * Math.pow(1.4, r)), desc: r => "+" + 10 * r + "% Voidstone", nx: "+10%" }
+  ];
+  const ALT = {}; ALTAR.forEach(a => ALT[a.id] = a);
+  const AB_MILES = [
+    [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge"],
+    [10, "Void Step", "Dash tears a rift along its path that deals 300% attack"],
+    [25, "Rift Keystone", "+25% echo power"],
+    [50, "Abyss Heart", "+50% attack and health"],
+    [100, "Endless", "Double Voidstone"]
+  ];
+  // Momentum: once you've transcended, stages below half your best ever fly by
+  const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * Math.min(.75, .5 + .05 * AL("flow"))) : 0;
+  const momentum = () => !abyssOn && S.stage < momentumCap();
+  // irregular shapes for the Void enemies
+  const VOID_SHAPES = [
+    { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
+    { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
+    { n: "Slant", p: [[-.95, -.5], [.45, -.5], [.95, .5], [-.45, .5]] },
+    { n: "Trapeze", p: [[-.45, -.55], [.45, -.55], [.95, .55], [-.95, .55]] },
+    { n: "Chevron", p: [[-.9, -.6], [.3, -.6], [.9, 0], [.3, .6], [-.9, .6], [-.4, 0]] },
+    { n: "Bowtie", p: [[-1, -.7], [0, -.2], [1, -.7], [1, .7], [0, .2], [-1, .7]] },
+    { n: "Notch", p: [[-.8, -.8], [.8, -.8], [.8, .8], [0, .25], [-.8, .8]] },
+    { n: "Shard", p: [[-.9, .6], [.95, .75], [-.2, -.95]] },
+    { n: "Dart", p: [[0, -1], [.7, .8], [0, .35], [-.7, .8]] },
+    { n: "Warp", p: [[-.5, -.9], [.6, -.7], [1, .1], [.4, .85], [-.7, .7], [-.95, -.1]] },
+    { n: "Bolt", p: [[-.3, -1], [.6, -1], [.15, -.15], [.75, -.15], [-.35, 1], [0, .15], [-.6, .15]] },
+    { n: "Spark", p: [[0, -1], [.3, -.3], [1, 0], [.3, .3], [0, 1], [-.3, .3], [-1, 0], [-.3, -.3]] },
+    { n: "Rift", p: [[-.9, -.3], [-.1, -1], [.8, -.6], [.85, .5], [0, .95], [.1, .2]] },
+    { n: "Ell", p: [[-.7, -1], [-.1, -1], [-.1, .3], [.8, .3], [.8, .9], [-.7, .9]] }
+  ];
+  function jitterShape(pts) {
+    let q = pts.map(([x, y]) => [x * (.88 + Math.random() * .24), y * (.88 + Math.random() * .24)]);
+    const cx = q.reduce((a, p) => a + p[0], 0) / q.length, cy = q.reduce((a, p) => a + p[1], 0) / q.length;
+    q = q.map(([x, y]) => [x - cx, y - cy]);
+    const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
+    return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
+  }
+  // shape-aware outline: irregular Void shapes, or the usual regular polygon
+  function eVerts(e, r, rot, cx, cy) {
+    if (!e.shape) return vertices(e.sides, r, rot, cx, cy);
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    return e.shape.map(([x, y]) => [cx + (x * c - y * sn) * r, cy + (x * sn + y * c) * r]);
+  }
+  const ePts = (e, r, rot, cx, cy) => eVerts(e, r, rot, cx, cy).map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
   function computeStats() {
     const sc = setCounts(), hs = (id, n) => (sc[id] || 0) >= n;
     const p = s => (S.equip[s] ? S.equip[s].power : 0);
@@ -1300,8 +1387,8 @@ body.perf .pulse { animation: none; }
       aegis: 1 + iv("aegis"), thorn: iv("thorn"), reflect: iv("reflect"), burn: iv("burn"), wake: Math.min(.4, iv("wake")),
       move: (1 + iv("move")) * (1 + sum.move / 100), bossDmg: 1 + sum.boss / 100, orbDmg: 1 + sum.orb / 100,
       shrug: sum.shrug / 100, shardF: 1 + sum.shard / 100, redBonus: hs("star", 6) ? .25 : 0,
-      atk: echoPow() * starPow() * (hs("star", 2) ? 1 + Math.min(1, .01 * (S.stardustTotal || 0)) : 1) * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
-      maxHp: echoPow() * starPow() * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")) * (hs("bastion", 2) ? 1.3 : 1),
+      atk: echoPow() * starPow() * (1 + .1 * AL("might")) * (1 + .01 * AL("memory") * abBest()) * (abMile(50) ? 1.5 : 1) * (hs("star", 2) ? 1 + Math.min(1, .01 * (S.stardustTotal || 0)) : 1) * (5 + p("weapon")) * tm("might") * (1 + .02 * IT("triad", "n")) * (1 + Math.min(.5, .005 * T("x4") * S.bountyDone)) * (1 + sum.atk / 100) * Math.pow(1.1, T("e1")) * (1 + .05 * T("b1")) * (hs("void", 2) ? 1.25 : 1),
+      maxHp: echoPow() * starPow() * (1 + .1 * AL("might")) * (abMile(50) ? 1.5 : 1) * (60 + p("armor") * 6) * tm("vigor") * (1 + .02 * IT("quad", "n")) * (1 + .03 * T("w14")) * (1 + sum.hp / 100) * Math.pow(1.1, T("w1")) * (1 + .05 * T("b1")) * (hs("bastion", 2) ? 1.3 : 1),
       hpRegen: .01 * (1 + .10 * T("b2")) + iv("regen"),
       maxMp: 100 * tm("essence") * (1 + ocV("essence")) * (1 + sum.mp / 100) * (1 + .10 * T("w2")) * (1 + .10 * T("d9")),
       mpRegen: .03 * tm("flow") * (1 + ocV("flow")) * (1 + .03 * IT("penta", "n")) * (1 + .15 * T("d12")) * (1 + sum.regen / 100) * (1 + .10 * T("w2")) * (hs("tide", 2) ? 1.3 : 1) * (1 + iv("mregen")),
@@ -1349,7 +1436,7 @@ body.perf .pulse { animation: none; }
   const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
   function rollRarity(boss, minR, stage) {
     // higher tiers get more common the deeper you go, up to a cap
-    const w = RARITY.map((r, i) => i < minR || (r.myth && !mythOk(boss, stage)) ? 0 : r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
+    const w = RARITY.map((r, i) => i < minR || (r.myth && !mythOk(boss, stage)) ? 0 : (r.myth ? 1 + .15 * AL("lure") : 1) * r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
     let t = w.reduce((a, b) => a + b, 0) * Math.random();
     for (let i = 0; i < w.length; i++) { t -= w[i]; if (t <= 0 && w[i] > 0) return i; }
     return Math.max(minR, 0);
@@ -1478,8 +1565,8 @@ body.perf .pulse { animation: none; }
   const PARA = .75;
   let bgTW = 1, bgTH = 1, bgOX = NaN, bgOY = NaN;
   function drawBackdrop() {
-    const zone = Math.max(0, lastZone), h = (zone * 53 + 200) % 360;
-    $("bgSky").style.background = "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
+    const ab = lastZone === 999, zone = ab ? 0 : Math.max(0, lastZone), h = ab ? 285 : (zone * 53 + 200) % 360;
+    $("bgSky").style.background = ab ? "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)" : "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
     const dpr = Math.min(2, window.devicePixelRatio || 1), tw = Math.max(200, Math.round(MAP_W * SC)), th = Math.max(200, Math.round(MAP_H * SC));
     const c = document.createElement("canvas"); c.width = Math.round(tw * dpr); c.height = Math.round(th * dpr);
     const x = c.getContext("2d"); x.scale(dpr, dpr);
@@ -1498,7 +1585,9 @@ body.perf .pulse { animation: none; }
       x.globalAlpha = outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1;
       wrap(cx, cy, r, (px, py) => {
         x.beginPath();
-        for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
+        const pts = ab ? jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p).map(([u, v]) => [px + u * r, py + v * r]) : null;
+        if (pts) pts.forEach(([u, v], k) => k ? x.lineTo(u, v) : x.moveTo(u, v));
+        else for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
         x.closePath();
         if (outline) { x.strokeStyle = "hsl(" + h + " 70% 70%)"; x.lineWidth = 1.2 * SC; x.stroke(); } else { x.fillStyle = "hsl(" + h + " 60% 60%)"; x.fill(); x.fillStyle = "#fff"; }
       });
@@ -1519,7 +1608,7 @@ body.perf .pulse { animation: none; }
   function buildStars() { drawBackdrop(); }
   let lastZone = -1;
   function setZone(stage, force) {
-    const zone = Math.floor((stage - 1) / 10);
+    const zone = abyssOn ? 999 : Math.floor((stage - 1) / 10);
     if (zone === lastZone && !force) return;
     lastZone = zone;
     const h = (zone * 53 + 200) % 360;
@@ -1671,7 +1760,8 @@ body.perf .pulse { animation: none; }
       spinInit(e); newWaypoint(e, !e.arrived);
     } else {
       const need = killsNeeded(), elite = S.stage > 10 && S.stage % 10 !== 0 && stageSpawned === need - 1;
-      e = makeEnemy(S.stage, elite); stageSpawned++;
+      if (abyssOn) e = makeVoid(abKind); else e = makeEnemy(S.stage, elite);
+      stageSpawned++;
       const ang = angIn == null ? pickSpawnAngle() : angIn, c = Math.cos(ang), sn = Math.sin(ang);
       const tx = c > 0 ? (VX1() - HERO_X) / c : c < 0 ? (VX0 - HERO_X) / c : 1e9, ty = sn > 0 ? (VY1() - HERO_Y) / sn : sn < 0 ? (VY0 - HERO_Y) / sn : 1e9;
       const dist = Math.min(tx, ty) + e.R + 45 + (extra || 0);
@@ -1688,7 +1778,7 @@ body.perf .pulse { animation: none; }
     drawFoe(e); setFoePos(e); poseFoe(e, 0);
     foes.push(e);
     anim(e.el.model, [{ opacity: 0 }, { opacity: 1 }], parent ? 200 : 500);
-    if (e.boss) { log("A " + e.name + " drifts in. Defeat it within " + Math.round(e.timer) + "s of it reaching you", "r4"); shake(6, 400); sfx("bossIn"); }
+    if (e.boss) { log("A " + e.name + " drifts in. Defeat it within " + Math.round(e.timer) + "s of it reaching you", e.void ? "r5" : "r4"); shake(6, 400); sfx("bossIn"); }
     else if (e.elite) { log("An " + e.name + " is closing in", "r3"); sfx("eliteIn"); }
     return e;
   }
@@ -1821,6 +1911,7 @@ body.perf .pulse { animation: none; }
   function clearFoes(fade) { foes.slice().forEach(f => removeFoe(f, fade)); setTarget(null); focus = null; stageSpawned = 0; }
   // waves come in packs: more foes at once and bigger groups the deeper you go (bosses arrive alone)
   function stepSpawns(dt) {
+    if (abyssOn) return stepAbyssSpawns(dt);
     const need = killsNeeded();
     if (stageSpawned >= need) return;
     const st = S.stage, boss = st % 10 === 0;
@@ -1833,7 +1924,85 @@ body.perf .pulse { animation: none; }
     if (st > 10 && !boss && stageSpawned + n >= need && n > 1) n = Math.max(1, need - 1 - stageSpawned);
     const base = pickSpawnAngle();
     for (let i = 0; i < n; i++) spawnFoe(null, base + (i - (n - 1) / 2) * .32, i * 22);
-    spawnT = .9 + Math.random() * .8;
+    spawnT = (.9 + Math.random() * .8) * (momentum() ? .35 : 1);
+  }
+  const pools = [];
+  let poolAcc = 0, poolT = 0;
+  const abWaveSize = () => 5 + Math.min(4, ruleN("swarm")) + Math.floor(S.abyss.depth / 15);
+  function abStartDepth(pause) { abPhase = 1; abNeed = abWaveSize(); abSpawned = 0; abPause = pause || 1.5; S.stage = abyssStage(S.abyss.depth); }
+  function enterAbyss() {
+    if (abyssOn || !abyssOpen() || heroDown) return;
+    if (!S.abyss.seed) S.abyss.seed = 1 + Math.floor(Math.random() * 1e9);
+    S.abyss.ret = { stage: S.stage, kills: S.kills, push: S.push };
+    abyssOn = true; clearFoes(false); pools.length = 0; abStartDepth(1.5);
+    setZone(S.stage, true); recalc(); closeWindow();
+    log("You enter the Abyss at depth " + S.abyss.depth + ". Clear 3 waves, then the Guardian", "r5"); sfx("chord", 0, 0);
+    floatText("Depth " + S.abyss.depth, "info", "hero", "#ff5fa8"); save(); updateUI();
+  }
+  function exitAbyss(quiet) {
+    if (!abyssOn) return;
+    abyssOn = false; const r = S.abyss.ret || {};
+    S.stage = r.stage || S.maxStage; S.kills = r.kills || 0; if (r.push != null) S.push = r.push; delete S.abyss.ret;
+    clearFoes(false); pools.length = 0; stageSpawned = S.kills; spawnT = .6;
+    setZone(S.stage, true); recalc();
+    if (!quiet) log("You left the Abyss. Back to stage " + S.stage, "r0");
+    save(); updateUI();
+  }
+  function stepAbyssSpawns(dt) {
+    if (abPause > 0) { abPause -= dt; return; }
+    const live = foes.filter(f => !f.dead).length;
+    if (abSpawned < abNeed) {
+      spawnT -= dt;
+      const cap = abPhase === 4 ? 1 : 6;
+      if (spawnT > 0 || live >= cap) return;
+      let n = abPhase === 4 ? 1 : Math.min(1 + rnd(3), cap - live, abNeed - abSpawned);
+      const base = pickSpawnAngle();
+      for (let i = 0; i < n; i++) {
+        const last = abSpawned === abNeed - 1;
+        abKind = abPhase === 4 ? "g" : last && (abPhase === 3 || (abPhase === 2 && S.abyss.depth >= 10)) ? "e" : "n";
+        spawnFoe(null, base + (i - (n - 1) / 2) * .32, i * 22); abSpawned++;
+      }
+      spawnT = .7 + Math.random() * .6;
+      return;
+    }
+    if (live > 0 || abPhase === 4) return;
+    if (abPhase < 3) { abPhase++; abNeed = abWaveSize(); abSpawned = 0; abPause = 1.2; floatText("Wave " + abPhase + "/3", "info", "hero", "#c08bff"); }
+    else { abPhase = 4; abNeed = 1; abSpawned = 0; abPause = 1.6; floatText("Guardian", "info", "hero", "#ff5fa8"); sfx("warn"); }
+  }
+  // Guardian down: Voidstone, a new best, and one depth deeper
+  function abyssCleared(e) {
+    const A = S.abyss, d = A.depth, first = d > A.best;
+    const g = Math.ceil((2 + Math.floor(d / 2)) * (first ? 3 : 1) * (1 + .1 * AL("stone")) * (abMile(100) ? 2 : 1));
+    A.stone += g; A.total += g;
+    if (first) {
+      A.best = d;
+      AB_MILES.forEach(([m, n]) => { if (d === m) { log("Abyss milestone, depth " + m + ": " + n + " unlocked", "r5"); sfx("chord", 0, 300); } });
+      recalc();
+    }
+    log("Depth " + d + " cleared: +" + g + " Voidstone" + (first ? " (new best)" : ""), "r5");
+    floatText("+" + g + " Voidstone", "info", e || "hero", "#ff5fa8");
+    A.depth = d + 1; abStartDepth(2.2); setZone(S.stage, true);
+    markDirty("tree"); save();
+  }
+  function abyssFail(why) {
+    const A = S.abyss, back = why === "death" ? 2 : 0;
+    A.depth = Math.max(1, A.depth - back); pools.length = 0;
+    log(why === "death" ? "Your core collapsed in the Abyss. Back to depth " + A.depth : "The Guardian slipped away. Depth " + A.depth + " starts over", "bad");
+    abStartDepth(2); markDirty("tree");
+  }
+  function stepAbyss(dt) {
+    if (!abyssOn) { pools.length = 0; return; }
+    const n = ruleN("pools"); poolT += dt;
+    for (let i = pools.length - 1; i >= 0; i--) {
+      const P = pools[i]; P.t -= dt;
+      if (P.t <= 0) { pools.splice(i, 1); continue; }
+      if (!heroDown && !(dashIT > 0) && Math.hypot(HERO_X - P.x, HERO_Y - P.y) < P.R) poolAcc += ST.maxHp * .03 * Math.max(1, n) * dt;
+    }
+    if (poolT >= .5) { poolT = 0; if (poolAcc > 0) { trueDamage(poolAcc, "Poison"); poolAcc = 0; } }
+  }
+  function addPool(x, y) {
+    pools.push({ x, y, R: 34, t: 5 });
+    if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 34, fill: "rgba(120,255,140,.16)", stroke: "#7dff8a", "stroke-width": 1.5, "stroke-dasharray": "4 4" }), [{ opacity: 0 }, { opacity: 1, offset: .08 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 5000);
   }
   // the target's ring: health (segmented), boss timer and mechanic progress, plus slowly turning marker ticks
   const FR_A = [-45, 225];
@@ -1921,6 +2090,11 @@ body.perf .pulse { animation: none; }
     dashVX = dx / l * v; dashVY = dy / l * v; dashT = DASH_TIME; dashIT = dashI(L); dashHit = new Set(); dashD = dashDmg(L);
     const x0 = HERO_X, y0 = HERO_Y;
     if (ST.U.has("after")) { dashD *= 2; dashIT += .5; }
+    if (abMile(10)) setTimeout(() => {
+      const x1 = HERO_X, y1 = HERO_Y, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
+      if (!reduce) tempFx(svgEl("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#c08bff", "stroke-width": 10, "stroke-linecap": "round", opacity: .5, class: "glow" }), [{ opacity: .7 }, { opacity: 0 }], 500);
+      foes.forEach(f => { if (f.dead) return; const t = Math.max(0, Math.min(1, ((f.px - x0) * vx + (f.py - y0) * vy) / L2)); if (Math.hypot(f.px - (x0 + vx * t), f.py - (y0 + vy * t)) < f.R + 40) land(f, ST.atk * 3, "aoe"); });
+    }, DASH_TIME * 1000 + 20);
     if (has("veil", 6)) {
       decoy = { x: x0, y: y0, until: performance.now() + 2000 };
       if (!reduce) { const g = svgEl("g", { transform: "translate(" + x0.toFixed(1) + " " + y0.toFixed(1) + ")" }); svgEl("circle", { r: 16, fill: "#8de0c0", opacity: .35 }, g); svgEl("circle", { r: 26, fill: "none", stroke: "#8de0c0", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, g); tempFx(g, [{ opacity: .9 }, { opacity: .9, offset: .8 }, { opacity: 0 }], 2000); }
@@ -1984,7 +2158,7 @@ body.perf .pulse { animation: none; }
   let gAcc = 0, gTimer = 0, saveT = 0, uiT = 0, lightT = 0;
   const dirty = { index: true, log: true, stats: true, gear: true, pack: true, skills: true, train: true, board: true, tree: true };
   function markDirty(...k) { k.forEach(x => dirty[x] = true); }
-  const killsNeeded = () => (S.stage % 10 === 0 ? 1 : 8);
+  const killsNeeded = () => (S.stage % 10 === 0 ? 1 : momentum() ? 3 : 8);
   let eModel = null, eSwing = null, eBody = null;
   // logical arena coordinates, recomputed to fill the screen
   let HERO_X = 180, HERO_Y = 340, ENEMY_X = 290, ENEMY_Y = 382, VW = 360, VH = 780, SC = 1, ENGAGE = 105, SW = 390, SH = 844;
@@ -2002,7 +2176,7 @@ body.perf .pulse { animation: none; }
   }
   const stT = {};
   const st = id => stT[id] > 0;
-  const heal = n => { hp = Math.min(ST.maxHp, hp + n * (st("dim") ? .4 : 1)); };
+  const heal = n => { hp = Math.min(ST.maxHp, hp + n * (st("dim") ? .4 : 1) * (abyssOn ? abHeal() : 1)); };
   const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
   function applyStatus(id, sec, force, from) {
     if (heroDown || (shield > 0 && !force)) return;
@@ -2046,8 +2220,8 @@ body.perf .pulse { animation: none; }
   function makeEnemy(stage, elite) {
     const boss = stage % 10 === 0, zone = Math.floor((stage - 1) / 10), sides = 3 + zone % 6;
     const v = pick(VARIANTS.filter(x => stage >= x.from));
-    const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1);
-    const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1);
+    const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * (momentum() ? .02 : 1);
+    const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * (momentum() ? .25 : 1);
     const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
     // bosses deep in get more time: +0.75s per stage past 40, up to +45s
     const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + 3 * T("d7") + 5 * FR("boss");
@@ -2059,6 +2233,31 @@ body.perf .pulse { animation: none; }
       statuses: enemyStatuses(stage, boss, elite && !boss, v), mods: rollMods(boss, elite && !boss), m: boss ? bossMechs(zone) : null, stun: 0
     };
   }
+  function makeVoid(kind) {
+    const d = S.abyss.depth, st = abyssStage(d), boss = kind === "g", elite = kind === "e";
+    const v = pick(VARIANTS), T0 = pick(VOID_SHAPES), shape = jitterShape(T0.p), hue = pick([280, 300, 190, 320, 165, 250]);
+    const hpE = stageHp(st) * (boss ? 8 : elite ? 4 : 1) * (1 + .4 * ruleN("thick"));
+    const dmg = stageDmg(st) * (boss ? 1.3 : elite ? 1.5 : 1) * (1 + .3 * ruleN("vicious"));
+    const tm = 75 + 3 * T("d7") + 5 * FR("boss");
+    const mods = rollMods(boss, elite && !boss);
+    if (ruleN("shield") && !mods.includes("shielded")) mods.push("shielded");
+    if (ruleN("volatile") && !mods.includes("volatile")) mods.push("volatile");
+    if (elite && ruleN("split") && !mods.includes("splitting")) mods.push("splitting");
+    return {
+      hp: hpE * v.hp, max: hpE * v.hp, fresh: true, dmg: dmg * v.dmg, boss, elite: elite && !boss, sides: shape.length, shape, void: true,
+      tier: Math.min(4, 2 + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .3 ? 1 : 0)), hue, v, fill: "hsl(" + hue + " 40% 9%)", stroke: "hsl(" + hue + " 95% 66%)",
+      R: Math.round((boss ? 36 : elite ? 31 : 26) * (v.id === "bastion" ? 1.08 : v.id === "pale" ? .92 : 1)), weapon: ENEMY_WEAPON[v.w],
+      name: (boss ? "Guardian " : elite ? "Elite " : "") + "Void " + T0.n, timer: boss ? tm : 0, timerMax: boss ? tm : 1, specT: 4, tele: 0, enraged: false,
+      statuses: enemyStatuses(st, boss, elite && !boss, v), mods, m: boss ? bossMechs(5 + d % 8) : null, stun: 0, aHaste: 1 + .25 * ruleN("hasted"), blinkT: 3 + Math.random() * 4
+    };
+  }
+  // Void enemies blink: every few seconds they vanish and reappear somewhere else around you
+  function voidBlink(e) {
+    ringFx(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
+    const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;
+    e.px = HERO_X + Math.cos(a) * dist; e.py = HERO_Y + Math.sin(a) * dist; e.vx = 0; e.vy = 0;
+    newWaypoint(e); setFoePos(e); ringFx(e.px, e.py, e.stroke, .2, 2, 300, 2);
+  }
   function makeChild(p) {
     return Object.assign({}, p, {
       hp: p.max * .4, max: p.max * .4, dmg: p.dmg * .6, R: Math.max(16, Math.round(p.R * .7)), child: true, dead: false, fresh: true, elite: false, boss: false,
@@ -2068,18 +2267,18 @@ body.perf .pulse { animation: none; }
   function drawFoe(e) {
     const E = e.el, h = e.hue, cy = e.cy, tc = ARENA_C[e.tier];
     E.indP.setAttribute("fill", e.stroke); E.indP.setAttribute("transform", e.boss ? "scale(1.5)" : e.elite ? "scale(1.25)" : "");
-    E.poly.setAttribute("points", polyPts(e.sides, e.R, 0, 0, cy));
+    E.poly.setAttribute("points", ePts(e, e.R, 0, 0, cy));
     E.poly.setAttribute("fill", e.fill);
     E.poly.setAttribute("stroke", e.stroke);
-    E.inner.setAttribute("points", polyPts(e.sides, e.R * .55, Math.PI / e.sides, 0, cy));
+    E.inner.setAttribute("points", e.shape ? ePts(e, e.R * .5, 0, 0, cy) : polyPts(e.sides, e.R * .55, Math.PI / e.sides, 0, cy));
     E.inner.setAttribute("stroke", e.stroke);
     drawVariant(e, cy);
     const plate = E.plate;
     plate.style.display = e.tier >= 1 ? "" : "none";
-    plate.setAttribute("points", polyPts(e.sides, e.R + 5, 0, 0, cy));
+    plate.setAttribute("points", ePts(e, e.R + 5, 0, 0, cy));
     plate.setAttribute("stroke", tc);
     const spikes = E.spikes; spikes.innerHTML = "";
-    if (e.tier >= 2) vertices(e.sides, e.R + 5, 0, 0, cy).forEach(([x, y]) => {
+    if (e.tier >= 2) eVerts(e, e.R + 5, 0, 0, cy).forEach(([x, y]) => {
       const ang = Math.atan2(y - cy, x), px = -Math.sin(ang) * 4, py = Math.cos(ang) * 4;
       svgEl("polygon", { points: (x + px) + "," + (y + py) + " " + (x + Math.cos(ang) * 10) + "," + (y + Math.sin(ang) * 10) + " " + (x - px) + "," + (y - py), fill: tc }, spikes);
     });
@@ -2120,13 +2319,13 @@ body.perf .pulse { animation: none; }
     inner.setAttribute("stroke-dasharray", v.id === "pale" ? "3 3" : "none");
     inner.setAttribute("opacity", v.id === "bastion" ? 1 : .7);
     e.el.model.classList.toggle("umbral", v.id === "umbral");
-    const verts = vertices(e.sides, R, 0, 0, cy);
+    const verts = eVerts(e, R, 0, 0, cy);
     if (v.id === "pale") {
-      svgEl("polygon", { points: polyPts(e.sides, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
+      svgEl("polygon", { points: ePts(e, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
       [-8, 0, 8].forEach((dy, i) => svgEl("line", { x1: R * .95, y1: cy + dy, x2: R * .95 + 10 + i * 4, y2: cy + dy, stroke: e.stroke, "stroke-width": 1.5, "stroke-linecap": "round", opacity: .55 }, e.el.trail));
     } else if (v.id === "bastion") {
       verts.forEach(([x, y]) => svgEl("circle", { cx: (x * .78).toFixed(1), cy: (cy + (y - cy) * .78).toFixed(1), r: 2.4, fill: e.stroke }, g));
-      svgEl("polygon", { points: polyPts(e.sides, R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + v.hue + " 20% 25%)", "stroke-width": 2 }, g);
+      svgEl("polygon", { points: ePts(e, R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + v.hue + " 20% 25%)", "stroke-width": 2 }, g);
     } else if (v.id === "crimson") {
       verts.forEach(([x, y], i) => {
         const [x2, y2] = verts[(i + 1) % verts.length], mx = (x + x2) / 2, my = (y + y2) / 2, a = Math.atan2(my - cy, mx), px = -Math.sin(a) * 3.5, py = Math.cos(a) * 3.5;
@@ -2199,9 +2398,10 @@ body.perf .pulse { animation: none; }
   }
   const slot2Open = () => S.peak >= SLOT2_AT;
   const has2 = () => slot2Open() && !!S.equip.weapon2;
-  const slot3Open = () => FR("orb3") > 0;
+  const slot3Open = () => FR("orb3") > 0 || abMile(5);
   const has3 = () => slot3Open() && !!S.equip.weapon3;
-  const slotDmg = slot => slot === "weapon2" ? SLOT2_DMG : slot === "weapon3" ? SLOT3_DMG[FR("orb3")] : 1;
+  const orb3Rank = () => Math.max(FR("orb3"), abMile(5) ? 1 : 0);
+  const slotDmg = slot => slot === "weapon2" ? SLOT2_DMG : slot === "weapon3" ? SLOT3_DMG[orb3Rank()] : 1;
   const oi = slot => slot === "weapon2" ? 1 : slot === "weapon3" ? 2 : 0;
   const orbitEl = slot => slot === "weapon2" ? $("hBladeOrbit2") : slot === "weapon3" ? $("hBladeOrbit3") : hBladeOrbit;
   const wSlots = () => ["weapon"].concat(slot2Open() ? ["weapon2"] : [], slot3Open() ? ["weapon3"] : []);
@@ -2403,9 +2603,9 @@ body.perf .pulse { animation: none; }
   function shatter(e) {
     const cx = e.px, cy = e.py, h = e.hue;
     if (reduce) return;
-    const v = vertices(e.sides, e.R, e.rot || 0, 0, 0);
-    for (let i = 0; i < e.sides; i++) {
-      const a = v[i], b = v[(i + 1) % e.sides], mx = (a[0] + b[0]) / 3, my = (a[1] + b[1]) / 3;
+    const v = eVerts(e, e.R, e.rot || 0, 0, 0);
+    for (let i = 0; i < v.length; i++) {
+      const a = v[i], b = v[(i + 1) % v.length], mx = (a[0] + b[0]) / 3, my = (a[1] + b[1]) / 3;
       const g = svgEl("g", { transform: "translate(" + (cx + mx).toFixed(1) + " " + (cy + my).toFixed(1) + ")" });
       const poly = svgEl("polygon", { points: (-mx).toFixed(1) + "," + (-my).toFixed(1) + " " + (a[0] - mx).toFixed(1) + "," + (a[1] - my).toFixed(1) + " " + (b[0] - mx).toFixed(1) + "," + (b[1] - my).toFixed(1), fill: e.fill, stroke: e.stroke, "stroke-width": 1.5 }, g);
       const ang = Math.atan2(my, mx), dist = 30 + Math.random() * 30;
@@ -2602,6 +2802,7 @@ body.perf .pulse { animation: none; }
     if (e.elite) dmg *= ST.eliteDmg;
     if (T("w8") && hp < ST.maxHp * .3) dmg *= 1.5;
     if (e.mods.includes("armored") && kind !== "tap" && wt !== "Laser") dmg *= .7;
+    if (e.void && ruleN("armor")) dmg *= Math.max(.4, Math.pow(.8, ruleN("armor")));
     let note = "";
     if (e.v && e.v.eva && kind !== "tap" && wt !== "Swarm" && Math.random() < e.v.eva) { dmg = 0; note = "Miss"; }
     if (e.mods.includes("shielded") && wt !== "Laser") { e.hitN = (e.hitN || 0) + 1; if (e.hitN % 4 === 0) { dmg = 0; note = "Blocked"; } }
@@ -2865,6 +3066,7 @@ body.perf .pulse { animation: none; }
     o.t = 0;
     const k = (1 - (ST ? ST.wake : 0)) * (o.src && o.src.slowT > performance.now() ? .8 : 1);
     if (k < 1) { o.vx *= k; o.vy *= k; o.life /= k; if (o.homeT) o.homeT /= k; }
+    if (o.home && o.src && o.src.void && ruleN("homing")) o.home *= 1 + .5 * ruleN("homing");
     eshots.push(o); placeShot(o); return o;
   }
   function placeShot(o) { if (o.g) o.g.setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ")" + (o.spin ? " rotate(" + (o.t * o.spin).toFixed(0) + ")" : o.deg != null ? " rotate(" + o.deg.toFixed(1) + ")" : "")); }
@@ -3117,6 +3319,7 @@ body.perf .pulse { animation: none; }
     hurt(ST.maxHp * .45 * (1 - .08 * T("w5")), true, e);
   }
   function bossEscape() {
+    if (abyssOn) { clearFoes(true); abyssFail("escape"); return; }
     log("The boss escaped. Back to stage " + Math.max(1, S.stage - 1) + ", now farming", "bad");
     S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
     clearFoes(true); spawnT = 1;
@@ -3132,7 +3335,7 @@ body.perf .pulse { animation: none; }
       const d = Math.min(ST.maxHp * .25 * Math.min(1.4, modPow()), ST.maxHp * .5 - blastSum);
       if (d > 0) { blastSum += d; trueDamage(d, "Blast"); }
     }, 150);
-    const g = Math.ceil(lumenAt(S.stage) * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
+    const g = Math.ceil(lumenAt(S.stage) * (momentum() ? 8 / 3 : 1) * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
     addGold(g, true); S.totalKills++;
     if (!e.child) { const sa = shardAmt(S.stage) * ST.shardF; if (boss) addShards(Math.round(4 * sa * (has("choir", 6) ? 2 : 1)), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
     // Stormglass: shocked enemies blow up (blast kills don't chain)
@@ -3141,7 +3344,7 @@ body.perf .pulse { animation: none; }
       foes.forEach(f => { if (f !== e && !f.dead && Math.hypot(f.px - e.px, f.py - e.py) < 90 + f.R) { f.blastKill = true; dotDmg(f, ST.atk * 1.5); if (!f.dead) f.blastKill = false; } });
     }
     bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
-    const fam = FAM[e.sides], kk = boss ? "b" : elite ? "e" : "n";
+    const fam = e.void ? null : FAM[e.sides], kk = boss ? "b" : elite ? "e" : "n";
     if (fam) {
       const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
       const before = IT(fam.key, kk);
@@ -3179,7 +3382,9 @@ body.perf .pulse { animation: none; }
     const splits = e.mods.includes("splitting") && !e.child;
     if (splits) log(e.name + " splits apart", "r3");
     else S.kills++;
-    if (!splits && S.kills >= killsNeeded()) {
+    if (e.void && ruleN("pools")) addPool(e.px, e.py);
+    if (abyssOn) { if (e.boss && e.void) abyssCleared(e); }
+    else if (!splits && S.kills >= killsNeeded()) {
       S.kills = 0; stageSpawned = 0; spawnT = .5;
       if (S.push) {
         S.stage++; bump("stage", 1);
@@ -3204,8 +3409,9 @@ body.perf .pulse { animation: none; }
     pickTarget();
   }
   function onDeath() {
-    sfx("death"); log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");
-    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
+    sfx("death");
+    if (abyssOn) abyssFail("death");
+    else { log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad"); S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0; }
     heroDown = true; shield = 0; odT = 0; markT = 0; heroModel.classList.remove("od");
     for (const k in stT) stT[k] = 0;
     const fall = anim(heroModel, [{ transform: "scale(1)", opacity: 1, filter: "brightness(1)" }, { transform: "scale(1.3)", opacity: 1, filter: "brightness(3)", offset: .25 }, { transform: "scale(0)", opacity: 0, filter: "brightness(1)" }], { duration: 600, easing: "ease-in", fill: "forwards" });
@@ -3564,9 +3770,10 @@ body.perf .pulse { animation: none; }
     for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
     heal(ST.maxHp * ST.hpRegen * dt);
     stepGear(dt);
+    stepAbyss(dt);
     const lp = 1 + ocV("leech");
     leechPool = Math.min(ST.maxHp * ST.leech * 3 * lp, leechPool + ST.maxHp * ST.leech * 4 * lp * dt);
-    mp = Math.min(ST.maxMp, mp + ST.maxMp * ST.mpRegen * dt * (st("static") ? .5 : 1));
+    mp = Math.min(ST.maxMp, mp + ST.maxMp * ST.mpRegen * dt * (st("static") ? .5 : 1) * (abyssOn ? Math.pow(.7, ruleN("static")) : 1));
     if (document.hidden) moveFoes(dt);
     stepSpawns(dt);
     pickTarget();
@@ -3609,7 +3816,8 @@ body.perf .pulse { animation: none; }
       }
     }
     e.cd -= dt;
-    if (e.cd <= 0 && !(e.tele > 0) && !(e.stun > 0)) { e.cd += 1 / ((e.mods.includes("hasted") ? 1.4 : 1) * e.v.spd) * (e.arrived ? 1 : FAR_RATE); enemyAttack(e); }
+    if (e.cd <= 0 && !(e.tele > 0) && !(e.stun > 0)) { e.cd += 1 / ((e.mods.includes("hasted") ? 1.4 : 1) * (e.aHaste || 1) * e.v.spd) * (e.arrived ? 1 : FAR_RATE); enemyAttack(e); }
+    if (e.void && !e.boss && e.arrived && !(e.stun > 0)) { e.blinkT -= dt; if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); } }
   }
 
   // ================= windows =================
@@ -3715,7 +3923,7 @@ body.perf .pulse { animation: none; }
     return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
   }
   const slotOpen = k => k === "weapon2" ? slot2Open() : k === "weapon3" ? slot3Open() : true;
-  const slotPct = k => k === "weapon2" ? Math.round(SLOT2_DMG * 100) : k === "weapon3" ? Math.round(SLOT3_DMG[FR("orb3")] * 100) : 100;
+  const slotPct = k => k === "weapon2" ? Math.round(SLOT2_DMG * 100) : k === "weapon3" ? Math.round(SLOT3_DMG[orb3Rank()] * 100) : 100;
   function renderGear() {
     const T1 = k => {
       const it = S.equip[k], open = slotOpen(k);
@@ -3899,7 +4107,7 @@ body.perf .pulse { animation: none; }
   const keepAlways = () => ({
     peak: S.peak, auto: S.auto, salv: S.salv, autoEquip: S.autoEquip, anim: S.anim, perf: S.perf, sound: S.sound, vol: S.vol, music: S.music, mvol: S.mvol,
     bestiary: S.bestiary, bountyDone: S.bountyDone, rerollAt: 0, packView: S.packView, nextId: S.nextId, totalKills: S.totalKills, manaRes: S.manaRes, saver: S.saver, seenIntro: true,
-    stardust: S.stardust || 0, stardustTotal: S.stardustTotal || 0, forge: S.forge || {}, transcends: S.transcends || 0, autoCfg: S.autoCfg, cyclePeak: S.cyclePeak || 1
+    stardust: S.stardust || 0, stardustTotal: S.stardustTotal || 0, forge: S.forge || {}, transcends: S.transcends || 0, autoCfg: S.autoCfg, cyclePeak: S.cyclePeak || 1, abyss: S.abyss
   });
   function starterKit(st) {
     ["weapon", "armor", "boots", "charm"].forEach(sl => { const it = makeItem(st, false, 2, sl); S.equip[sl] = it; });
@@ -3917,6 +4125,7 @@ body.perf .pulse { animation: none; }
     burst(HERO_X, HERO_Y, "#ffd04d", 14); equipFlash(4);
   }
   function doAscend() {
+    if (abyssOn) exitAbyss(true);
     const g = ascGain();
     if (S.maxStage < ascMin() || g < 1) return false;
     ascArmed = false;
@@ -3929,6 +4138,7 @@ body.perf .pulse { animation: none; }
     return true;
   }
   function doTranscend() {
+    if (abyssOn) exitAbyss(true);
     const g = dustGain();
     if (!transOpen() || !canTrans()) return false;
     transArmed = false;
@@ -3946,11 +4156,28 @@ body.perf .pulse { animation: none; }
   const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
   // you must climb at least 10 stages past where the run began (and reach stage 20) before you can ascend
   const ascMin = () => Math.max(20, runStart() + 10);
-  const ascGain = () => Math.floor(ECHO_K * starEcho() * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .25 * T("f8")) * (1 + .05 * (S.ascensions || 0)) * (1 + .02 * IT("octa", "b")));
+  const ascGain = () => Math.floor(ECHO_K * starEcho() * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .25 * T("f8")) * (1 + .05 * (S.ascensions || 0)) * (1 + .05 * AL("reson")) * (1 + .02 * IT("octa", "b")));
   const nodeCost = n => n.c * ((S.tree[n.id] || 0) + 1);
   const owned = n => T(n.id) > 0;
   const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
   const nodeR = n => n.key ? 20 : n.cap ? 17 : n.id === "core" ? 16 : n.br === "bridge" ? 12 : n.c >= 2 ? 13 : 11;
+  function renderAbyss() {
+    if (!abyssOpen()) return '<p class="note">Reach stage 150 to open the Abyss.</p>';
+    const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
+    let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
+      '<div class="note" style="margin:0">The Abyss is an endless climb that never resets, not even when you transcend. Each depth is 3 waves of Void shapes and a Guardian. Clear it for Voidstone and go one deeper. Every depth adds a rule. Die and you fall back 2 depths. Mythics can drop from Guardians. Your build comes with you; leaving puts you back on stage ' + (abyssOn ? (A.ret ? A.ret.stage : S.stage) : S.stage) + ".</div>" +
+      '<div class="ctrls" style="margin:0"><button class="btn go" data-act="' + (abyssOn ? "abLeave" : "abEnter") + '">' + (abyssOn ? "Leave the Abyss" : "Enter at depth " + d) + "</button>" +
+      (!abyssOn && d > 1 ? '<button class="btn" data-act="abDown">Start 5 depths lower</button>' : "") + "</div></div>";
+    h += '<h4 class="forgeH">Depth ' + d + " rules</h4>" + (rules.length ? rules.map(([r, n]) => '<div class="row forge"><span class="n">' + r.name + (n > 1 ? " x" + n : "") + '</span><span class="d">' + r.d(n) + "</span></div>").join("") : '<p class="note">None yet. A new rule joins at every depth from depth 2.</p>');
+    h += '<h4 class="forgeH">Milestones</h4>' + AB_MILES.map(([m, n, t]) => '<div class="row forge"><span class="n">Depth ' + m + ": " + n + (A.best >= m ? " ✓" : "") + '</span><span class="d"' + (A.best >= m ? "" : ' style="opacity:.6"') + ">" + t + "</span></div>").join("");
+    h += '<h4 class="forgeH">Abyss Altar</h4>';
+    ALTAR.forEach(a => {
+      const r = AL(a.id), maxed = r >= a.max, c = a.cost(r);
+      h += '<div class="row forge"><span class="n">' + a.name + " · Rank " + r + " / " + a.max + '</span><span class="d">' + a.desc(r) + (maxed ? "" : '<span class="nx"> → ' + a.nx + "</span>") + "</span>" +
+        '<div class="side">' + (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn voidb" data-act="altar" data-id="' + a.id + '">' + c + " Voidstone</button>") + "</div></div>";
+    });
+    return h;
+  }
   function renderTrans() {
     if (!transOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to unlock Transcend.</p>";
     const g = dustGain(), bestC = Math.max(S.cyclePeak || 1, S.maxStage);
@@ -3981,6 +4208,7 @@ body.perf .pulse { animation: none; }
   }
   function renderTree() {
     $("transBody").innerHTML = renderTrans();
+    $("abyssBody").innerHTML = renderAbyss();
     const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
     $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
       '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round((echoPow() - 1) * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
@@ -4171,6 +4399,9 @@ body.perf .pulse { animation: none; }
       <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>
       <p><b>Echo power</b>: every echo you have ever earned also gives +1% attack and health, permanently, with no cap. Spending echoes doesn't lower it, so every ascension keeps making you stronger even once the web is full.</p>
       <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
+    ["The Abyss", `<p>Reaching stage 150 opens <b>the Abyss</b>, a second mode in the Tree window. It's an endless climb by <b>depth</b> that never resets, not even when you transcend. Each depth is 3 waves of <b>Void shapes</b> (irregular enemies that blink around you) and then a <b>Guardian</b>. Clear it and you go one depth deeper. Die and you fall back 2 depths.</p>
+      <p>Every depth from 2 adds a <b>rule</b> (denser enemies, homing shots, poison pools, halved healing and more); after twelve they start stacking. Guardians pay <b>Voidstone</b> (triple the first time you clear a depth) and can drop Mythics. Spend Voidstone in the <b>Abyss Altar</b> on permanent power: attack and health, echo gain, attack per best depth, Mythic chance, a longer Momentum and more Voidstone. Depth milestones at 5, 10, 25, 50 and 100 unlock lasting perks.</p>
+      <p><b>Momentum</b>: once you've transcended, stages below half your best ever fly by: enemies barely have health and each stage needs only 3 kills, so re-climbs take minutes.</p>`],
     ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. You need to reach stage ${150} again in every cycle before you can transcend. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
       <p>In return you earn <b>Stardust</b>: the square root of the echoes you earned this cycle, times your best stage this cycle divided by 150. Echoes beyond about 8 full ascensions' worth at your best stage count only 5%, so endless grinding at a low stage doesn't pay. The Transcend tab shows exactly how much you'd get before you commit.</p>
       <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +2% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
@@ -4230,6 +4461,7 @@ body.perf .pulse { animation: none; }
   }
   // ----- tabs inside each window -----
   const TI = {
+    abyss: "M5 2 L19 4 L23 13 L14 22 L9 15 L2 18 L4 9 Z M9 8 L15 8.5 L16 14 L11 12.5 Z",
     trans: "M12 1 L14.6 9.2 L23 9.2 L16.2 14.2 L18.8 22.5 L12 17.4 L5.2 22.5 L7.8 14.2 L1 9.2 L9.4 9.2 Z",
     off: "M12 2 L21.5 20 L2.5 20 Z M12 8.5 L16.6 17 L7.4 17 Z",
     def: "M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z M12 6.3 L17.3 9.3 L17.3 14.7 L12 17.7 L6.7 14.7 L6.7 9.3 Z",
@@ -4256,7 +4488,7 @@ body.perf .pulse { animation: none; }
     guide: [["set", "Settings"], ["save", "Save"], ["help", "Guide"]],
     index: null
   };
-  const subList = win => win === "tree" ? SUBS.tree.concat(transOpen() ? [["trans", "Transcend"]] : []) : win === "index" ? [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) : SUBS[win];
+  const subList = win => win === "tree" ? SUBS.tree.concat(transOpen() ? [["trans", "Transcend"]] : [], abyssOpen() ? [["abyss", "Abyss"]] : []) : win === "index" ? [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) : SUBS[win];
   const curSub = {};
   const subIcon = (id, sides) => sides ? '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="' + polyPts(sides, 9.5, 0, 12, 12.5) + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'
     : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (TI[id] || TI.equip) + '" fill="currentColor" fill-rule="evenodd"/></svg>';
@@ -4367,14 +4599,15 @@ body.perf .pulse { animation: none; }
   function updateUI() {
     $("gold").textContent = fmt(S.gold);
     $("echoTop").textContent = S.echoes ? S.echoes + " echoes" : "";
-    $("dustTop").textContent = S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "";
+    $("dustTop").textContent = (S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "") + (S.abyss && S.abyss.total ? (S.stardustTotal ? " · " : "") + fmt(S.abyss.stone) + " voidstone" : "");
     $("wGold").textContent = fmt(S.gold); $("wEcho").textContent = S.echoes;
     $("shardTop").textContent = fmt(S.shards) + " shards"; $("wShard").textContent = fmt(S.shards);
-    fitStage("Stage " + S.stage);
+    fitStage(abyssOn ? "Depth " + S.abyss.depth : "Stage " + S.stage);
     const need = killsNeeded();
-    $("stageSub").textContent = (S.stage % 10 === 0 ? "Boss fight" : S.kills + "/" + need + " kills" + (foes.some(f => f.elite && !f.dead) ? ", elite here" : "")) + ", best " + S.maxStage;
+    if (abyssOn) $("stageSub").textContent = (abPhase === 4 ? "Guardian" : "Wave " + abPhase + "/3") + ", best " + abBest();
+    else $("stageSub").textContent = (momentum() ? "Momentum: " : "") + (S.stage % 10 === 0 ? "Boss fight" : S.kills + "/" + need + " kills" + (foes.some(f => f.elite && !f.dead) ? ", elite here" : "")) + ", best " + S.maxStage;
     $("prog").style.width = Math.min(100, S.kills / need * 100) + "%";
-    $("mode").textContent = S.push ? "Pushing" : "Farming";
+    $("mode").textContent = abyssOn ? "Leave Abyss" : S.push ? "Pushing" : "Farming";
     $("hpTxt").textContent = fmt(Math.max(0, hp));
     $("mpTxt").textContent = fmt(Math.max(0, mp));
     const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
@@ -4474,7 +4707,7 @@ body.perf .pulse { animation: none; }
     document.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
     addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
   })();
-  $("mode").addEventListener("click", () => { S.push = !S.push; updateUI(); save(); });
+  $("mode").addEventListener("click", () => { if (abyssOn) { exitAbyss(); return; } S.push = !S.push; updateUI(); save(); });
   $("panels").addEventListener("change", e => {
     const t = e.target.closest("select[data-act]"); if (!t) return;
     if (t.dataset.act === "pkSet") { pkView().set = t.value; pkSel = null; markDirty("pack"); updateUI(); save(); }
@@ -4596,6 +4829,13 @@ body.perf .pulse { animation: none; }
       if (!transOpen() || !canTrans()) return;
       if (!transArmed) { transArmed = true; markDirty("tree"); setTimeout(() => { transArmed = false; markDirty("tree"); }, 3000); updateUI(); return; }
       doTranscend();
+    } else if (act === "abEnter") { enterAbyss();
+    } else if (act === "abLeave") { exitAbyss(); closeWindow();
+    } else if (act === "abDown") { S.abyss.depth = Math.max(1, S.abyss.depth - 5); markDirty("tree");
+    } else if (act === "altar") {
+      const a = ALT[id], r = AL(id), c = a.cost(r);
+      if (!a || r >= a.max || S.abyss.stone < c) return;
+      S.abyss.stone -= c; S.abyss.altar[id] = r + 1; sfx("chord", 0, 0); recalc(); markDirty("tree", "stats", "gear"); log("Abyss Altar: " + a.name + " rank " + (r + 1), "r5");
     } else if (act === "forge") {
       const f = FG[id], r = FR(id), c = f.cost(r);
       if (r >= f.max || S.stardust < c) return;
@@ -4694,6 +4934,7 @@ body.perf .pulse { animation: none; }
     if (bought) { recalc(); markDirty("train", "skills"); }
   }
   function autoTick(dt) {
+    if (abyssOn) return;
     if (heroDown) return;
     autoT += dt;
     if (!autoOn()) return;
