@@ -1,0 +1,74 @@
+// The heads-up display: stage title, currencies, health and mana text, statuses and boss mechanic readout.
+import { dps } from "../combat/combat.js";
+import { S } from "../core/save.js";
+import { $, fmt } from "../core/util.js";
+import { enemy, foes } from "../enemies/foes.js";
+import { arcD, hero, heroModel } from "../hero/hero.js";
+import { STATUS, st, stT } from "../hero/statuses.js";
+import { mode } from "../modes/modes.js";
+import { updateSkillbar } from "../skills/skills.js";
+import { PANELS } from "./actions.js";
+import { unread } from "./log.js";
+import { mech } from "./reticle.js";
+import { refreshPanel, tab } from "./windows.js";
+
+// shrink the stage title to fit beside the currency box instead of cutting it off
+let stageKey = "";
+export function refitStage() { stageKey = ""; }
+function fitStage(txt) {
+  const el = $("stageLbl"), cur = document.querySelector(".hudCur"), key = txt + "|" + (cur ? cur.offsetWidth : 0);
+  if (key === stageKey) return;
+  stageKey = key; el.textContent = txt; el.style.fontSize = "";
+  let fs = parseFloat(getComputedStyle(el).fontSize);
+  while (el.scrollWidth > el.clientWidth && fs > 11) { fs -= 1; el.style.fontSize = fs + "px"; }
+}
+export function updateUI() {
+  $("gold").textContent = fmt(S.gold);
+  $("echoTop").textContent = S.echoes ? S.echoes + " echoes" : "";
+  $("dustTop").textContent = (S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "") + (S.abyss && S.abyss.total ? (S.stardustTotal ? " · " : "") + fmt(S.abyss.stone) + " voidstone" : "");
+  $("wGold").textContent = fmt(S.gold); $("wEcho").textContent = S.echoes;
+  $("shardTop").textContent = fmt(S.shards) + " shards"; $("wShard").textContent = fmt(S.shards);
+  const hd = mode.hud();
+  fitStage(hd.title);
+  $("stageSub").textContent = hd.sub;
+  $("prog").style.width = Math.max(0, Math.min(100, hd.prog * 100)) + "%";
+  $("mode").textContent = hd.button;
+  $("hpTxt").textContent = fmt(Math.max(0, hero.hp));
+  $("mpTxt").textContent = fmt(Math.max(0, hero.mp));
+  const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
+  $("menuDot").className = claim ? "dot" : "";
+  $("dpsVal").textContent = fmt(dps());
+  const hb = $("hBarrier");
+  hb.style.display = hero.shield > 0 ? "" : "none";
+  if (hero.shield > 0) hb.setAttribute("opacity", (.35 + .65 * hero.shield / hero.shieldMax).toFixed(2));
+  $("eTxt").innerHTML = enemy ? (enemy.boss ? fmt(Math.max(0, enemy.hp)) + ' <b class="tmT">' + Math.ceil(Math.max(0, enemy.timer)) + "s</b>" : fmt(Math.max(0, enemy.hp))) : "";
+  $("packN").textContent = S.inv.length ? S.inv.length : "";
+  foes.forEach(f => {
+    if (f === enemy || !f.el) return;
+    const v = Math.max(0, f.hp / f.max);
+    if (Math.abs(v - f.mFrac) < .005) return;
+    f.mFrac = v; f.el.mFg.setAttribute("d", v < .01 ? "" : arcD(f.mr, 40, 40 + 100 * v));
+  });
+  $("boardDot").className = S.bounties.some(b => !b.empty && b.prog >= b.n) ? "dot" : "";
+  let chips = "";
+  for (const k in STATUS) {
+    const on = st(k); heroModel.classList.toggle("st-" + k, on);
+    if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
+  }
+  if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
+  let mt = "", mb = -1;
+  if (enemy && !enemy.dead) {
+    const M = enemy.m;
+    if (enemy.stun > 0) mt = "Stunned";
+    else if (M && M.well && M.well.ch > 0) { mt = "Gravity Well: deal " + fmt(Math.max(0, M.well.need - M.well.dealt)) + " more to break it"; mb = Math.min(1, M.well.dealt / M.well.need); }
+    else if (M && M.facets && M.facets.n > 0) mt = "Facet shield: " + M.facets.n + " left, tap to break it";
+    else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: your hits reflect back";
+    else if (M && M.mirror && M.mirror.tele > 0) mt = "Mirror forming";
+    else if (M && M.motes && M.motes.n > 0) mt = M.motes.n + " motes healing the boss, tap them";
+  }
+  $("mechTxt").textContent = mt;
+  mech.mechFrac = mb >= 0 ? mb : 0;
+  $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
+  updateSkillbar();
+  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
+}

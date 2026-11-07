@@ -1,0 +1,16 @@
+{
+  "name": "hollow-loop",
+  "private": true,
+  "type": "module",
+  "description": "An abstract idle loot hack-and-slash in one HTML page.",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.mjs",
+    "check": "node tools/check.mjs",
+    "test": "node tools/check.mjs && node --test tests/"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0",
+    "typescript": "^5.6.0"
+  }
+}

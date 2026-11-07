@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Hollow Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="arena" id="arena">
+  <div class="bg" aria-hidden="true"><div id="bgSky"></div><div id="bgPlane"></div></div>
+    <svg class="scene" id="scene" viewBox="0 0 360 780" role="img" aria-label="Your glowing core fights a geometric enemy. Tap to strike.">
+      <defs>
+        <radialGradient id="sky" cx=".5" cy=".5" r=".75">
+          <stop id="skyTop" offset="0" stop-color="#1d1835"/>
+          <stop id="skyBot" offset="1" stop-color="#07060c"/>
+        </radialGradient>
+        <linearGradient id="beamG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+          <stop offset=".7" stop-color="#fff" stop-opacity=".9"/>
+          <stop offset="1" stop-color="#fff" stop-opacity="1"/>
+        </linearGradient>
+        <radialGradient id="coreG"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#bff7ee"/><stop offset=".7" stop-color="#7be0d0" stop-opacity=".55"/><stop offset="1" stop-color="#7be0d0" stop-opacity="0"/></radialGradient>
+      </defs>
+      <g id="world">
+        <rect id="skyR" x="-40" y="-40" width="440" height="860" fill="none"/>
+        <g id="cam">
+        <g id="stars"></g>
+        <g id="farShapes"></g>
+        <g id="heroPos" transform="translate(180 340)">
+          <g id="heroModel">
+            <ellipse id="hGrav" cx="0" cy="0" rx="34" ry="34" fill="rgba(180,140,255,.12)" stroke="#b48cff" stroke-width="2" stroke-dasharray="5 4"/>
+            <g class="bob">
+              <circle id="hAura" r="33" fill="none" style="display:none"/>
+              <g class="spinCorona"><g id="hCorona"></g></g>
+              <g id="hCoronaStatic"></g>
+              <g class="spinSlow"><g id="hShell"></g></g>
+              <polygon id="hBarrier" fill="rgba(79,211,228,.13)" stroke="#4fd3e4" stroke-width="2" style="display:none"/>
+              <circle r="22" fill="url(#coreG)" class="pulse"/>
+              <circle id="hCore" r="9" fill="#effffc" class="core"/>
+              <circle id="hEclipseRing" r="11.5" fill="none" stroke="#ffd04d" stroke-width="1.5"/>
+              <circle id="hEclipse" cx="5" cy="-3" r="9" fill="#120f1c" opacity=".9"/>
+              <path id="hCrack" d="M-15 -11 L-5 -4 L-9 4 L1 10 M7 -15 L2 -5 L11 1 L6 13 M-4 -4 L4 -2" fill="none" stroke="#ff8463" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <g id="hStatic" fill="none" stroke="#4fd3e4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></g>
+              <g class="spinRev"><g id="hLens"></g></g>
+              <g id="hBladeOrbit"><g id="hWpn1" transform="translate(0 -31)"><path id="hWeapon" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
+              <g id="hBladeOrbit2"><g id="hWpn2" transform="translate(0 37)"><path id="hWeapon2" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
+              <g id="hBladeOrbit3" style="display:none"><g id="hWpn3" transform="translate(-42 0)"><path id="hWeapon3" stroke="#000" stroke-opacity=".3" stroke-width="1"/></g></g>
+            </g>
+          </g>
+          <g id="hRing" fill="none">
+            <path id="hpTrack" stroke="rgba(255,255,255,.12)" stroke-width="3"/>
+            <path id="mpTrack" stroke="rgba(255,255,255,.12)" stroke-width="2.4"/>
+            <path id="hpArc" stroke="#5fd38d" stroke-width="3"/>
+            <path id="mpArc" stroke="#6aa8ff" stroke-width="2.4"/>
+            <path id="shArc" stroke="#e8f8ff" stroke-width="1.4"/>
+            <g id="ringMarks"></g>
+          </g>
+        </g>
+        <g id="foes"></g>
+        <g id="inds"></g>
+        <g id="reticle" style="display:none"></g>
+        <g id="fx"></g>
+        </g>
+      </g>
+    </svg>
+
+  <header class="hud">
+    <div></div>
+    <div class="hudStage">
+      <h1 class="title" id="stageLbl">Stage 1</h1>
+      <div class="sub" id="stageSub">Kills 0/8</div>
+      <div class="prog"><i id="prog"></i></div>
+      <div class="hudRow"><button class="mode glass chf" id="mode" type="button">Pushing</button><span class="dps glass chf"><b id="dpsVal">0</b>DPS</span></div>
+    </div>
+    <div class="hudCur glass chf">
+      <div class="coin"><span id="gold">0</span><small>lumen</small></div>
+      <div class="shard" id="shardTop">0 shards</div>
+      <div class="echo" id="echoTop"></div>
+      <div class="dust" id="dustTop"></div>
+    </div>
+  </header>
+
+  <div class="tag heroTag" id="heroTag">
+    <div class="hNums"><span class="hpT" id="hpTxt"></span><i></i><span class="mpT" id="mpTxt"></span></div>
+    <div class="stRow" id="stRow"></div>
+  </div>
+  <div class="tag foeTag" id="foeTag" style="opacity:0">
+    <div class="eMods" id="eMods"></div>
+    <div class="tagTxt"><span class="nm2" id="eName">Enemy</span><span id="eTxt"></span></div>
+    <div class="mechTxt" id="mechTxt"></div>
+  </div>
+  <div class="tapHint" id="tapHint">Tap to strike, drag to move</div>
+  <div class="joy" id="joy" aria-hidden="true"><div class="joyKnob" id="joyKnob"></div></div>
+  <div class="skillbar" id="skillbar"></div>
+</div>
+
+<button class="menuBtn glass chf" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="menuDrop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6 L20 6 L20 8 L4 8 Z M4 11 L20 11 L20 13 L4 13 Z M4 16 L20 16 L20 18 L4 18 Z" fill="currentColor"/></svg><span id="menuDot"></span></button>
+<nav class="menuDrop" id="menuDrop" hidden aria-label="Game menu"></nav>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheetInner" id="sheetInner" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheetHd">
+      <span class="winIcon" id="sheetIcon"></span>
+      <div class="winTitle"><h2 id="sheetTitle">Stats</h2><div class="wallet"><span><b id="wGold">0</b> lumen</span><span><i id="wShard">0</i> shards</span><span><em id="wEcho">0</em> echoes</span></div></div>
+    </div>
+    <div class="sheetBody" id="sheetBody">
+      <div id="panels">
+        <section class="panel" id="p-stats" hidden><div id="statsBody"></div></section>
+        <section class="panel" id="p-gear" hidden><div id="gearBody"></div></section>
+        <section class="panel" id="p-pack" hidden>
+          <div class="wsub" data-sub="items"><div class="list" id="packList"></div></div>
+          <div class="wsub" data-sub="opts">
+            <div class="sgroup"><h3>Pack options</h3>
+              <p class="note">Auto-equip puts on anything better than what you're wearing. Auto-salvage breaks down new drops at or below the chosen rarity for lumen and shards.</p>
+              <div class="ctrls">
+                <button class="btn" data-act="autoEq" id="autoEq" type="button"></button>
+                <button class="btn" data-act="autoSv" id="autoSv" type="button"></button>
+                <button class="btn" data-act="salvAll" type="button">Salvage all</button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="panel" id="p-skills" hidden>
+          <div class="buyBar" id="resBar"></div>
+          <p class="note">Skills spend mana to cast and shards to upgrade. Tap a skill to cast it, or let auto-cast handle it. A dot on a skill button means auto-cast is on. Attack skills only auto-cast while you'd keep the reserve above, so there's always mana for Barrier, Dash and your own casts. The level cap rises by 1 every 3 stages you reach this run.</p>
+          <div class="list" id="skillsBody"></div>
+        </section>
+        <section class="panel" id="p-train" hidden>
+          <p class="note">Lumen upgrades for this run. New ones unlock as you push deeper, and ascending locks them again and resets their levels.</p>
+          <div id="trainBody"></div>
+        </section>
+        <section class="panel" id="p-index" hidden><div id="indexBody"></div></section>
+        <section class="panel" id="p-board" hidden><div id="boardBody"></div></section>
+        <section class="panel" id="p-log" hidden><p class="note">Everything that happened recently, newest first.</p><div class="feed" id="feed"></div></section>
+        <section class="panel" id="p-guide" hidden><div id="guideBody"></div></section>
+        <section class="panel" id="p-tree" hidden>
+          <div class="wsub" data-sub="asc"><div id="ascTop"></div>
+          <div class="legend"><span><i style="background:var(--c3)"></i>Edge</span><span><i style="background:var(--c1)"></i>Ward</span><span><i style="background:var(--c2)"></i>Drive</span><span><i style="background:var(--c4)"></i>Fortune</span><span><i style="background:var(--hero)"></i>Bridge</span></div>
+          <p class="note">The web keeps every node you learn through ascensions. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
+          <div class="wsub" data-sub="trans"><div id="transBody"></div></div>
+          <div class="wsub" data-sub="abyss"><div id="abyssBody"></div></div>
+          <div class="wsub" data-sub="web">
+          <div class="webWrap" id="webWrap"><svg class="web" id="web" viewBox="-420 -420 840 840" aria-label="Ascension skill web"></svg><div class="webZoom"><button type="button" class="chf" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="chf" data-zoom="out" aria-label="Zoom out">&minus;</button><button type="button" class="chf" data-zoom="fit" aria-label="Show the whole web"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 5 L1 1 L5 1 M11 1 L15 1 L15 5 M15 11 L15 15 L11 15 M5 15 L1 15 L1 11" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="webHint">Drag to move, pinch to zoom. Tap a node for details</div><div id="nodeCard"></div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <nav class="winTabs" aria-label="Window sections"><div class="tabs" id="winTabs" role="tablist"></div><button class="wx chf" id="sheetClose" type="button" aria-label="Close window"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></nav>
+  </div>
+</div>
+
+<div class="intro" id="away" hidden>
+  <div class="introCard awayCard" role="dialog" aria-modal="true" aria-labelledby="awayTitle">
+    <div class="introStep">Welcome back</div>
+    <h2 id="awayTitle">While you were away</h2>
+    <p id="awayText"></p>
+    <div class="awayList" id="awayList"></div>
+    <div class="introNav"><span style="flex:1"></span><button class="btn go" id="awayOk" type="button">Collect</button></div>
+  </div>
+</div>
+<div class="intro" id="intro" hidden>
+  <div class="introCard" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="introStep" id="introStep"></div>
+    <h2 id="introTitle"></h2>
+    <p id="introText"></p>
+    <div class="introNav"><button class="btn" id="introSkip" type="button">Skip</button><span class="dots" id="introDots"></span><button class="btn" id="introBack" type="button">Back</button><button class="btn go" id="introNext" type="button">Next</button></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
