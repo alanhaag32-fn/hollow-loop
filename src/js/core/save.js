@@ -13,7 +13,8 @@ export const KEPT = () => ({
   abyss: { best: 0, depth: 1, stone: 0, total: 0, altar: {}, seed: 0 },
   autoCfg: { trainOn: true, train: {}, push: 60, ascAt: 0, ascStall: false, smart: true }, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
   anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false,
-  bestiary: {}, peak: 1, totalKills: 0, bountyDone: 0, nextId: 1, salv: 1, autoEquip: true
+  bestiary: {}, peak: 1, totalKills: 0, bountyDone: 0, nextId: 1, salv: 1, autoEquip: true,
+  saver: false, manaRes: .3, packView: { slot: "all", set: "any", sort: "up" }
 });
 export const fresh = () => Object.assign(KEPT(), CYCLE(), RUN());
 export let S = fresh();

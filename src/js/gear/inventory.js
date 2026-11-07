@@ -11,7 +11,7 @@ import { reduce } from "../fx/gfx.js";
 import { ARENA_C, PACK_CAP, RARITY, SET, SETS, SLOT, UNIQ, affText, implOf, noun, salvShards, salvValue, score } from "./items.js";
 import { forgeUI } from "./reforge.js";
 import { coronaSvg, evadeChance, hero, lensSvg, recalc, setCounts, shellSvg } from "../hero/hero.js";
-import { HERO_WEAPON, ORBIT, ORBITALS, WTRAIT, baseSlot, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType } from "../hero/orbitals.js";
+import { HERO_WEAPON, ORBIT, ORBITALS, WTRAIT, baseSlot, weaponType, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType } from "../hero/orbitals.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
@@ -71,7 +71,7 @@ export function receive(it, quiet) {
 const glyph = slotId => '<svg class="glyph" viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[slotId].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
 function itemCard(it, mode, label, extra) {
   const slot = SLOT[it.slot], r = RARITY[it.r];
-  const tr = it.slot === "weapon" ? WTRAIT[HERO_WEAPON[noun(it)] ? noun(it) : "Glaive"] : null;
+  const tr = it.slot === "weapon" ? WTRAIT[weaponType(it)] : null;
   const im = implOf(it);
   const traitL = (tr ? '<div class="trait"><b>' + tr.name + "</b>: " + traitText(it) + "</div>" : "") + (im ? '<div class="impl">' + noun(it) + ": " + im.txt + "</div>" : "") +
     (it.u && UNIQ[it.u] ? '<div class="uniq"><b>' + UNIQ[it.u].name + "</b>: " + UNIQ[it.u].desc + "</div>" : "");
@@ -177,7 +177,7 @@ function spriteSvg(it) {
 function tileIcon(it, slotId) {
   if (it) return spriteSvg(it);
   const col = it ? "#efeaff" : "var(--line)";
-  if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
+  if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON[weaponType(it)] + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
   return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
 }
 function upPct(it) {
@@ -197,7 +197,7 @@ let pkSel = null;
 const scrollToDetail = () => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };
 const PK_SORT = [["up", "Best for you"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Grouped by set"]];
 const PK_SLOT = [["all", "All"], ["weapon", "Orbital"], ["armor", "Shell"], ["boots", "Corona"], ["charm", "Lens"]];
-const pkView = () => S.packView || (S.packView = { slot: "all", set: "any", sort: "up", up: false });
+const pkView = () => S.packView;
 function packItems() {
   const v = pkView();
   let L = S.inv.filter(it => (v.slot === "all" || it.slot === v.slot) && (v.set === "any" || (v.set === "sets" ? !!it.set : v.set === "none" ? !it.set : it.set === v.set)));
@@ -219,7 +219,7 @@ function renderPack() {
   else {
     let grid = "", lastSet = null;
     L.forEach(it => {
-      if (v.sort === "set" && (it.set || "") !== lastSet) { if (grid) h += '<div class="tileGrid">' + grid + "</div>"; grid = ""; lastSet = it.set || ""; h += '<div class="gHd"' + (it.set ? ' style="color:' + SET[it.set].col + '"' : "") + ">" + (it.set ? SET[it.set].name + " · " + S.inv.filter(x => x.set === it.set).length + " in pack, " + ((ST.sets[it.set]) || 0) + " worn" : "No set") + "</div>"; }
+      if (v.sort === "set" && (it.set || "") !== lastSet) { if (grid) h += '<div class="tileGrid">' + grid + "</div>"; grid = ""; lastSet = it.set || ""; h += '<div class="gHd"' + (it.set ? ' style="color:' + SET[it.set].col + '"' : "") + ">" + (it.set ? SET[it.set].name + " · " + S.inv.filter(x => x.set === it.set).length + " in pack, " + (setCounts()[it.set] || 0) + " worn" : "No set") + "</div>"; }
       grid += tile(it, "pkSel", it.id, null, it.id === pkSel);
     });
     h += '<div class="tileGrid">' + grid + "</div>";

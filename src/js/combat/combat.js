@@ -10,20 +10,19 @@ import { clearFoes, enemy, fdir, foes, knock, lungeT, moveFoes, pickTarget, remo
 import { blockFx, burst, evadeFx, lootBeam, ringIfRoom, shake, shatter, slash, sparks, statusFx } from "../fx/effects.js";
 import { receive } from "../gear/inventory.js";
 import { makeItem } from "../gear/items.js";
-import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy, recalc } from "../hero/hero.js";
+import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy } from "../hero/hero.js";
 import { ORBITALS, fireOrbital, heroAttack, orbRate, wTr } from "../hero/orbitals.js";
-import { stT } from "../hero/statuses.js";
-import { IT } from "../index/index.js";
+import { stepStatuses } from "../hero/statuses.js";
+import { recordKill } from "../index/index.js";
 import { fightStage, mode, spawn } from "../modes/modes.js";
-import { resetCombat } from "../progress/ascend.js";
-import { SK, autoCast, lvl } from "../skills/skills.js";
-import { markDirty } from "../ui/actions.js";
+import { resetCombat } from "../hero/hero.js";
+import { autoCast, stepSkills } from "../skills/skills.js";
 import { dmgFloat, floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { view } from "../world/scene.js";
 
 export let heroDown = false;
-export const cds = {}, dpsLog = [];
+export const dpsLog = [];
 export const F = () => fdir(enemy);
 export const alive = () => !!enemy && !enemy.dead && !heroDown;
 export function dps() {
@@ -44,13 +43,13 @@ export function land(e, base, kind, slot) {
   const tr = kind === "blade" ? wTr(slot) : null;
   const h = { e, kind, slot, dmg: 0, crit: false, red: false, note: "", lethal: false, first: !!e.fresh, pierce: !!(tr && tr.pierce), seeking: !!(tr && tr.seeking) };
   e.fresh = false;
-  const forced = hero.markT > 0;
-  const cc = emit("critChance", { v: ST.crit }).v;
-  h.crit = forced || Math.random() < cc;
-  h.red = h.crit && Math.random() < (forced ? cc : cc - 1) + ST.redBonus;
+  // crit chance past 100% rolls red crits; when a crit is certain (Shatter), crit chance becomes red crit chance
+  const c = emit("critChance", { v: ST.crit, sure: false }), cc = c.v;
+  h.crit = c.sure || Math.random() < cc;
+  h.red = h.crit && Math.random() < (c.sure ? cc : cc - 1) + ST.redBonus;
   emit("crit", h);
   h.dmg = base * (.9 + Math.random() * .2);
-  if (h.crit) h.dmg *= ST.critDmg * (forced ? 1 + SK.shatter.critBonus(lvl("shatter")) : 1) * (h.red ? ST.redPow : 1);
+  if (h.crit) h.dmg *= ST.critDmg * (h.red ? ST.redPow : 1);
   if (e.boss) h.dmg *= ST.bossDmg;
   if (e.elite) h.dmg *= ST.eliteDmg;
   emit("deal", h);
@@ -92,8 +91,10 @@ export function land(e, base, kind, slot) {
     if (!note) knock(e, (kind === "tap" ? 7 : tr ? tr.knock : 12) * (crit ? 1.7 : 1));
   };
   show();
-  if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
+  downIfDead(e);
 }
+// a foe at zero health is dead; its kill resolves a moment later, once this hit's effects have played
+function downIfDead(e) { if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); } }
 export const effSpd = () => emit("attackSpeed", { v: ST.spd }).v;
 // a decoy (Phantom Veil) draws enemy fire while it lasts
 
@@ -104,7 +105,7 @@ export const field = {
 export function dotDmg(e, d) {
   if (!e || e.dead || heroDown || d <= 0) return;
   e.hp -= d; e.lastHitT = performance.now(); dpsLog.push([performance.now(), d]);
-  if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
+  downIfDead(e);
 }
 function stepEffects(dt) {
   for (const e of foes) {
@@ -146,11 +147,7 @@ export function hurt(d, noEvade, from) {
   hero.hp -= d;
   if (d > 0) emit("hurt", c);
   const src = from || enemy;
-  if (d > 0 && ST.thorn && src && !src.dead && !heroDown) {
-    const e = src, r = d * ST.thorn;
-    e.hp -= r; dpsLog.push([performance.now(), r]);
-    if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
-  }
+  if (d > 0 && ST.thorn && src) dotDmg(src, d * ST.thorn);
   floatText(d <= 0 ? "Absorbed" : (blocked ? "Block -" : "-") + fmt(d), d <= 0 ? "info" : "hurt", "hero");
   if (d > 0 && !blocked) sfx("hurt", 0, 120);
   anim(heroModel, [{ transform: "translateX(0px)", filter: "none" }, { transform: "translateX(" + dir * 6 + "px)", filter: "drop-shadow(0 0 6px #ff6b6b) brightness(1.6)", offset: .4 }, { transform: "translateX(0px)", filter: "none" }], 220);
@@ -175,20 +172,7 @@ function killFoe(e) {
   addGold(g, true); S.totalKills++;
   if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
   bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
-  const fam = e.family, kk = boss ? "b" : elite ? "e" : "n";
-  if (fam) {
-    const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
-    const before = IT(fam.key, kk);
-    rec[kk]++;
-    if (e.v) { rec.v = rec.v || {}; rec.v[e.v.id] = (rec.v[e.v.id] || 0) + 1; }
-    const tt = IT(fam.key, kk);
-    if (tt > before) {
-      log("Index: " + (kk === "e" ? "Elite " : kk === "b" ? "Grand " : "") + fam.name + " tier " + ["", "I", "II", "III"][tt] + " reached. Now +" + +(fam[kk][0] * tt).toFixed(1) + fam[kk][1], "r4");
-      floatText("Index up", "info", "hero", "#ffd04d"); sfx("chord", 0, 300);
-      recalc();
-    }
-    markDirty("index");
-  }
+  recordKill(e);
   floatText("+" + fmt(g) + " lumen", "gold", e);
   heal(ST.maxHp * ST.killHeal);
   hero.mp = Math.min(ST.maxMp, hero.mp + ST.maxMp * ((boss ? .25 : elite ? .1 : .03) + ST.killMana));
@@ -233,11 +217,8 @@ function onDeath() {
 export function step(dt) {
   if (heroDown) return;
   statusFx(dt);
-  for (const k in cds) if (cds[k] > 0) cds[k] -= dt;
-  if (hero.shieldT > 0) { hero.shieldT -= dt; if (hero.shieldT <= 0) hero.shield = 0; }
-  if (hero.odT > 0) { hero.odT -= dt; if (hero.odT <= 0) heroModel.classList.remove("od"); }
-  if (hero.markT > 0) { hero.markT -= dt; if (hero.markT <= 0) foes.forEach(f => f.el.cracks.style.display = "none"); }
-  for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
+  stepSkills(dt);
+  stepStatuses(dt);
   heal(ST.maxHp * ST.hpRegen * dt);
   stepEffects(dt);
   mode.step(dt);

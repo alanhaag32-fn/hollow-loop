@@ -1,7 +1,7 @@
 // Skills: each one's numbers, cast and auto-cast rule, levels, the skill bar and the Skills window.
 import { sfx } from "../audio/sound.js";
 import { bump } from "../bounty/bounty.js";
-import { alive, cds, heroDown, hit } from "../combat/combat.js";
+import { alive, heroDown, hit } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { ST, emit, statSource } from "../core/stats.js";
 import { $, anim, fmt } from "../core/util.js";
@@ -9,7 +9,7 @@ import { enemy, foes, inView } from "../enemies/foes.js";
 import { burst, crackFx, novaFx } from "../fx/effects.js";
 import { hero, heroModel, startDash } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
-import { stT } from "../hero/statuses.js";
+import { clearStatuses } from "../hero/statuses.js";
 import { autoOn } from "../progress/automation.js";
 import { action, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
@@ -36,7 +36,8 @@ export const SKILLS = [
     cast(L) {
       hero.shield = hero.shieldMax = this.amt(L); hero.shieldT = this.time(L);
       anim($("hBarrier"), [{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: .7 }, { transform: "scale(1)", opacity: 1 }], 300);
-    }
+    },
+    tick(dt) { if (hero.shieldT > 0) { hero.shieldT -= dt; if (hero.shieldT <= 0) hero.shield = 0; } }
   },
   {
     id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .2, foe: true, smart: 3, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z",
@@ -44,6 +45,7 @@ export const SKILLS = [
     time: L => 6 + .1 * (L - 1) + ST.surgeTime,
     desc: L => "+" + SK.overdrive.pct(L) + "% attack speed for " + SK.overdrive.time(L).toFixed(1) + "s",
     cast(L) { hero.odT = this.time(L); heroModel.classList.add("od"); burst(view.HERO_X, view.HERO_Y, "#ffd04d", 8); },
+    tick(dt) { if (hero.odT > 0) { hero.odT -= dt; if (hero.odT <= 0) heroModel.classList.remove("od"); } },
     fx: { attackSpeed: c => { if (hero.odT > 0) c.v *= 1 + SK.overdrive.pct(lvl("overdrive")) / 100; } }
   },
   {
@@ -59,15 +61,26 @@ export const SKILLS = [
     desc: L => "Dash " + Math.round(SK.dash.dist(L)) + " units, untouchable for " + SK.dash.guard(L).toFixed(2) + "s, slicing foes in your path for " + fmt(SK.dash.dmg(L)) + " and clearing statuses",
     // auto-dash only to escape: out of a boss Crush, or away when health is low
     auto: c => !!foes.find(f => !f.dead && f.tele > 0 && f.tele < .7) || (c.hpPct < .35 && c.foe),
-    cast(L) { startDash(L); for (const k in stT) stT[k] = 0; }
+    cast(L) { startDash(L); clearStatuses(); }
   },
   {
     id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .25, foe: true, smart: 3, sound: "shatterSkill", icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z",
     time: L => 5 + .15 * (L - 1), critBonus: L => .05 * L,
     desc: L => "Every hit crits for " + SK.shatter.time(L).toFixed(1) + "s with +" + Math.round(SK.shatter.critBonus(L) * 100) + "% crit damage",
-    cast(L) { hero.markT = this.time(L); crackFx(); }
+    cast(L) { hero.markT = this.time(L); crackFx(); },
+    tick(dt) { if (hero.markT > 0) { hero.markT -= dt; if (hero.markT <= 0) foes.forEach(f => f.el.cracks.style.display = "none"); } },
+    fx: {
+      critChance: c => { if (hero.markT > 0) c.sure = true; },
+      deal: h => { if (hero.markT > 0 && h.crit) h.dmg *= 1 + SK.shatter.critBonus(lvl("shatter")); }
+    }
   }
 ];
+// skill cooldowns left, by id
+export const cds = {};
+export function stepSkills(dt) {
+  for (const k in cds) if (cds[k] > 0) cds[k] -= dt;
+  SKILLS.forEach(sk => { if (sk.tick) sk.tick(dt); });
+}
 export const SK = {};
  SKILLS.forEach(s => SK[s.id] = s);
 statSource(give => SKILLS.forEach(s => give(s)));
@@ -107,7 +120,7 @@ export function autoCast() {
     let go;
     if (sk.auto) go = sk.auto(c);
     else {
-      go = c.foe && hero.mp - skillCost(sk) >= ST.maxMp * (S.manaRes == null ? .3 : S.manaRes);
+      go = c.foe && hero.mp - skillCost(sk) >= ST.maxMp * S.manaRes;
       if (go && sk.smart && autoOn() && S.autoCfg.smart !== false) go = big || foes.filter(f => !f.dead && inView(f)).length >= sk.smart;
       if (keep && !sk.reserve && hero.mp - skillCost(sk) < keep) go = false;
     }
@@ -145,7 +158,7 @@ export function updateSkillbar() {
   });
 }
 function renderSkills() {
-  const r = S.manaRes == null ? .3 : S.manaRes;
+  const r = S.manaRes;
   $("resBar").innerHTML = '<span>Auto-cast keeps</span>' + [0, .3, .5].map(v => '<button class="btn' + (Math.abs(r - v) < .01 ? " go" : "") + '" data-act="manaRes" data-id="' + v + '">' + Math.round(v * 100) + "%</button>").join("") + "<span>mana in reserve</span>";
   $("skillsBody").innerHTML = SKILLS.map(sk => {
     if (!unlocked(sk.id)) return '<div class="row lock"><span class="n">' + sk.name + '</span><span class="d">Unlocks at stage ' + sk.unlock + " each run</span></div>";

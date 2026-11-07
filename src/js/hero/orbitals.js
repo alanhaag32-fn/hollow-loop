@@ -45,7 +45,7 @@ export function wTr(slot) {
   return o;
 }
 export function traitText(it) {
-  const t = HERO_WEAPON[noun(it)] ? noun(it) : "Glaive", r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+  const t = weaponType(it), r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
   if (t === "Drone") return "Fires " + [30, 40, 50][hi] + "% faster at 80% damage per volley";
   if (t === "Glaive") return "Hits on the way out and again on the way back, " + [55, 65, 75][hi] + "% each";
   if (t === "Laser") return "Ignores Shielded blocks and Armored damage reduction" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
@@ -55,7 +55,9 @@ export function traitText(it) {
 }
 let attackCount = 0;
 export const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
-export const wType = (slot = "weapon") => S.equip[slot] ? (HERO_WEAPON[noun(S.equip[slot])] ? noun(S.equip[slot]) : "Glaive") : "Mote";
+// an orbital item's weapon type (old names it doesn't know fall back to Glaive)
+export const weaponType = it => HERO_WEAPON[noun(it)] ? noun(it) : "Glaive";
+export const wType = (slot = "weapon") => S.equip[slot] ? weaponType(S.equip[slot]) : "Mote";
 // flight time from the orbital's muzzle to the target; the hit lands exactly when the shot arrives
 const SHOT_SPD = { Drone: 900, Mote: 850, Swarm: 700, Hammer: 620, Glaive: 760 };
 export function wDelay(slot = "weapon") {

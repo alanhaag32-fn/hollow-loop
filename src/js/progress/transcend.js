@@ -1,11 +1,9 @@
 // Transcending: Stardust, Star Power, the Star Forge, and the Transcend tab.
 import { sfx } from "../audio/sound.js";
-import { ensureBoard } from "../bounty/bounty.js";
 import { CYCLE, RUN, S, save } from "../core/save.js";
 import { plus, statSource } from "../core/stats.js";
 import { fmt } from "../core/util.js";
 import { fillOrbital } from "../gear/inventory.js";
-import { recalc } from "../hero/hero.js";
 import { ORBIT } from "../hero/orbitals.js";
 import { startRun } from "./ascend.js";
 import { autoOn } from "./automation.js";
@@ -70,13 +68,8 @@ export function renderTrans() {
   FORGE.forEach(f => {
     if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
     const r = FR(f.id), maxed = r >= f.max, c = f.cost(r), nx = Array.isArray(f.nx) ? f.nx[r] : typeof f.nx === "function" ? f.nx(r) : f.nx;
-    let extra = "";
-    if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.trainOn !== false ? " on" : "") + '" data-act="aTrainOn">' + (S.autoCfg.trainOn !== false ? "On" : "Off") + "</button>" + TRAIN.map(t => '<button class="chip' + (S.autoCfg.train[t.id] === false ? "" : " on") + '" data-act="aTrainT" data-id="' + t.id + '">' + t.name + "</button>").join("") + "</div>";
-    if (false) extra = '<div class="chips"><span>Push again after</span>' + [30, 60, 120].map(v => '<button class="chip' + ((S.autoCfg.push || 60) === v ? " on" : "") + '" data-act="aPushD" data-id="' + v + '">' + (v < 60 ? v + "s" : v / 60 + " min") + "</button>").join("") + "</div>";
-    if (false) extra = '<div class="chips"><span>Ascend at stage</span>' + [0, 40, 60, 80, 100, 120, 150, 200].map(v => '<button class="chip' + ((S.autoCfg.ascAt || 0) === v ? " on" : "") + '" data-act="aAscAt" data-id="' + v + '">' + (v ? v : "Off") + "</button>").join("") + '<button class="chip' + (S.autoCfg.ascStall ? " on" : "") + '" data-act="aAscStall">When stuck 5 min</button></div>';
-    if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button></div>";
     h += '<div class="row forge"><span class="n">' + f.name + (f.max > 1 ? " · Rank " + r + " / " + f.max : r ? " · Unlocked" : "") + '</span><span class="d">' + f.desc(r) + (maxed || !nx ? "" : '<span class="nx"> → ' + nx + "</span>") + "</span>" +
-      '<div class="side">' + (maxed ? '<button class="btn" disabled>' + (f.max > 1 ? "Maxed" : "Owned") + "</button>" : '<button class="btn dustb" data-act="forge" data-id="' + f.id + '" data-cost="' + c + '" data-cur="dust">' + c + " Stardust</button>") + "</div>" + extra + "</div>";
+      '<div class="side">' + (maxed ? '<button class="btn" disabled>' + (f.max > 1 ? "Maxed" : "Owned") + "</button>" : '<button class="btn dustb" data-act="forge" data-id="' + f.id + '" data-cost="' + c + '" data-cur="dust">' + c + " Stardust</button>") + "</div>" + "</div>";
   });
   h += '<h4 class="forgeH">Automation</h4>';
   if (!autoOn()) return h + '<p class="note">Auto-Train, Auto-Push, Auto-Ascend and Smart Cast unlock for free on your first Transcend.</p>';
@@ -97,7 +90,7 @@ action("forge", id => {
   if (r >= f.max || S.stardust < c) return false;
   S.stardust -= c; S.forge[id] = r + 1; sfx("chord", 0, 0);
   if (id === "orb3") fillOrbital(ORBIT.weapon3);
-  recalc(); ensureBoard(); buildSkillbar();
+  buildSkillbar();
   log("Star Forge: " + f.name + " rank " + (r + 1), "r4");
 });
 action("aTrainT", id => { S.autoCfg.train[id] = S.autoCfg.train[id] === false; });

@@ -34,7 +34,7 @@ const SHAPE_NAMES = { 3: "Triad", 4: "Quadrant", 5: "Pentad", 6: "Hexen", 7: "He
 export const MODS = {
   shielded: { name: "Shielded", desc: "Every 4th hit on it is fully blocked", fx: { guard(h, e) { if (h.pierce) return; e.hitN = (e.hitN || 0) + 1; if (e.hitN % 4 === 0) { h.dmg = 0; h.note = "Blocked"; } } } },
   hasted: { name: "Hasted", desc: "Attacks 40% faster", fx: { attackRate: c => { c.v *= 1.4; } } },
-  vampiric: { name: "Vampiric", desc: "Heals 4% of its health each time it hits you", fx: { landed(c, e) { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow())); } } },
+  vampiric: { name: "Vampiric", desc: "Heals 1.2% of its health each time it hits you", fx: { landed(c, e) { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow())); } } },
   armored: { name: "Armored", desc: "Takes 30% less damage from blades and skills, but taps ignore it", fx: { take(h) { if (h.kind !== "tap" && !h.pierce) h.dmg *= .7; } } },
   volatile: { name: "Volatile", desc: "Explodes for 25% of your max health when destroyed", fx: {
     // several blasts at once can't add up past 50% in 1.5s
@@ -48,7 +48,7 @@ export const MODS = {
       }, 150);
     }
   } },
-  regen: { name: "Regenerating", desc: "Heals 2% of its health every second", fx: { tick(c, e) { if (performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * c.dt); } } },
+  regen: { name: "Regenerating", desc: "Heals 1% of its health every second after 2.5s without being hit", fx: { tick(c, e) { if (performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * c.dt); } } },
   splitting: { name: "Splitting", desc: "Splits into a smaller copy when destroyed", fx: { death(c, e) { if (!e.child) c.split = true; } } },
   draining: { name: "Draining", desc: "Every hit that lands inflicts a random status", fx: { landed(c, e) { applyStatus(pick(ZONE_STATUS), 5, false, e); } } }
 };

@@ -1,16 +1,14 @@
 // Taps on the arena, the floating joystick and keyboard steering.
+import { runAction } from "./actions.js";
 import { sfx } from "../audio/sound.js";
 import { bump } from "../bounty/bounty.js";
 import { alive, hit } from "../combat/combat.js";
-import { save } from "../core/save.js";
 import { ST, emit } from "../core/stats.js";
 import { $ } from "../core/util.js";
 import { foes, inView, pickTarget, targeting } from "../enemies/foes.js";
 import { arena, boltFx, ripple } from "../fx/effects.js";
 import { hero } from "../hero/hero.js";
-import { mode } from "../modes/modes.js";
 import { floatText } from "./floats.js";
-import { updateUI } from "./hud.js";
 import { tab } from "./windows.js";
 import { SC, keys, view } from "../world/scene.js";
 
@@ -75,5 +73,5 @@ export function initInput() {
     document.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
     addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
   })();
-  $("mode").addEventListener("click", () => { mode.button(); updateUI(); save(); });
+  $("mode").addEventListener("click", () => runAction("modeButton"));
 }

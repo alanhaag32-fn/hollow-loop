@@ -8,9 +8,10 @@ import { foes } from "../enemies/foes.js";
 import { dashFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
 import { ARENA_C, SET, noun } from "../gear/items.js";
-import { HERO_WEAPON, MOTE, ORBITALS } from "./orbitals.js";
+import { HERO_WEAPON, MOTE, ORBITALS, weaponType } from "./orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { SK } from "../skills/skills.js";
+import { clearStatuses } from "./statuses.js";
 import { markDirty } from "../ui/actions.js";
 import { paused } from "../ui/guide.js";
 import { VH, VW, applyCam, keys, placeBackdrop, view } from "../world/scene.js";
@@ -34,6 +35,11 @@ export function setCounts() {
 // echo power never caps, so each ascension pushes you further even once the web is full
 statSource(give => give(() => ({ echoBonus: onBase(.01 * (S.echoesTotal || 0)) })));
 export const evadeChance = () => Math.min(.5, ST.evaR / (ST.evaR + 6 * itemPow(fightStage())));
+// the hero's temporary combat state goes back to rest: buffs, shield and statuses
+export function resetCombat() {
+  hero.shield = 0; hero.odT = 0; hero.markT = 0; heroModel.classList.remove("od");
+  clearStatuses();
+}
 export function recalc() {
   const old = refreshStats();
   hero.hp = old ? Math.min(ST.maxHp, hero.hp * (ST.maxHp / old.maxHp)) : ST.maxHp;
@@ -102,14 +108,14 @@ export function lensSvg(n, c, r, into) {
 }
 function drawHero() {
   const w = S.equip.weapon, a = S.equip.armor, b = S.equip.boots, c = S.equip.charm, hw = $("hWeapon");
-  hw.setAttribute("d", w ? (HERO_WEAPON[noun(w)] || HERO_WEAPON.Fang) : MOTE);
+  hw.setAttribute("d", w ? HERO_WEAPON[weaponType(w)] : MOTE);
   hw.setAttribute("fill", w ? ARENA_C[w.r] : "#effffc");
   hw.style.color = w ? ARENA_C[w.r] : "#7be0d0";
   hw.classList.toggle("glow", !w || w.r >= 3);
   ORBITALS.slice(1).forEach(o => {
     const wo = o.open() ? S.equip[o.key] : null, el = $(o.ids[2]);
     $(o.ids[0]).style.display = wo ? "" : "none";
-    if (wo) { el.setAttribute("d", HERO_WEAPON[noun(wo)] || HERO_WEAPON.Glaive); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
+    if (wo) { el.setAttribute("d", HERO_WEAPON[weaponType(wo)]); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
   });
   if (a) shellSvg(noun(a), ARENA_C[a.r], a.r); else $("hShell").innerHTML = "";
   if (b) coronaSvg(noun(b), ARENA_C[b.r], b.r); else { $("hCorona").innerHTML = ""; $("hCoronaStatic").innerHTML = ""; }
@@ -134,7 +140,7 @@ export function startDash(L) {
   // a second finger on the button can briefly interrupt the stick, so fall back to the last steered direction
   if (Math.hypot(dx, dy) < .2 && performance.now() - lastDT < 900) { dx = lastDX; dy = lastDY; }
   if (Math.hypot(dx, dy) < .2) { dx = hvx; dy = hvy; }
-  if (Math.hypot(dx, dy) < 5 && Math.hypot(dx, dy) < .2) {
+  if (Math.hypot(dx, dy) < 5) {
     let best = null, bd = 1e9; for (const f of foes) { if (f.dead) continue; const d = Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y); if (d < bd) { bd = d; best = f; } }
     if (best) { dx = view.HERO_X - best.px; dy = view.HERO_Y - best.py; } else { dx = 0; dy = -1; }
   }

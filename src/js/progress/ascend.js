@@ -1,15 +1,14 @@
 // Ascending: echoes, echo power, starting a run, and the Ascend tab.
 import { sfx } from "../audio/sound.js";
 import { ensureBoard } from "../bounty/bounty.js";
-import { cds } from "../combat/combat.js";
+import { cds } from "../skills/skills.js";
 import { shardAmt } from "../core/economy.js";
 import { RUN, S, save } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { clearFoes } from "../enemies/foes.js";
 import { burst, equipFlash } from "../fx/effects.js";
 import { makeItem } from "../gear/items.js";
-import { hero, heroModel, recalc } from "../hero/hero.js";
-import { stT } from "../hero/statuses.js";
+import { hero, recalc, resetCombat } from "../hero/hero.js";
 import { returnToMain, spawn } from "../modes/modes.js";
 import { ECHO_K } from "./transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
@@ -20,10 +19,6 @@ import { view } from "../world/scene.js";
 
 function starterKit(st) {
   ["weapon", "armor", "boots", "charm"].forEach(sl => { const it = makeItem(st, false, 2, sl); S.equip[sl] = it; });
-}
-export function resetCombat() {
-  hero.shield = 0; hero.odT = 0; hero.markT = 0; heroModel.classList.remove("od");
-  for (const k in stT) stT[k] = 0;
 }
 // shared by ascend and transcend
 export function startRun() {

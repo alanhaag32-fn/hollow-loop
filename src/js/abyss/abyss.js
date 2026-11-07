@@ -217,7 +217,7 @@ export function voidBlink(e) {
   newWaypoint(e); setFoePos(e); ringIfRoom(e.px, e.py, e.stroke, .2, 2, 300, 2);
 }
 export function renderAbyss() {
-  if (!abyssOpen()) return '<p class="note">Reach stage 150 to open the Abyss.</p>';
+  if (!abyssOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to open the Abyss.</p>";
   const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
   let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
     '<div class="note" style="margin:0">The Abyss is an endless climb that never resets, not even when you transcend. Each depth is 3 waves of Void shapes and a Guardian. Clear it for Voidstone and go one deeper. Every depth adds a rule. Die and you fall back 2 depths. Mythics can drop from Guardians. Your build comes with you; leaving puts you back on stage ' + S.stage + ".</div>" +

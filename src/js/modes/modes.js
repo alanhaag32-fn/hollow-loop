@@ -1,7 +1,7 @@
 // Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
 import { sfx } from "../audio/sound.js";
 import { bump } from "../bounty/bounty.js";
-import { S, save } from "../core/save.js";
+import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { rnd } from "../core/util.js";
 import { makeEnemy } from "../enemies/enemies.js";
@@ -12,8 +12,7 @@ import { ORBIT, SLOT2_AT } from "../hero/orbitals.js";
 import { TRANS_AT } from "../progress/transcend.js";
 import { SKILLS, buildSkillbar } from "../skills/skills.js";
 import { TRAIN } from "../train/train.js";
-import { markDirty } from "../ui/actions.js";
-import { updateUI } from "../ui/hud.js";
+import { action, markDirty } from "../ui/actions.js";
 import { log } from "../ui/log.js";
 import { setZone } from "../world/scene.js";
 
@@ -104,7 +103,9 @@ export function resumeRun() { spawn.stageSpawned = S.kills; }
 export function switchMode(m) {
   mode.leave(); mode = m;
   clearFoes(false); m.enter(); setZone(true); recalc();
-  save(); updateUI();
 }
 
 const killsNeeded = () => (S.stage % 10 === 0 ? 1 : momentum() ? 3 : 8);
+
+// the button beside the stage title: push/farm in the main run, leave in the Abyss
+action("modeButton", () => mode.button());

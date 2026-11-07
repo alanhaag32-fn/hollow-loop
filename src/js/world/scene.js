@@ -91,7 +91,6 @@ export function layout() {
 
   $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
   syncTarget();
-  drawBackdrop();
   setZone(true);
 }
 export const keys = {};

@@ -5,8 +5,9 @@ import { S } from "../core/save.js";
 export let actx = null, master = null, bus = null, noiseBuf = null, voices = 0;
 const SND_VOL = { low: .35, med: .65, high: 1 };
 const sndVol = () => S.sound === false ? 0 : SND_VOL[S.vol || "med"];
+// start (or wake) the audio; resolves once it can play
 export function audioInit() {
-  if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+  if (actx) return actx.state === "suspended" ? actx.resume() : Promise.resolve();
   try {
     actx = new (window.AudioContext || window.webkitAudioContext)();
     master = actx.createGain(); master.gain.value = sndVol();
@@ -23,7 +24,8 @@ export function audioInit() {
     noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  } catch (err) { actx = null; }
+  } catch (err) { actx = null; return Promise.resolve(); } // no Web Audio here: the game plays silently
+  return Promise.resolve();
 }
 export function setVolume() { if (master) master.gain.setTargetAtTime(sndVol(), actx.currentTime, .05); }
 function env(g, t, dur, peak, atk) {
@@ -95,7 +97,7 @@ export function sfx(key, arg, gap) {
   const now = performance.now();
   if (now - (lastSnd[key] || 0) < (gap === undefined ? 50 : gap)) return;
   lastSnd[key] = now;
-  try { SFX[key](arg); } catch (err) {}
+  SFX[key](arg);
 }
 
 export function initSound() {

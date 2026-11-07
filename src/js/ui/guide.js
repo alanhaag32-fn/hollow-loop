@@ -101,8 +101,8 @@ action("perfMode", () => { S.perf = !S.perf; applyGfx(); });
 action("saver", () => { S.saver = !S.saver; });
 action("musToggle", () => { S.music = S.music === false; audioInit(); setMusicVol(); });
 action("musVol", () => { S.mvol = { low: "med", med: "high", high: "low" }[S.mvol || "med"]; audioInit(); setMusicVol(); });
-action("sndToggle", () => { S.sound = S.sound === false; audioInit(); setVolume(); if (S.sound) setTimeout(() => sfx("buy"), 60); });
-action("sndVol", () => { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; audioInit(); setVolume(); setTimeout(() => sfx("buy", 0, 0), 60); });
+action("sndToggle", () => { S.sound = S.sound === false; setVolume(); if (S.sound) audioInit().then(() => sfx("buy")); });
+action("sndVol", () => { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; setVolume(); audioInit().then(() => sfx("buy", 0, 0)); });
 action("intro", () => { closeWindow(); showIntro(); return false; });
 action("saveCopy", () => {
   save();

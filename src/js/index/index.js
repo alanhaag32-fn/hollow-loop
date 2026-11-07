@@ -3,7 +3,11 @@ import { S } from "../core/save.js";
 import { cutBy, plus, statSource } from "../core/stats.js";
 import { $, fmt, polyPts } from "../core/util.js";
 import { VARIANTS, vFill } from "../enemies/enemies.js";
-import { panel } from "../ui/actions.js";
+import { markDirty, panel } from "../ui/actions.js";
+import { sfx } from "../audio/sound.js";
+import { recalc } from "../hero/hero.js";
+import { floatText } from "../ui/floats.js";
+import { log } from "../ui/log.js";
 
 export const FAMILIES = [
   { key: "triad", sides: 3, name: "Triad", lore: "Sharp, fast and simple. The first shapes you'll meet.", n: [2, "% attack", v => ({ atk: 1 + v })], e: [4, "% crit damage", v => ({ critDmg: 1 + v })], b: [3, "% damage to bosses", v => ({ bossDmg: 1 + v })] },
@@ -19,6 +23,22 @@ statSource(give => FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t 
 const IDX_TIERS = { n: [25, 150, 600], e: [5, 30, 120], b: [1, 5, 20] };
 function idxKills(key, k) { const r = S.bestiary && S.bestiary[key]; return r ? r[k] || 0 : 0; }
 export function IT(key, k) { const c = idxKills(key, k); return IDX_TIERS[k].filter(t => c >= t).length; }
+// count a kill toward its shape family's Index entry
+export function recordKill(e) {
+  const fam = e.family; if (!fam) return;
+  const kk = e.boss ? "b" : e.elite ? "e" : "n";
+  const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
+  const before = IT(fam.key, kk);
+  rec[kk]++;
+  if (e.v) { rec.v = rec.v || {}; rec.v[e.v.id] = (rec.v[e.v.id] || 0) + 1; }
+  const tt = IT(fam.key, kk);
+  if (tt > before) {
+    log("Index: " + (kk === "e" ? "Elite " : kk === "b" ? "Grand " : "") + fam.name + " tier " + ["", "I", "II", "III"][tt] + " reached. Now +" + +(fam[kk][0] * tt).toFixed(1) + fam[kk][1], "r4");
+    floatText("Index up", "info", "hero", "#ffd04d"); sfx("chord", 0, 300);
+    recalc();
+  }
+  markDirty("index");
+}
 function renderIndex() {
   const active = [];
   FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t = IT(f.key, k); if (t) active.push("+" + +(f[k][0] * t).toFixed(1) + f[k][1]); }));

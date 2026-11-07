@@ -71,7 +71,7 @@ initOffline();
 initGuide();
 
 load();
-whenActionsRun(() => { recalc(); markDirty(...Object.keys(PANELS)); save(); updateUI(); });
+whenActionsRun(() => { recalc(); ensureBoard(); markDirty(...Object.keys(PANELS)); save(); updateUI(); });
 applyGfx();
 recalc();
 ensureBoard();
