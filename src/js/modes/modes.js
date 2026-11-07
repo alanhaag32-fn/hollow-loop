@@ -73,12 +73,12 @@ export const MAIN = {
   },
   death() {
     log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");
-    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
+    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0; spawn.stageSpawned = 0;
   },
   escape() {
     log("The boss escaped. Back to stage " + Math.max(1, S.stage - 1) + ", now farming", "bad");
     S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
-    clearFoes(true); spawn.spawnT = 1;
+    clearFoes(true); spawn.spawnT = 1; spawn.stageSpawned = 0;
   },
   hud() {
     const need = killsNeeded();

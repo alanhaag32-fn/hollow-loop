@@ -1,16 +1,16 @@
 // Enemies on the field: their SVG, movement, targeting, spawning and each one's turn.
 import { sfx } from "../audio/sound.js";
-import { bossEscape, crush, heroDown } from "../combat/combat.js";
+import { crush, heroDown } from "../combat/combat.js";
 import { foeEmit } from "../core/stats.js";
-import { $, anim, polyPts, starPts, svgEl } from "../core/util.js";
+import { $, polyPts, starPts, svgEl } from "../core/util.js";
 import { MODS, ePts, eVerts, makeChild } from "./enemies.js";
 import { FAR_RATE, enemyAttack } from "./shots.js";
 import { ringIfRoom, shake, sparks, warnRing } from "../fx/effects.js";
-import { reduce } from "../fx/gfx.js";
+import { anim, reduce } from "../fx/gfx.js";
 import { ARENA_C } from "../gear/items.js";
 import { RING_R, arcD } from "../hero/hero.js";
 import { STATUS } from "../hero/statuses.js";
-import { fightStage, spawn } from "../modes/modes.js";
+import { fightStage, mode } from "../modes/modes.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { buildReticle, holdTag } from "../ui/reticle.js";
@@ -277,7 +277,7 @@ export function removeFoe(e, fade) {
   if (!g) return;
   if (fade && !reduce) { anim(g, [{ opacity: 1 }, { opacity: 0 }], 300); setTimeout(() => g.remove(), 290); } else g.remove();
 }
-export function clearFoes(fade) { foes.slice().forEach(f => removeFoe(f, fade)); setTarget(null); targeting.focus = null; spawn.stageSpawned = 0; }
+export function clearFoes(fade) { foes.slice().forEach(f => removeFoe(f, fade)); setTarget(null); targeting.focus = null; }
 export let enemy = null;
 function drawFoe(e) {
   const E = e.el, h = e.hue, cy = e.cy, tc = ARENA_C[e.tier];
@@ -359,7 +359,7 @@ export function stepFoe(e, dt) {
   if (e.stun > 0) { e.stun -= dt; if (e.stun <= 0) e.el.model.classList.remove("stun"); }
   if (e.boss && e.arrived) {
     e.timer -= dt;
-    if (e.timer <= 0) { bossEscape(); return; }
+    if (e.timer <= 0) { mode.escape(); return; }
     if (!e.enraged && e.timer <= 10) { e.enraged = true; e.el.model.classList.add("enr"); log(e.name + " is enraged", "bad"); }
     if (!(e.stun > 0)) {
       if (e.tele > 0) {

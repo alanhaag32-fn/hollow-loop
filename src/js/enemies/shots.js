@@ -1,10 +1,10 @@
 // Enemy attacks: projectiles, beams and lobs that land on the hero.
 import { field, heroDown, hurt, land } from "../combat/combat.js";
 import { ST, foeEmit } from "../core/stats.js";
-import { anim, fmt, polyPts, starPts, svgEl } from "../core/util.js";
+import { fmt, polyPts, starPts, svgEl } from "../core/util.js";
 import { lungeT } from "./foes.js";
 import { fx, moveFx, ringIfRoom, shake, sparks, tempFx } from "../fx/effects.js";
-import { reduce } from "../fx/gfx.js";
+import { anim, reduce } from "../fx/gfx.js";
 import { ARENA_C } from "../gear/items.js";
 import { dashIT, hero, hvx, hvy } from "../hero/hero.js";
 import { applyStatus } from "../hero/statuses.js";

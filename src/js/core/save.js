@@ -4,7 +4,7 @@ const KEY = "hollow-loop-v4";
 // Every saved field, grouped by how long it lasts: RUN fields reset when you ascend, CYCLE fields when you transcend,
 // and KEPT fields (settings, records, Stardust, the Star Forge, the Abyss) are never reset.
 export const RUN = () => ({
-  gold: 0, shards: 0, stage: 1, maxStage: 1, kills: 0, push: true, runStart: undefined, kps: undefined, gps: 0, last: Date.now(),
+  gold: 0, shards: 0, stage: 1, maxStage: 1, kills: 0, push: true, runStart: undefined, kps: undefined, last: Date.now(),
   train: {}, oc: {}, skill: {}, equip: {}, inv: [], bounties: [], rerollAt: 0
 });
 export const CYCLE = () => ({ echoes: 0, echoesTotal: 0, tree: {}, ascensions: 0, cyclePeak: 1 });

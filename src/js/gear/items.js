@@ -1,13 +1,13 @@
 // Gear: slots, rarities, affixes, shape bonuses, sets, uniques, making items and what they're worth.
 import { alive, dotDmg, field, heroDown, hit, land } from "../combat/combat.js";
 import { itemPow, lumenAt } from "../core/curves.js";
-import { shardAmt } from "../core/economy.js";
+import { shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, cutBy, onBase, plus, statSource } from "../core/stats.js";
-import { $, anim, pctS, pick, rnd, svgEl } from "../core/util.js";
+import { $, pctS, pick, rnd, svgEl } from "../core/util.js";
 import { enemy, foes, inView } from "../enemies/foes.js";
 import { burst, fxBusy, ring, ringIfRoom, tempFx } from "../fx/effects.js";
-import { reduce } from "../fx/gfx.js";
+import { anim, reduce } from "../fx/gfx.js";
 import { heal, hero, setCounts } from "../hero/hero.js";
 import { ORBITALS, slotAtk, splitShot, throwBlade, wDelay } from "../hero/orbitals.js";
 import { mode } from "../modes/modes.js";

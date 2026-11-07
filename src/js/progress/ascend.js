@@ -2,14 +2,14 @@
 import { sfx } from "../audio/sound.js";
 import { ensureBoard } from "../bounty/bounty.js";
 import { cds } from "../skills/skills.js";
-import { shardAmt } from "../core/economy.js";
+import { shardAmt } from "./currency.js";
 import { RUN, S, save } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { clearFoes } from "../enemies/foes.js";
 import { burst, equipFlash } from "../fx/effects.js";
 import { makeItem } from "../gear/items.js";
 import { hero, recalc, resetCombat } from "../hero/hero.js";
-import { returnToMain, spawn } from "../modes/modes.js";
+import { resumeRun, returnToMain, spawn } from "../modes/modes.js";
 import { ECHO_K } from "./transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { PANELS, markDirty } from "../ui/actions.js";
@@ -27,7 +27,7 @@ export function startRun() {
   S.stage = S.maxStage = st0; S.runStart = st0; S.cyclePeak = Math.max(S.cyclePeak || 1, st0);
   if (ST.starterKit) starterKit(st0);
   returnToMain();
-  clearFoes(false); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
+  clearFoes(false); resumeRun(); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
   resetCombat();
   recalc(); hero.hp = ST.maxHp; hero.mp = ST.maxMp;
   S.bounties.forEach(b => { b.shards = (3 + 3 * b.tier) * shardAmt(S.maxStage); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();

@@ -5,8 +5,9 @@ import { ST, effectSource, emit } from "../core/stats.js";
 import { sparks, statusHitFx, tempFx } from "../fx/effects.js";
 import { hero } from "./hero.js";
 import { floatText } from "../ui/floats.js";
-import { anim, svgEl } from "../core/util.js";
+import { svgEl } from "../core/util.js";
 import { view } from "../world/scene.js";
+import { anim } from "../fx/gfx.js";
 
 export const STATUS = {
   dim: { name: "Dim", col: "#c9c4dc", desc: "Your light fades: healing reduced by 60%", fx: { heal: c => { c.v *= .4; } },

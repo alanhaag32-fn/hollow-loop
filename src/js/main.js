@@ -3,7 +3,6 @@ import { initMusic } from "./audio/music.js";
 import { initSound } from "./audio/sound.js";
 import { ensureBoard } from "./bounty/bounty.js";
 import { heroDown, step } from "./combat/combat.js";
-import { earned } from "./core/economy.js";
 import { load } from "./core/load.js";
 import { S, save } from "./core/save.js";
 import { $ } from "./core/util.js";
@@ -50,7 +49,6 @@ function tick() {
   if (!paused()) { step(dt); autoTick(dt); }
   gTimer += dt; saveT += dt; uiT += dt; lightT += dt; boardT += dt;
   if (gTimer >= 2) {
-    S.gps = S.gps * .8 + (earned.gAcc / gTimer) * .2; earned.gAcc = 0;
     if (!paused() && !heroDown) { const k = S.totalKills - (kLast < 0 ? S.totalKills : kLast); S.kps = (S.kps || .3) * .95 + (k / gTimer) * .05; }
     kLast = S.totalKills; gTimer = 0;
   }

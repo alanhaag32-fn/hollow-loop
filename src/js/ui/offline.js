@@ -1,6 +1,6 @@
 // Offline progress: what your core farmed while you were away.
 import { lumenAt } from "../core/curves.js";
-import { addGold, addShards, shardAmt } from "../core/economy.js";
+import { addGold, addShards, shardAmt } from "../progress/currency.js";
 import { S, save } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { $, fmt } from "../core/util.js";

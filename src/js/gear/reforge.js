@@ -1,6 +1,6 @@
 // Honing and reforging affixes after a Transcend.
 import { sfx } from "../audio/sound.js";
-import { shardAmt } from "../core/economy.js";
+import { shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { fmt, pick } from "../core/util.js";

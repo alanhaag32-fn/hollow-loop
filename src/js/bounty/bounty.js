@@ -1,6 +1,6 @@
 // The bounty board: notices, progress, claiming and rerolling.
 import { lumenAt, lumenBase } from "../core/curves.js";
-import { addGold, addShards, goldScale, shardAmt } from "../core/economy.js";
+import { addGold, addShards, goldScale, shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { $, fmt, mmss, pick, rnd } from "../core/util.js";

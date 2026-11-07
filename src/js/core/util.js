@@ -1,5 +1,4 @@
 // Small helpers shared by everything: DOM lookup, random picks, number formatting, SVG building and animation.
-import { reduce } from "../fx/gfx.js";
 
 export const NS = "http://www.w3.org/2000/svg";
 export const pctS = v => (Math.round(v * 1000) / 10) + "%";
@@ -23,7 +22,6 @@ export function svgEl(tag, attrs, parent) {
   if (parent) parent.appendChild(el);
   return el;
 }
-export const anim = (el, frames, opts) => (!reduce && el && el.animate) ? el.animate(frames, typeof opts === "number" ? { duration: opts } : opts) : null;
 export function polyPts(n, r, rot, cx, cy) {
   const out = [];
   for (let i = 0; i < n; i++) { const a = rot + i * 2 * Math.PI / n - Math.PI / 2; out.push((cx + Math.cos(a) * r).toFixed(1) + "," + (cy + Math.sin(a) * r).toFixed(1)); }

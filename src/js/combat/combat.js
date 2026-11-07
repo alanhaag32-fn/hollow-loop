@@ -2,10 +2,10 @@
 import { sfx } from "../audio/sound.js";
 import { bump } from "../bounty/bounty.js";
 import { lumenAt } from "../core/curves.js";
-import { addGold, addShards, shardAmt } from "../core/economy.js";
+import { addGold, addShards, shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, emit, foeEmit } from "../core/stats.js";
-import { $, anim, fmt } from "../core/util.js";
+import { $, fmt } from "../core/util.js";
 import { clearFoes, enemy, fdir, foes, knock, lungeT, moveFoes, pickTarget, removeFoe, spawnChild, stepFoe } from "../enemies/foes.js";
 import { blockFx, burst, evadeFx, lootBeam, ringIfRoom, shake, shatter, slash, sparks, statusFx } from "../fx/effects.js";
 import { receive } from "../gear/inventory.js";
@@ -20,6 +20,7 @@ import { autoCast, stepSkills } from "../skills/skills.js";
 import { dmgFloat, floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { view } from "../world/scene.js";
+import { anim } from "../fx/gfx.js";
 
 export let heroDown = false;
 export const dpsLog = [];
@@ -163,7 +164,6 @@ export function crush(e) {
   log("Crush!", "bad");
   hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
 }
-export function bossEscape() { mode.escape(); }
 function killFoe(e) {
   if (e.removed) return;
   e.removed = true;

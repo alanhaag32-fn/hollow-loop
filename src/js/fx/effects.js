@@ -2,9 +2,9 @@
 import { eVerts } from "../enemies/enemies.js";
 import { F, heroDown } from "../combat/combat.js";
 import { S } from "../core/save.js";
-import { $, anim, svgEl } from "../core/util.js";
+import { $, svgEl } from "../core/util.js";
 import { enemy } from "../enemies/foes.js";
-import { perf, reduce } from "./gfx.js";
+import { anim, perf, reduce } from "./gfx.js";
 import { ARENA_C } from "../gear/items.js";
 import { heroModel } from "../hero/hero.js";
 import { enemyCY, wType } from "../hero/orbitals.js";

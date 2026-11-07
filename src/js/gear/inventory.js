@@ -2,7 +2,7 @@
 import { bump } from "../bounty/bounty.js";
 import { dps, effSpd } from "../combat/combat.js";
 import { itemPow } from "../core/curves.js";
-import { addGold, addShards } from "../core/economy.js";
+import { addGold, addShards } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { $, NS, fmt, pct, svgEl } from "../core/util.js";

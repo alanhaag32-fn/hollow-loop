@@ -4,7 +4,7 @@ import { bump } from "../bounty/bounty.js";
 import { alive, heroDown, hit } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { ST, emit, statSource } from "../core/stats.js";
-import { $, anim, fmt } from "../core/util.js";
+import { $, fmt } from "../core/util.js";
 import { enemy, foes, inView } from "../enemies/foes.js";
 import { burst, crackFx, novaFx } from "../fx/effects.js";
 import { hero, heroModel, startDash } from "../hero/hero.js";
@@ -17,6 +17,7 @@ import { T, TREE } from "../web/web.js";
 import { view } from "../world/scene.js";
 import { log } from "../ui/log.js";
 import { whenNewBest } from "../modes/modes.js";
+import { anim } from "../fx/gfx.js";
 
 // smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
 // reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.

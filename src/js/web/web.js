@@ -4,7 +4,7 @@ import { sfx } from "../audio/sound.js";
 import { alive, hit } from "../combat/combat.js";
 import { cds } from "../skills/skills.js";
 import { lumenAt } from "../core/curves.js";
-import { addGold } from "../core/economy.js";
+import { addGold } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, cutBy, plus, statSource } from "../core/stats.js";
 import { $, fmt, starPts } from "../core/util.js";

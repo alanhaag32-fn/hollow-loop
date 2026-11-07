@@ -9,3 +9,4 @@ export function applyGfx() {
   document.body.classList.toggle("noanim", reduce);
   document.body.classList.toggle("perf", perf);
 }
+export const anim = (el, frames, opts) => (!reduce && el && el.animate) ? el.animate(frames, typeof opts === "number" ? { duration: opts } : opts) : null;
