@@ -1,6 +1,6 @@
 // Enemy kinds: variants, modifiers, boss mechanics and statuses they carry, and making a regular enemy.
 import { heroDown, hurt, trueDamage } from "../combat/combat.js";
-import { stageDmg, stageHp } from "../core/curves.js";
+import { isBoss, stageDmg, stageHp, zoneOf } from "../core/curves.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { fmt, pick, polyPts, rnd, svgEl, vertices } from "../core/util.js";
@@ -11,7 +11,7 @@ import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 
 // all four are ranged: needler (Pale), ripper rails (Crimson), mortar (Bastion), void lance (Umbral)
-export const ENEMY_WEAPON = [
+const ENEMY_WEAPON = [
   "M-6 2 L-6 -22 L-2 -22 L-2 2 Z M2 2 L2 -22 L6 -22 L6 2 Z M-8 -3 L8 -3 L8 3 L-8 3 Z M-7 -25 L-1 -25 L-1 -22 L-7 -22 Z M1 -25 L7 -25 L7 -22 L1 -22 Z",
   "M-8 3 L-3 3 L-3 -14 L-8 -12 Z M3 3 L8 3 L8 -12 L3 -14 Z M-8 -1 L8 -1 L8 3 L-8 3 Z",
   "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
@@ -164,21 +164,21 @@ export function eVerts(e, r, rot, cx, cy) {
 }
 export const ePts = (e, r, rot, cx, cy) => eVerts(e, r, rot, cx, cy).map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
 const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
-export function enemyStatuses(stage, boss, elite, v) {
+function enemyStatuses(stage, boss, elite, v) {
   if (stage < 6 && !boss && !v.stx) return { list: [], chance: 0 };
   const n = Math.min(5, (stage < 20 ? 1 : stage < 40 ? 2 : stage < 60 ? 3 : 4) + (boss || elite ? 1 : 0) + (v.stx && stage >= 6 ? v.stx : 0));
   const pool = ZONE_STATUS.slice(), list = [];
   for (let i = 0; i < n && pool.length; i++) list.push(pool.splice(rnd(pool.length), 1)[0]);
   return { list, chance: Math.min(.6, (boss ? .35 : elite ? .4 : Math.min(.3, .08 + .008 * stage)) * (v.stc || 1)) };
 }
-export function rollMods(boss, elite) {
+function rollMods(boss, elite) {
   const a = S.ascensions || 0;
   let n = boss ? (a >= 1) + (a >= 2) + (a >= 4) : elite ? (a >= 1) + (a >= 3) + (a >= 6) : (a >= 2 && Math.random() < Math.min(.5, .1 * (a - 1)) ? 1 : 0);
   const pool = MOD_KEYS.filter(k => !(boss && k === "splitting")), out = [];
   while (n-- > 0 && pool.length) out.push(pool.splice(rnd(pool.length), 1)[0]);
   return out;
 }
-export function bossMechs(zone) {
+function bossMechs(zone) {
   if (zone < 1) return null;
   const list = [MECH_IDS[(zone - 1) % 4]];
   if (zone >= 5 && MECH_IDS[zone % 4] !== list[0]) list.push(MECH_IDS[zone % 4]);
@@ -196,7 +196,7 @@ export function makeFoe({ stage, boss, elite, v, zone, timer, scale = 1, hit = 1
   };
 }
 export function makeEnemy(stage, elite, scale = { hp: 1, dmg: 1 }) {
-  const boss = stage % 10 === 0, zone = Math.floor((stage - 1) / 10), sides = 3 + zone % 6;
+  const boss = isBoss(stage), zone = zoneOf(stage), sides = 3 + zone % 6;
   const v = pick(VARIANTS.filter(x => stage >= x.from));
   const e = makeFoe({ stage, boss, elite, v, zone, scale: scale.hp, hit: scale.dmg, timer: 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + ST.bossTime });
   return Object.assign(e, {

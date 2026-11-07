@@ -22,7 +22,7 @@ const ab = { phase: 1, need: 0, spawned: 0, pause: 0 };
 export const abyssOpen = () => (S.peak || 1) >= TRANS_AT;
 const AL = id => (S.abyss && S.abyss.altar && S.abyss.altar[id]) || 0;
 const abBest = () => (S.abyss && S.abyss.best) || 0;
-export const abMile = d => abBest() >= d;
+const abMile = d => abBest() >= d;
 const abyssStage = d => 143 + 2 * d;
 // one new rule per depth (from depth 2); after all twelve they start stacking
 const AB_RULES = [
@@ -75,7 +75,7 @@ const AB_MILES = [
   [100, "Endless", "Double Voidstone", { stats: () => ({ stoneGain: 2 }) }]
 ];
 statSource(give => AB_MILES.forEach(([d, , , def]) => { if (def && abMile(d)) give(def); }));
-export const VOID_SHAPES = [
+const VOID_SHAPES = [
   { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
   { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
   { n: "Slant", p: [[-.95, -.5], [.45, -.5], [.95, .5], [-.45, .5]] },
@@ -91,7 +91,7 @@ export const VOID_SHAPES = [
   { n: "Rift", p: [[-.9, -.3], [-.1, -1], [.8, -.6], [.85, .5], [0, .95], [.1, .2]] },
   { n: "Ell", p: [[-.7, -1], [-.1, -1], [-.1, .3], [.8, .3], [.8, .9], [-.7, .9]] }
 ];
-export function jitterShape(pts) {
+function jitterShape(pts) {
   let q = pts.map(([x, y]) => [x * (.88 + Math.random() * .24), y * (.88 + Math.random() * .24)]);
   const cx = q.reduce((a, p) => a + p[0], 0) / q.length, cy = q.reduce((a, p) => a + p[1], 0) / q.length;
   q = q.map(([x, y]) => [x - cx, y - cy]);

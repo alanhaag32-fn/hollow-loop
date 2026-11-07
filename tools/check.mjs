@@ -24,9 +24,9 @@ const prog = ts.createProgram(files, {
   allowJs: true, checkJs: true, noEmit: true, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022,
   lib: ["lib.es2022.d.ts", "lib.dom.d.ts"], noUnusedLocals: true
 });
-const found = ts.getPreEmitDiagnostics(prog).filter(d => d.file && CODES[d.code]).map(d => {
+const found = ts.getPreEmitDiagnostics(prog).filter(d => d.file && (CODES[d.code] || d.category === ts.DiagnosticCategory.Error && prog.getSyntacticDiagnostics(d.file).includes(d))).map(d => {
   const { line } = d.file.getLineAndCharacterOfPosition(d.start);
-  return path.relative(ROOT, d.file.fileName) + ":" + (line + 1) + "  " + CODES[d.code] + ": " + ts.flattenDiagnosticMessageText(d.messageText, " ");
+  return path.relative(ROOT, d.file.fileName) + ":" + (line + 1) + "  " + (CODES[d.code] || "syntax") + ": " + ts.flattenDiagnosticMessageText(d.messageText, " ");
 });
 bundle();
 if (found.length) { console.log(found.join("\n")); process.exit(1); }

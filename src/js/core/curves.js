@@ -13,3 +13,6 @@ export const milesAt = L => MILES.filter(m => L >= m).length;
 export const nextMile = L => MILES.find(m => m > L);
 export const lumenBase = st => 3 * curve(st, HPG, 1.3);
 export const lumenAt = st => lumenBase(st) * (1 + Math.min(1, Math.max(0, st - 80) / 40));
+// every 10 stages is a zone (its shape family, music key and boss mechanics); its 10th stage is the boss
+export const zoneOf = st => Math.floor((st - 1) / 10);
+export const isBoss = st => st % 10 === 0;

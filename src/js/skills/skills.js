@@ -23,7 +23,7 @@ import { anim } from "../fx/gfx.js";
 // reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
 // auto(c): the skill's own auto-cast rule instead of the usual mana-reserve one.
 const skMult = L => 1 + .06 * (L - 1);
-export const SKILLS = [
+const SKILLS = [
   {
     id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, smart: 3, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z",
     dmg: L => ST.atk * 2.5 * skMult(L) * ST.skillPow * ST.novaPow,
@@ -89,7 +89,7 @@ export const SK = {};
 statSource(give => SKILLS.forEach(s => give(s)));
 const attRank = id => { const n = TREE.find(x => x.att === id); return n ? T(n.id) : 0; };
 const baseLvl = id => Math.min(skillMaxAll(), 1 + 3 * Math.max(0, attRank(id) - (SK[id].unlock > 1 ? 1 : 0)));
-export const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
+const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
 const unlocked = id => S.maxStage >= SK[id].unlock || attRank(id) > 0;
 const skillCost = sk => emit("skillCost", { v: sk.cost * 100 * ST.costMult }).v;
 const SKILL_MAX = 40;

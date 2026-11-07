@@ -23,7 +23,7 @@ import { view } from "../world/scene.js";
 import { anim } from "../fx/gfx.js";
 
 export let heroDown = false;
-export const dpsLog = [];
+const dpsLog = [];
 export const F = () => fdir(enemy);
 export const alive = () => !!enemy && !enemy.dead && !heroDown;
 export function dps() {

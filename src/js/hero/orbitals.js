@@ -21,37 +21,28 @@ export const HERO_WEAPON = {
   Coil: "M-6 -10 L6 -10 L6 -7 L-6 -7 Z M-5 -4 L5 -4 L5 -1 L-5 -1 Z M-4 2 L4 2 L4 5 L-4 5 Z M-1.5 5 L1.5 5 L1.5 12 L-1.5 12 Z"
 };
 export const WTRAIT = {
-  Drone: { rate: 1.3, dmg: .8, name: "Rapid", desc: "Fires 30% faster at 80% damage per volley" },
-  Glaive: { rate: 1, dmg: .55, knock: 9, name: "Returning", desc: "Hits on the way out and again on the way back, 55% each" },
-  Laser: { rate: 1, dmg: .95, pierce: true, name: "Piercing", desc: "Ignores Shielded blocks and Armored damage reduction" },
-  Swarm: { rate: 1, dmg: 1, seeking: true, name: "Seeking", desc: "Can't be dodged by Umbrals and pops boss shard motes like a tap" },
-  Hammer: { rate: .7, dmg: 1.6, knock: 20, name: "Crushing", desc: "Slow, heavy hits with a 20% chance to briefly stun the target" },
-  Coil: { rate: 1, dmg: .85, name: "Chaining", desc: "30% chance to arc a second strike for 60% damage" },
-  Mote: { rate: 1, dmg: 1, name: "Mote", desc: "" }
+  Drone: { rate: 1.3, dmg: .8, name: "Rapid", up: hi => ({ rate: [1.3, 1.4, 1.5][hi] }), text: o => "Fires " + pc(o.rate - 1) + "% faster at " + pc(o.dmg) + "% damage per volley" },
+  Glaive: { rate: 1, dmg: .55, knock: 9, name: "Returning", up: hi => ({ dmg: [.55, .65, .75][hi] }), text: o => "Hits on the way out and again on the way back, " + pc(o.dmg) + "% each" },
+  Laser: { rate: 1, dmg: .95, pierce: true, name: "Piercing", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Ignores Shielded blocks and Armored damage reduction" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
+  Swarm: { rate: 1, dmg: 1, seeking: true, name: "Seeking", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Can't be dodged by Umbrals and pops boss shard motes like a tap" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
+  Hammer: { rate: .7, dmg: 1.6, knock: 20, name: "Crushing", up: hi => ({ stun: [.2, .3, .4][hi] }), text: o => "Slow, heavy hits with a " + pc(o.stun) + "% chance to briefly stun the target" },
+  Coil: { rate: 1, dmg: .85, name: "Chaining", up: (hi, r) => ({ chain: COIL[r] }), text: o => pc(o.chain[0]) + "% chance to chain to " + o.chain[1] + " more " + (o.chain[1] > 1 ? "enemies" : "enemy") + " for 60% damage each" },
+  Mote: { rate: 1, dmg: 1, name: "Mote" }
 };
 export const SLOT2_AT = 25, SLOT2_DMG = .6;
 const WDELAY = { Glaive: 170, Drone: 120, Laser: 60, Swarm: 190, Hammer: 230, Coil: 60 };
 export const MOTE = "M0 -3.5 A3.5 3.5 0 1 1 0.01 -3.5 Z";
 const COIL = [[.3, 1], [.3, 1], [.3, 2], [.35, 3], [.4, 4], [.5, 5]];
-export function wTr(slot) {
-  const t = wType(slot), b = WTRAIT[t], it = S.equip[slot], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
-  const o = { name: b.name, rate: b.rate, dmg: b.dmg, stun: 0, chain: null, pierce: !!b.pierce, seeking: !!b.seeking, knock: b.knock || 12 };
-  if (t === "Drone") o.rate = [1.3, 1.4, 1.5][hi];
-  if (t === "Glaive") o.dmg = [.55, .65, .75][hi];
-  if (t === "Laser" || t === "Swarm") o.dmg = b.dmg * [1, 1.15, 1.25][hi];
-  if (t === "Hammer") o.stun = [.2, .3, .4][hi];
-  if (t === "Coil") o.chain = COIL[r];
+const pc = v => Math.round(v * 100);
+// an orbital's trait at its rarity: Legendary and Mythic strengthen it (hi 1 and 2); boost multiplies its damage
+function traitOf(it) {
+  const t = it ? weaponType(it) : "Mote", b = WTRAIT[t], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+  const o = Object.assign({ name: b.name, rate: b.rate, dmg: b.dmg, boost: 1, stun: 0, chain: null, pierce: !!b.pierce, seeking: !!b.seeking, knock: b.knock || 12 }, b.up ? b.up(hi, r) : {});
+  o.dmg *= o.boost;
   return o;
 }
-export function traitText(it) {
-  const t = weaponType(it), r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
-  if (t === "Drone") return "Fires " + [30, 40, 50][hi] + "% faster at 80% damage per volley";
-  if (t === "Glaive") return "Hits on the way out and again on the way back, " + [55, 65, 75][hi] + "% each";
-  if (t === "Laser") return "Ignores Shielded blocks and Armored damage reduction" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
-  if (t === "Swarm") return "Can't be dodged by Umbrals and pops boss shard motes like a tap" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
-  if (t === "Hammer") return "Slow, heavy hits with a " + [20, 30, 40][hi] + "% chance to briefly stun the target";
-  const c = COIL[r]; return Math.round(c[0] * 100) + "% chance to chain to " + c[1] + " more " + (c[1] > 1 ? "enemies" : "enemy") + " for 60% damage each";
-}
+export const wTr = slot => traitOf(S.equip[slot]);
+export const traitText = it => WTRAIT[weaponType(it)].text(traitOf(it));
 let attackCount = 0;
 export const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
 // an orbital item's weapon type (old names it doesn't know fall back to Glaive)

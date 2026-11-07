@@ -103,7 +103,7 @@ function itemMain(it) {
 function renderStats() {
   const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
   $("statsBody").innerHTML =
-    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (WTRAIT[wType()].desc ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WTRAIT[wType(o.key)].name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (S.equip.weapon ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WTRAIT[wType(o.key)].name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
     G("Defense", [["Health", fmt(Math.max(0, hero.hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((1 - ST.blockLeak) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Move speed", pct(ST.move, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
     G("Mana and skills", [["Mana", fmt(Math.max(0, hero.mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
     G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
@@ -177,9 +177,7 @@ function spriteSvg(it) {
 }
 function tileIcon(it, slotId) {
   if (it) return spriteSvg(it);
-  const col = it ? "#efeaff" : "var(--line)";
-  if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON[weaponType(it)] + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
-  return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
+  return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[baseSlot(slotId)].shape + '" fill="var(--line)" fill-rule="evenodd"/></svg>';
 }
 function upPct(it) {
   const cands = it.slot === "weapon" ? openOrbitals().map(o => S.equip[o.key]) : [S.equip[it.slot]];
@@ -187,12 +185,11 @@ function upPct(it) {
   const worst = cands.reduce((a, b) => score(a) < score(b) ? a : b);
   return Math.round((score(it) / score(worst) - 1) * 100);
 }
-// badge: an optional +/-% in the corner (gear picks)
-function tile(it, act, id, label, sel, extraCls, badge) {
+function tile(it, act, id, label, sel, extraCls) {
   if (!it) return '<button class="tile empty' + (sel ? " sel" : "") + (extraCls ? " " + extraCls : "") + '" data-act="' + act + '" data-id="' + id + '" type="button">' + tileIcon(null, id) + '<span class="tl">' + (label || "") + "</span></button>";
   const up = act === "pkSel" && upPct(it) > 0, lbl = label || noun(it);
   return '<button class="tile r' + it.r + (sel ? " sel" : "") + '" data-act="' + act + '" data-id="' + id + '" type="button" aria-label="' + RARITY[it.r].name + " " + it.name + '">' + tileIcon(it) +
-    (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (badge != null ? '<b class="bd ' + (badge > 0 ? "up" : "dn") + '">' + (badge > 0 ? "+" : "") + badge + "%</b>" : up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq">✦</span>' : "") + '<span class="tl">' + lbl + "</span></button>";
+    (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq">✦</span>' : "") + '<span class="tl">' + lbl + "</span></button>";
 }
 let pkSel = null;
 const scrollToDetail = () => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };

@@ -13,7 +13,7 @@ import { action, confirmTap } from "../ui/actions.js";
 import { updateUI } from "../ui/hud.js";
 import { log } from "../ui/log.js";
 
-export const FR = id => (S.forge && S.forge[id]) || 0;
+const FR = id => (S.forge && S.forge[id]) || 0;
 const FORGE = [
   { id: "capT", grp: "Caps", name: "Expanded Training", max: 10, cost: r => Math.ceil(5 * Math.pow(1.6, r)), desc: r => "+" + 10 * r + " level cap on every capped training upgrade", nx: "+10 more", stats: r => ({ trainCap: plus(10 * r) }) },
   { id: "mast", grp: "Caps", name: "Skill Mastery", max: 5, cost: r => Math.ceil(6 * Math.pow(1.7, r)), desc: r => "Skill level cap " + (40 + 5 * r) + ", and the stage cap runs " + 2 * r + " levels ahead", nx: "+5 cap", stats: r => ({ skillMastery: plus(r) }) },
@@ -26,7 +26,7 @@ const FORGE = [
   { id: "bb", grp: "Economy", name: "Bounty Board+", max: 3, cost: r => [8, 16, 30][r] || 999, desc: r => r ? "+" + r + " bounty slot" + (r > 1 ? "s" : "") + ", new notices post " + 15 * r + "% faster" : "No extra bounty slots", nx: "+1 slot, 15% faster", stats: r => ({ bountySlots: plus(r), postTime: 1 - .15 * r }) },
   { id: "off", grp: "Economy", name: "Offline Mastery", max: 5, cost: r => Math.ceil(5 * Math.pow(1.55, r)), desc: r => "Offline farming at " + (50 + 10 * r) + "% speed, up to " + OFF_H[r] + " hours", nx: r => (60 + 10 * r) + "%, " + OFF_H[r + 1] + "h", stats: r => ({ offRate: plus(.1 * r), offHours: plus(OFF_H[r] - OFF_H[0]) }) }
 ];
-export const SLOT3_DMG = [0, .4, .7, 1];
+const SLOT3_DMG = [0, .4, .7, 1];
 const headStart = r => 10 * r;
 const OFF_H = [8, 12, 16, 20, 24, 24];
 const FG = {};

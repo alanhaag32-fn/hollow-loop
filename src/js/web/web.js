@@ -233,7 +233,7 @@ function webTween(z1, cx1, cy1) {
   };
   requestAnimationFrame(tick);
 }
-export function centerWeb() {
+function centerWeb() {
   const L = webLimits();
   if (!WEB.z) { WEB.z = Math.max(L.zmin, Math.min(1.1, WEB.W / 520)); WEB.cx = 0; WEB.cy = 0; }
   webApply();

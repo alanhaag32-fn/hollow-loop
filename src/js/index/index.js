@@ -9,7 +9,7 @@ import { recalc } from "../hero/hero.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 
-export const FAMILIES = [
+const FAMILIES = [
   { key: "triad", sides: 3, name: "Triad", lore: "Sharp, fast and simple. The first shapes you'll meet.", n: [2, "% attack", v => ({ atk: 1 + v })], e: [4, "% crit damage", v => ({ critDmg: 1 + v })], b: [3, "% damage to bosses", v => ({ bossDmg: 1 + v })] },
   { key: "quad", sides: 4, name: "Quadrant", lore: "Blocky and stubborn, built to take hits.", n: [2, "% health", v => ({ maxHp: 1 + v })], e: [1, "% block chance", v => ({ block: plus(v) })], b: [2, "% less damage taken", v => ({ dmgTaken: cutBy("armor", v) })] },
   { key: "penta", sides: 5, name: "Pentad", lore: "Star-touched shapes that hum with stray mana.", n: [3, "% mana regen", v => ({ mpRegen: 1 + v })], e: [3, "% skill power", v => ({ skillPow: 1 + v })], b: [2, "% faster cooldowns", v => ({ cdr: 1 - v })] },
@@ -22,7 +22,7 @@ statSource(give => FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t 
  FAMILIES.forEach((f, i) => { f.idx = i; FAM[f.sides] = f; });
 const IDX_TIERS = { n: [25, 150, 600], e: [5, 30, 120], b: [1, 5, 20] };
 function idxKills(key, k) { const r = S.bestiary && S.bestiary[key]; return r ? r[k] || 0 : 0; }
-export function IT(key, k) { const c = idxKills(key, k); return IDX_TIERS[k].filter(t => c >= t).length; }
+function IT(key, k) { const c = idxKills(key, k); return IDX_TIERS[k].filter(t => c >= t).length; }
 // count a kill toward its shape family's Index entry
 export function recordKill(e) {
   const fam = e.family; if (!fam) return;

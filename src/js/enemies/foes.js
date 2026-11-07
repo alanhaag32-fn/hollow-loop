@@ -18,7 +18,7 @@ import { ARENA_B, ARENA_T, ENGAGE, SC, VH, VW, VX1, VY1, setZone, view } from ".
 
 const FOE_TPL = '<g class="eModel"><g class="hover"><g class="eBody"><g class="eSpin"><g class="eRing"></g><polygon class="ePlate" fill="none" stroke-width="3" stroke-linejoin="round"/><g class="eSpikes"></g><polygon class="ePoly" stroke-width="2.5" stroke-linejoin="round"/><polygon class="eInner" fill="none" stroke-width="1.5" opacity=".7"/><g class="eDeco"></g><g class="eCracks" style="display:none"></g></g><g class="eTrail"></g><g class="eCrown"></g><circle class="eEye" r="5" fill="#fff"/><circle class="ePupil" r="2.2"/></g><g class="eFacetWrap"><g class="eFacets spinSlow"></g></g><g class="eMoteWrap"><g class="eMotes spinRev"></g></g><g class="eModMarks"></g><g class="eArm"><g class="eSwing"><g class="eAim"><path class="eWeapon" stroke="#000" stroke-opacity=".35" stroke-width="1"/><g transform="translate(0 -22)"><g class="eSaw sawSpin"></g></g></g></g></g></g></g><g class="eMini" fill="none"><path class="mBg" stroke="rgba(255,255,255,.14)" stroke-width="2.2"/><path class="mFg" stroke="#ff6b6b" stroke-width="2.2"/></g>';
 export const foes = [];
-export let moveT = 0;
+let moveT = 0;
 export const targeting = {
   focus: null
 };

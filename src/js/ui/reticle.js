@@ -8,7 +8,7 @@ import { enemyCY } from "../hero/orbitals.js";
 import { SC, SH, SW, VX1, VY1, view } from "../world/scene.js";
 
 const FR_A = [-45, 225];
-export let rEls = null, rV = [-1, -1, -1];
+let rEls = null, rV = [-1, -1, -1];
 export function buildReticle(t) {
   const r = $("reticle"); r.innerHTML = ""; rEls = null; rV = [-1, -1, -1];
   if (!t) return;

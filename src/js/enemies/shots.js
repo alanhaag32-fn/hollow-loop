@@ -13,7 +13,8 @@ import { floatText } from "../ui/floats.js";
 import { VX1, VY1, view } from "../world/scene.js";
 
 // every enemy attack is a projectile or beam; the damage lands when it reaches the core
-export const FAR_DMG = .4, FAR_RATE = 1.5;
+const FAR_DMG = .4;
+export const FAR_RATE = 1.5;
 let lastBurnFloat = 0;
 export function enemyAttack(e) {
   const heavy = !!(e.v.crit && Math.random() < e.v.crit), dmg = e.dmg * (e.enraged ? 2 : 1) * (heavy ? 2 : 1) * (.9 + Math.random() * .2) * (e.arrived ? 1 : FAR_DMG);

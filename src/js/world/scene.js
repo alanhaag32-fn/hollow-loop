@@ -57,7 +57,7 @@ export function setZone(force) {
 export let ARENA_T = 60, ARENA_B = 700;
 // the map is bigger than the screen; the camera follows your core. VX0/VY0 is the top-left of the view in map units
 // the plane is endless: MAP_W x MAP_H is just the size of the repeating backdrop tile
-export let MAP_W = 1400, MAP_H = 1800, mapReady = false;
+let MAP_W = 1400, MAP_H = 1800, mapReady = false;
 export const view = {
   CAMX: 0,
   CAMY: 0,

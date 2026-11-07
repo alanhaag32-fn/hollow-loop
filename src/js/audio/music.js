@@ -1,9 +1,9 @@
 // The generative background music.
 import { actx } from "./sound.js";
-import { heroDown } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { enemy } from "../enemies/foes.js";
 import { fightStage } from "../modes/modes.js";
+import { zoneOf } from "../core/curves.js";
 
 let mus = null, musBus = null, musNext = 0, musStep = 0;
 const MUS_VOL = { low: .3, med: .55, high: .85 };
@@ -32,7 +32,7 @@ function mnote(type, f, t, dur, peak, atk, rel) {
   o.connect(g); g.connect(musBus); o.start(t); o.stop(t + dur + .05);
 }
 function musStepAt(i, t, spb) {
-  const zone = Math.floor((fightStage() - 1) / 10), tr = Math.pow(2, ZONE_KEY[zone % ZONE_KEY.length] / 12);
+  const zone = zoneOf(fightStage()), tr = Math.pow(2, ZONE_KEY[zone % ZONE_KEY.length] / 12);
   const boss = !!(enemy && enemy.boss && !enemy.dead), rage = boss && enemy.enraged;
   const bar = Math.floor(i / 8), beat = i % 8, ch = CHORDS[Math.floor(bar / 2) % 4];
   if (i % 16 === 0) ch.forEach(f => {
@@ -49,7 +49,7 @@ function musStepAt(i, t, spb) {
   }
 }
 function musTick() {
-  if (!actx || !mus || actx.state !== "running" || heroDown === undefined) return;
+  if (!actx || !mus || actx.state !== "running") return;
   const spb = 60 / 144;
   if (musNext < actx.currentTime - .5) musNext = actx.currentTime + .05;
   if (S.music === false) { musNext = actx.currentTime + .1; return; }

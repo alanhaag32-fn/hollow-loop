@@ -2,6 +2,8 @@
 import { EFFORT } from "../bounty/bounty.js";
 import { itemPow, lumenAt } from "./curves.js";
 import { KEPT, S, fresh, readSave, setSave } from "./save.js";
+// the current economy version (what fresh saves start at)
+const ECO = KEPT().eco;
 import { AFF, LEGACY, RARITY, SLOT } from "../gear/items.js";
 import { AUTO_REFUND } from "../progress/automation.js";
 import { TRAIN } from "../train/train.js";
@@ -22,23 +24,24 @@ function migrateItem(it, from) {
 // refund automation bought in the Star Forge (it's free after a Transcend now); Siphon became Dash
 function migrateEco() {
   if (S.forge) { let back = 0; for (const k in AUTO_REFUND) if (S.forge[k]) { back += AUTO_REFUND[k]; delete S.forge[k]; } if (back) { S.stardust = (S.stardust || 0) + back; S.refundNote = back; } }
-  if ((S.eco || 0) === 6) S.eco = 7;
+  if ((S.eco || 0) === 6) S.eco = ECO;
   if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
   if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
   if ((S.eco || 0) >= 6) return;
   // v6 retune: training caps changed
-  if (S.eco === 5) { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); S.eco = 7; return; }
+  if (S.eco === 5) { trimTraining(); S.eco = ECO; return; }
   const fix = it => {
     if (!it) return; const r = RARITY[it.r] || RARITY[0];
     it.power = Math.max(1, Math.round(itemPow(it.stage || 1) * r.mult * (.95 + Math.random() * .1)));
     (it.affs || []).forEach(a => { if (r.aff) a[1] = Math.round(r.aff[0] + Math.random() * (r.aff[1] - r.aff[0])); });
   };
   Object.values(S.equip).forEach(fix); S.inv.forEach(fix);
-  TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; });
+  trimTraining();
   // keep posted bounties (and their progress), just switch them to the new payout
   S.bounties.forEach(b => { if (!b.empty && !b.eff) { b.eff = b.type === "gold" ? b.n / lumenAt(S.maxStage) : EFFORT[b.type] ? EFFORT[b.type](b.n) : b.n; delete b.gold; } });
-  S.eco = 7;
+  S.eco = ECO;
 }
+function trimTraining() { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); }
 export function load() {
   const d = readSave();
   if (!d) return;
@@ -46,7 +49,7 @@ export function load() {
   const from = d.v || 2;
   setSave(Object.assign(fresh(), d));
   S.eco = d.eco || 0;
-  S.v = 4;
+  S.v = KEPT().v;
   S.train = d.train || {};
   if (from === 2 && d.train && d.train.essence) { S.train.vigor = d.train.essence; S.train.essence = 0; }
   S.tree = d.tree || {};
