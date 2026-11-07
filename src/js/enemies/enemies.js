@@ -3,11 +3,10 @@ import { heroDown, hurt, trueDamage } from "../combat/combat.js";
 import { stageDmg, stageHp } from "../core/curves.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
-import { pick, polyPts, rnd, svgEl } from "../core/util.js";
+import { pick, polyPts, rnd, svgEl, vertices } from "../core/util.js";
 import { burst, ringIfRoom, shake, warnRing } from "../fx/effects.js";
 import { ZONE_STATUS, applyStatus } from "../hero/statuses.js";
 import { FAM } from "../index/index.js";
-import { momentum } from "../modes/modes.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 
@@ -18,16 +17,14 @@ export const ENEMY_WEAPON = [
   "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
   "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z"
 ];
-export const MUZZLE = { pale: 25, crimson: 22, bastion: 21, umbral: 29 };
 export const VARIANTS = [
-  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1 },
-  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4 },
-  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, w: 1, from: 7 },
-  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12 }
+  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45 },
+  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4, size: 1.08, move: .75, muzzle: 21, spin: .2 },
+  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, w: 1, from: 7, size: 1, move: 1, muzzle: 22, spin: .3 },
+  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36 }
 ];
 const VAR = {};
  VARIANTS.forEach(v => VAR[v.id] = v);
-export const MOVE = { pale: 1.35, bastion: .75, crimson: 1, umbral: 1.15 };
 export const vFill = v => "hsl(" + v.hue + " " + v.sat + "% " + v.lit + "%)";
 const vStroke = v => "hsl(" + v.hue + " " + Math.min(95, v.sat + 25) + "% " + Math.min(90, v.lit + 24) + "%)";
 const SHAPE_NAMES = { 3: "Triad", 4: "Quadrant", 5: "Pentad", 6: "Hexen", 7: "Heptarch", 8: "Octave" };
@@ -145,7 +142,16 @@ const MECHS = {
 };
 const MECH_IDS = Object.keys(MECHS);
 // an enemy's effects: its modifiers, then its boss mechanics, then any extra the run mode adds
-export const foeFx = (mods, m, extra) => mods.map(k => MODS[k].fx).concat(m ? Object.keys(m).map(k => MECHS[k].fx) : [], extra || []);
+export const foeFx = (mods, m) => mods.map(k => MODS[k].fx).concat(m ? Object.keys(m).map(k => MECHS[k].fx) : []);
+// give an enemy a modifier after it was made (its hooks go with the other modifiers', before its boss mechanics)
+export function addMod(e, k) { if (e.mods.includes(k)) return; e.mods.push(k); e.fx.splice(e.mods.length - 1, 0, MODS[k].fx); }
+// an enemy's outline: a regular polygon, or its own irregular shape (Void enemies)
+export function eVerts(e, r, rot, cx, cy) {
+  if (!e.shape) return vertices(e.sides, r, rot, cx, cy);
+  const c = Math.cos(rot), sn = Math.sin(rot);
+  return e.shape.map(([x, y]) => [cx + (x * c - y * sn) * r, cy + (x * sn + y * c) * r]);
+}
+export const ePts = (e, r, rot, cx, cy) => eVerts(e, r, rot, cx, cy).map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
 const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
 export function enemyStatuses(stage, boss, elite, v) {
   if (stage < 6 && !boss && !v.stx) return { list: [], chance: 0 };
@@ -167,21 +173,26 @@ export function bossMechs(zone) {
   if (zone >= 5 && MECH_IDS[zone % 4] !== list[0]) list.push(MECH_IDS[zone % 4]);
   return Object.fromEntries(list.map(k => [k, MECHS[k].init()]));
 }
-export function makeEnemy(stage, elite) {
+// what every enemy is made of; makeEnemy (the main run) and makeVoid (the Abyss) add looks and names.
+// scale and hit multiply its health and damage; timer is a boss's time limit; zone picks a boss's mechanics
+export function makeFoe({ stage, boss, elite, v, zone, timer, scale = 1, hit = 1 }) {
+  elite = !!elite && !boss;
+  const hp = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * scale * v.hp, mods = rollMods(boss, elite), m = boss ? bossMechs(zone) : null;
+  return {
+    hp, max: hp, fresh: true, dmg: stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * hit * v.dmg, boss, elite, v, weapon: ENEMY_WEAPON[v.w],
+    timer: boss ? timer : 0, timerMax: boss ? timer : 1, specT: 4, tele: 0, enraged: false,
+    statuses: enemyStatuses(stage, boss, elite, v), mods, m, fx: foeFx(mods, m), stun: 0
+  };
+}
+export function makeEnemy(stage, elite, scale = { hp: 1, dmg: 1 }) {
   const boss = stage % 10 === 0, zone = Math.floor((stage - 1) / 10), sides = 3 + zone % 6;
   const v = pick(VARIANTS.filter(x => stage >= x.from));
-  const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * (momentum() ? .02 : 1);
-  const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * (momentum() ? .25 : 1);
-  const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
-  const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + ST.bossTime;
-  const mods = rollMods(boss, elite && !boss), m = boss ? bossMechs(zone) : null;
-  return {
-    hp: hpE * v.hp, max: hpE * v.hp, fresh: true, dmg: dmg * v.dmg, boss, elite: !!elite && !boss, sides, family: FAM[sides], tier, hue: v.hue, v, fill: vFill(v), stroke: vStroke(v),
-    R: Math.round((boss ? 34 : elite ? 30 : 25) * (v.id === "bastion" ? 1.08 : v.id === "pale" ? .92 : 1)), weapon: ENEMY_WEAPON[v.w],
-    name: (boss ? "Grand " : elite ? "Elite " : "") + v.name + " " + SHAPE_NAMES[sides],
-    timer: boss ? tm : 0, timerMax: boss ? tm : 1, specT: 4, tele: 0, enraged: false,
-    statuses: enemyStatuses(stage, boss, elite && !boss, v), mods, m, fx: foeFx(mods, m), stun: 0
-  };
+  const e = makeFoe({ stage, boss, elite, v, zone, scale: scale.hp, hit: scale.dmg, timer: 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + ST.bossTime });
+  return Object.assign(e, {
+    sides, family: FAM[sides], hue: v.hue, fill: vFill(v), stroke: vStroke(v), R: Math.round((boss ? 34 : e.elite ? 30 : 25) * v.size),
+    tier: Math.min(4, Math.floor(stage / 12) + (boss ? 2 : e.elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0)),
+    name: (boss ? "Grand " : e.elite ? "Elite " : "") + v.name + " " + SHAPE_NAMES[sides]
+  });
 }
 export function makeChild(p) {
   return Object.assign({}, p, {

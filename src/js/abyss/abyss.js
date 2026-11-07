@@ -1,11 +1,10 @@
 // The Abyss: endless depths of Void waves and a Guardian, its rules, Voidstone, the Altar and milestones.
 import { sfx } from "../audio/sound.js";
 import { heroDown, land, trueDamage } from "../combat/combat.js";
-import { stageDmg, stageHp } from "../core/curves.js";
 import { S, save } from "../core/save.js";
 import { ST, plus, statSource } from "../core/stats.js";
-import { fmt, pick, rnd, svgEl, vertices } from "../core/util.js";
-import { ENEMY_WEAPON, VARIANTS, bossMechs, enemyStatuses, foeFx, rollMods } from "../enemies/enemies.js";
+import { fmt, pick, rnd, svgEl } from "../core/util.js";
+import { VARIANTS, addMod, makeFoe } from "../enemies/enemies.js";
 import { clearFoes, foes, newWaypoint, pickSpawnAngle, setFoePos, spawnFoe } from "../enemies/foes.js";
 import { ringIfRoom, tempFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
@@ -27,18 +26,18 @@ export const abMile = d => abBest() >= d;
 const abyssStage = d => 143 + 2 * d;
 // one new rule per depth (from depth 2); after all twelve they start stacking
 const AB_RULES = [
-  { id: "thick", name: "Dense", d: n => "+" + 40 * n + "% enemy health" },
+  { id: "thick", name: "Dense", d: n => "+" + 40 * n + "% enemy health", foe: (e, n) => { e.hp *= 1 + .4 * n; e.max = e.hp; } },
   { id: "homing", name: "Seeking", d: n => "Enemy shots home in " + (50 * n) + "% harder", stats: n => ({ homing: plus(n) }) },
-  { id: "hasted", name: "Frenzy", d: n => "Enemies attack " + 25 * n + "% faster" },
+  { id: "hasted", name: "Frenzy", d: n => "Enemies attack " + 25 * n + "% faster", foe: (e, n) => { e.fx.push({ attackRate: c => { c.v *= 1 + .25 * n; } }); } },
   { id: "pools", name: "Corrosion", d: n => "Destroyed enemies leave poison pools (" + 3 * n + "% health per second)", fx: { kill: c => { if (c.e.void) addPool(c.e.px, c.e.py); } } },
-  { id: "vicious", name: "Vicious", d: n => "+" + 30 * n + "% enemy damage" },
+  { id: "vicious", name: "Vicious", d: n => "+" + 30 * n + "% enemy damage", foe: (e, n) => { e.dmg *= 1 + .3 * n; } },
   { id: "halfheal", name: "Withering", d: n => "Your healing is cut to " + Math.round(Math.max(.25, Math.pow(.5, n)) * 100) + "%", stats: n => ({ healMult: Math.max(.25, Math.pow(.5, n)) }) },
-  { id: "shield", name: "Warded", d: () => "Every enemy is Shielded" },
+  { id: "shield", name: "Warded", d: () => "Every enemy is Shielded", foe: e => addMod(e, "shielded") },
   { id: "swarm", name: "Swarm", d: n => "+" + Math.min(4, n) + " enemies per wave" },
-  { id: "split", name: "Fission", d: () => "Elites split apart when destroyed" },
+  { id: "split", name: "Fission", d: () => "Elites split apart when destroyed", foe: e => { if (e.elite) addMod(e, "splitting"); } },
   { id: "static", name: "Null Field", d: n => "Your mana regen is " + Math.round((1 - Math.pow(.7, n)) * 100) + "% lower", stats: n => ({ mpRegen: Math.pow(.7, n) }) },
-  { id: "volatile", name: "Unstable", d: () => "Every enemy is Volatile" },
-  { id: "armor", name: "Plated", d: n => "Enemies take " + Math.round((1 - Math.max(.4, Math.pow(.8, n))) * 100) + "% less damage" }
+  { id: "volatile", name: "Unstable", d: () => "Every enemy is Volatile", foe: e => addMod(e, "volatile") },
+  { id: "armor", name: "Plated", d: n => "Enemies take " + Math.round((1 - Math.max(.4, Math.pow(.8, n))) * 100) + "% less damage", foe: (e, n) => { e.fx.push({ take(h) { h.dmg *= Math.max(.4, Math.pow(.8, n)); } }); } }
 ];
 function abSeq() {
   let x = (S.abyss.seed || 1) >>> 0; const ids = AB_RULES.map(r => r.id);
@@ -99,12 +98,6 @@ export function jitterShape(pts) {
   const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
   return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
 }
-export function eVerts(e, r, rot, cx, cy) {
-  if (!e.shape) return vertices(e.sides, r, rot, cx, cy);
-  const c = Math.cos(rot), sn = Math.sin(rot);
-  return e.shape.map(([x, y]) => [cx + (x * c - y * sn) * r, cy + (x * sn + y * c) * r]);
-}
-export const ePts = (e, r, rot, cx, cy) => eVerts(e, r, rot, cx, cy).map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
 const pools = [];
 let poolAcc = 0, poolT = 0;
 const abWaveSize = () => 5 + Math.min(4, ruleN("swarm")) + Math.floor(S.abyss.depth / 15);
@@ -142,7 +135,10 @@ function abyssFail(why) {
 }
 const ABYSS = {
   stage: () => abyssStage(S.abyss.depth),
-  zone: () => 999,
+  look: () => ({
+    key: "abyss", hue: 285, sky: "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)",
+    shape: i => jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p)
+  }),
   mythic: () => true,
   lumen: () => 1,
   auto: false,
@@ -178,7 +174,7 @@ const ABYSS = {
     }
     if (poolT >= .5) { poolT = 0; if (poolAcc > 0) { trueDamage(poolAcc, "Poison"); poolAcc = 0; } }
   },
-  kill(e) { if (e.boss && e.void) abyssCleared(e); },
+  kill(e) { if (e.boss) abyssCleared(e); },
   death() { abyssFail("death"); },
   escape() { clearFoes(true); abyssFail("escape"); },
   hud() {
@@ -191,26 +187,28 @@ function addPool(x, y) {
   pools.push({ x, y, R: 34, t: 5 });
   if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 34, fill: "rgba(120,255,140,.16)", stroke: "#7dff8a", "stroke-width": 1.5, "stroke-dasharray": "4 4" }), [{ opacity: 0 }, { opacity: 1, offset: .08 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 5000);
 }
+// Void enemies blink: every few seconds they vanish and reappear somewhere else around you
+const VOID_BLINK = {
+  tick(c, e) {
+    if (e.boss || !e.arrived || e.stun > 0) return;
+    e.blinkT -= c.dt;
+    if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); }
+  }
+};
 function makeVoid(kind) {
-  const d = S.abyss.depth, st = abyssStage(d), boss = kind === "g", elite = kind === "e";
+  const d = S.abyss.depth, boss = kind === "g";
   const v = pick(VARIANTS), T0 = pick(VOID_SHAPES), shape = jitterShape(T0.p), hue = pick([280, 300, 190, 320, 165, 250]);
-  const hpE = stageHp(st) * (boss ? 8 : elite ? 4 : 1) * (1 + .4 * ruleN("thick"));
-  const dmg = stageDmg(st) * (boss ? 1.3 : elite ? 1.5 : 1) * (1 + .3 * ruleN("vicious"));
-  const tm = 75 + ST.bossTime;
-  const mods = rollMods(boss, elite && !boss);
-  if (ruleN("shield") && !mods.includes("shielded")) mods.push("shielded");
-  if (ruleN("volatile") && !mods.includes("volatile")) mods.push("volatile");
-  if (elite && ruleN("split") && !mods.includes("splitting")) mods.push("splitting");
-  const m = boss ? bossMechs(5 + d % 8) : null, n = ruleN("armor"), plated = n ? { take(h) { h.dmg *= Math.max(.4, Math.pow(.8, n)); } } : null;
-  return {
-    hp: hpE * v.hp, max: hpE * v.hp, fresh: true, dmg: dmg * v.dmg, boss, elite: elite && !boss, sides: shape.length, shape, void: true,
-    tier: Math.min(4, 2 + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .3 ? 1 : 0)), hue, v, fill: "hsl(" + hue + " 40% 9%)", stroke: "hsl(" + hue + " 95% 66%)",
-    R: Math.round((boss ? 36 : elite ? 31 : 26) * (v.id === "bastion" ? 1.08 : v.id === "pale" ? .92 : 1)), weapon: ENEMY_WEAPON[v.w],
-    name: (boss ? "Guardian " : elite ? "Elite " : "") + "Void " + T0.n, timer: boss ? tm : 0, timerMax: boss ? tm : 1, specT: 4, tele: 0, enraged: false,
-    statuses: enemyStatuses(st, boss, elite && !boss, v), mods, m, fx: foeFx(mods, m, plated ? [plated] : []), stun: 0, aHaste: 1 + .25 * ruleN("hasted"), blinkT: 3 + Math.random() * 4
-  };
+  const e = makeFoe({ stage: abyssStage(d), boss, elite: kind === "e", v, zone: 5 + d % 8, timer: 75 + ST.bossTime });
+  Object.assign(e, {
+    sides: shape.length, shape, void: true, tone: "r5", hue, fill: "hsl(" + hue + " 40% 9%)", stroke: "hsl(" + hue + " 95% 66%)",
+    tier: Math.min(4, 2 + (boss ? 2 : e.elite ? 1 : 0) + (Math.random() < .3 ? 1 : 0)), R: Math.round((boss ? 36 : e.elite ? 31 : 26) * v.size),
+    name: (boss ? "Guardian " : e.elite ? "Elite " : "") + "Void " + T0.n, blinkT: 3 + Math.random() * 4
+  });
+  e.fx.push(VOID_BLINK);
+  AB_RULES.forEach(r => { const n = ruleN(r.id); if (n && r.foe) r.foe(e, n); });
+  return e;
 }
-export function voidBlink(e) {
+function voidBlink(e) {
   ringIfRoom(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
   const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;
   e.px = view.HERO_X + Math.cos(a) * dist; e.py = view.HERO_Y + Math.sin(a) * dist; e.vx = 0; e.vy = 0;

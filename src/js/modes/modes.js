@@ -29,7 +29,13 @@ export const spawn = {
 // S.stage is only ever the main run's stage.
 export const MAIN = {
   stage: () => S.stage,
-  zone: () => Math.floor((S.stage - 1) / 10),
+  look() {
+    const zone = Math.floor((S.stage - 1) / 10), hue = (zone * 53 + 200) % 360, sides = 3 + zone % 6;
+    return {
+      key: zone, hue, sky: "radial-gradient(ellipse at 50% 50%, hsl(" + hue + " 40% 16%), hsl(" + hue + " 35% 6%) 75%)",
+      shape: (i, rot) => Array.from({ length: sides }, (_, k) => [Math.cos(rot + k * 6.2832 / sides), Math.sin(rot + k * 6.2832 / sides)])
+    };
+  },
   mythic: st => (S.transcends || 0) >= 1 && st >= TRANS_AT,
   lumen: () => momentum() ? 8 / 3 : 1,
   auto: true,
@@ -50,7 +56,7 @@ export const MAIN = {
     const base = pickSpawnAngle();
     for (let i = 0; i < n; i++) {
       const elite = st > 10 && !boss && spawn.stageSpawned === need - 1;
-      spawnFoe(makeEnemy(st, elite), base + (i - (n - 1) / 2) * .32, i * 22); spawn.stageSpawned++;
+      spawnFoe(makeEnemy(st, elite, momentum() ? { hp: .02, dmg: .25 } : undefined), base + (i - (n - 1) / 2) * .32, i * 22); spawn.stageSpawned++;
     }
     spawn.spawnT = (.9 + Math.random() * .8) * (momentum() ? .35 : 1);
   },

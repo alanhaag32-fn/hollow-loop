@@ -1,5 +1,5 @@
 // Visual effects: particles, rings, slashes, bolts, screen shake and the skill and status visuals.
-import { eVerts } from "../abyss/abyss.js";
+import { eVerts } from "../enemies/enemies.js";
 import { F, heroDown } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { $, anim, svgEl } from "../core/util.js";

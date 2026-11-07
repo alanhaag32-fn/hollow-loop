@@ -2,7 +2,6 @@
 import { field, heroDown, hurt, land } from "../combat/combat.js";
 import { ST, foeEmit } from "../core/stats.js";
 import { anim, fmt, polyPts, starPts, svgEl } from "../core/util.js";
-import { MUZZLE } from "./enemies.js";
 import { lungeT } from "./foes.js";
 import { fx, moveFx, ringIfRoom, shake, sparks, tempFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
@@ -55,7 +54,7 @@ function leadPt(fromX, fromY, spd, f) {
 }
 function steer(o, x, y) { const l = Math.hypot(x - o.x, y - o.y) || 1, sp = Math.hypot(o.vx, o.vy); o.vx = (x - o.x) / l * sp; o.vy = (y - o.y) / l * sp; o.deg = Math.atan2(o.vy, o.vx) * 57.2958; }
 function aimFrom(e) {
-  const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = tgtX() - ax, dy = tgtY() - ay, l = Math.hypot(dx, dy) || 1, L = MUZZLE[e.v.id] || 22;
+  const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = tgtX() - ax, dy = tgtY() - ay, l = Math.hypot(dx, dy) || 1, L = e.v.muzzle;
   return { x: ax + dx / l * L, y: ay + dy / l * L, ux: dx / l, uy: dy / l, d: l, deg: Math.atan2(dy, dx) * 57.2958 };
 }
 function kick(e, px, ms) {
@@ -66,7 +65,7 @@ function addShot(o) {
   o.t = 0;
   const k = (1 - (ST ? ST.wake : 0)) * (o.src && o.src.slowT > performance.now() ? .8 : 1);
   if (k < 1) { o.vx *= k; o.vy *= k; o.life /= k; if (o.homeT) o.homeT /= k; }
-  if (o.home && o.src && o.src.void && ST.homing) o.home *= 1 + .5 * ST.homing;
+  if (o.home && o.src && ST.homing) o.home *= 1 + .5 * ST.homing;
   eshots.push(o); placeShot(o); return o;
 }
 function placeShot(o) { if (o.g) o.g.setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ")" + (o.spin ? " rotate(" + (o.t * o.spin).toFixed(0) + ")" : o.deg != null ? " rotate(" + o.deg.toFixed(1) + ")" : "")); }
@@ -173,7 +172,7 @@ export function stepEShots(dt) {
   }
 }
 function enemyAttackFx(e, heavy) {
-  const id = e.v.id, tc = ARENA_C[e.tier], E = e.el, L = MUZZLE[id] || 22;
+  const id = e.v.id, tc = ARENA_C[e.tier], E = e.el, L = e.v.muzzle;
   // aim is re-read at fire time because the shooter keeps moving
   const aim = () => {
     const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = view.HERO_X - ax, dy = view.HERO_Y - ay, l = Math.hypot(dx, dy) || 1;

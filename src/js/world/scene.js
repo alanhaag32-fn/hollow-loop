@@ -1,5 +1,4 @@
 // The arena: layout, camera, starfield backdrop and zone.
-import { VOID_SHAPES, jitterShape } from "../abyss/abyss.js";
 import { $ } from "../core/util.js";
 import { syncTarget } from "../enemies/foes.js";
 import { arena } from "../fx/effects.js";
@@ -10,8 +9,8 @@ import { mode } from "../modes/modes.js";
 const PARA = .75;
 let bgTW = 1, bgTH = 1, bgOX = NaN, bgOY = NaN;
 function drawBackdrop() {
-  const ab = lastZone === 999, zone = ab ? 0 : Math.max(0, lastZone), h = ab ? 285 : (zone * 53 + 200) % 360;
-  $("bgSky").style.background = ab ? "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)" : "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
+  const look = mode.look(), h = look.hue;
+  $("bgSky").style.background = look.sky;
   const dpr = Math.min(2, window.devicePixelRatio || 1), tw = Math.max(200, Math.round(MAP_W * SC)), th = Math.max(200, Math.round(MAP_H * SC));
   const c = document.createElement("canvas"); c.width = Math.round(tw * dpr); c.height = Math.round(th * dpr);
   const x = c.getContext("2d"); x.scale(dpr, dpr);
@@ -24,15 +23,13 @@ function drawBackdrop() {
     x.globalAlpha = .15 + Math.random() * .55;
     wrap(cx, cy, r, (px, py) => { x.beginPath(); x.arc(px, py, r, 0, 6.2832); x.fill(); });
   }
-  const nF = Math.max(6, Math.round(MAP_W * MAP_H / 42000)), sides = 3 + zone % 6;
+  const nF = Math.max(6, Math.round(MAP_W * MAP_H / 42000));
   for (let i = 0; i < nF; i++) {
     const cx = Math.random() * tw, cy = Math.random() * th, r = (10 + Math.random() * 40) * SC, rot = Math.random() * 6, outline = Math.random() < .45;
     x.globalAlpha = outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1;
     wrap(cx, cy, r, (px, py) => {
       x.beginPath();
-      const pts = ab ? jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p).map(([u, v]) => [px + u * r, py + v * r]) : null;
-      if (pts) pts.forEach(([u, v], k) => k ? x.lineTo(u, v) : x.moveTo(u, v));
-      else for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
+      look.shape(i, rot).forEach(([u, v], k) => k ? x.lineTo(px + u * r, py + v * r) : x.moveTo(px + u * r, py + v * r));
       x.closePath();
       if (outline) { x.strokeStyle = "hsl(" + h + " 70% 70%)"; x.lineWidth = 1.2 * SC; x.stroke(); } else { x.fillStyle = "hsl(" + h + " 60% 60%)"; x.fill(); x.fillStyle = "#fff"; }
     });
@@ -52,7 +49,7 @@ export function placeBackdrop() {
 }
 let lastZone = -1;
 export function setZone(force) {
-  const zone = mode.zone();
+  const zone = mode.look().key;
   if (zone === lastZone && !force) return;
   lastZone = zone;
   if (SW > 0) drawBackdrop();

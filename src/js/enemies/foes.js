@@ -1,10 +1,9 @@
 // Enemies on the field: their SVG, movement, targeting, spawning and each one's turn.
-import { ePts, eVerts, voidBlink } from "../abyss/abyss.js";
 import { sfx } from "../audio/sound.js";
 import { bossEscape, crush, heroDown } from "../combat/combat.js";
 import { foeEmit } from "../core/stats.js";
 import { $, anim, polyPts, starPts, svgEl } from "../core/util.js";
-import { MODS, MOVE, makeChild } from "./enemies.js";
+import { MODS, ePts, eVerts, makeChild } from "./enemies.js";
 import { FAR_RATE, enemyAttack } from "./shots.js";
 import { ringIfRoom, shake, sparks, warnRing } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
@@ -45,7 +44,6 @@ export function lungeT(e, d) {
   return "translate(" + (d * dx / L).toFixed(1) + "px," + (d * dy / L).toFixed(1) + "px)";
 }
 // each frame: the body turns slowly, the weapon slides along its edges and keeps aiming at the core, the eye watches the core
-const SPIN = { pale: .45, bastion: .2, crimson: .3, umbral: .36 };
 export function poseFoe(e, dt) {
   const E = e.el; if (!E) return;
   if (!reduce && dt) e.rot += e.spinV * dt;
@@ -82,10 +80,10 @@ export function poseFoe(e, dt) {
 }
 function spinInit(e) {
   e.rot = Math.random() * 6.28;
-  e.spinV = (SPIN[e.v.id] || .3) * (.8 + Math.random() * .4) * (e.boss ? .6 : 1) * (Math.random() < .5 ? -1 : 1);
+  e.spinV = e.v.spin * (.8 + Math.random() * .4) * (e.boss ? .6 : 1) * (Math.random() < .5 ? -1 : 1);
   e.wBase = Math.random() * 6.28; e.wt = 0; e.wf = .45 + Math.random() * .3; e.wAng = NaN;
   e.curl = (.15 + Math.random() * .3) * (Math.random() < .5 ? -1 : 1);
-  e.orb = (16 + Math.random() * 14) * (MOVE[e.v.id] || 1) * (e.boss ? .5 : 1) * pace() * (Math.random() < .5 ? -1 : 1);
+  e.orb = (16 + Math.random() * 14) * e.v.move * (e.boss ? .5 : 1) * pace() * (Math.random() < .5 ? -1 : 1);
   e.rf = .4 + Math.random() * .4; e.jT = .8 + Math.random() * 2;
 }
 export const inView = f => { const m = f.R + 60; return f.px > view.VX0 - m && f.px < VX1() + m && f.py > view.VY0 - m && f.py < VY1() + m; };
@@ -130,7 +128,7 @@ export function spawnFoe(e, angIn, extra) {
   const dist = Math.min(tx, ty) + e.R + 45 + (extra || 0);
   e.px = view.HERO_X + c * dist; e.py = view.HERO_Y + sn * dist;
   e.stopR = ENGAGE + (e.boss ? 36 : e.elite ? 10 : 0) + Math.random() * 14 - 4;
-  const mv = (MOVE[e.v.id] || 1) * pace();
+  const mv = e.v.move * pace();
   e.speed = Math.max(55, Math.min(170, (dist - e.stopR) / 3.5)) * mv * (e.boss ? .7 : e.elite ? .85 : 1);
   e.cruise = (55 + Math.random() * 25) * mv * (e.boss ? .55 : e.elite ? .8 : 1);
   e.ph = Math.random() * 6.28; e.arrived = false; e.age = 0; e.cd = .5 + Math.random() * .7;
@@ -150,7 +148,7 @@ function placeFoe(e, fadeMs) {
   drawFoe(e); setFoePos(e); poseFoe(e, 0);
   foes.push(e);
   anim(e.el.model, [{ opacity: 0 }, { opacity: 1 }], fadeMs);
-  if (e.boss) { log("A " + e.name + " drifts in. Defeat it within " + Math.round(e.timer) + "s of it reaching you", e.void ? "r5" : "r4"); shake(6, 400); sfx("bossIn"); }
+  if (e.boss) { log("A " + e.name + " drifts in. Defeat it within " + Math.round(e.timer) + "s of it reaching you", e.tone || "r4"); shake(6, 400); sfx("bossIn"); }
   else if (e.elite) { log("An " + e.name + " is closing in", "r3"); sfx("eliteIn"); }
   return e;
 }
@@ -376,6 +374,5 @@ export function stepFoe(e, dt) {
     }
   }
   e.cd -= dt;
-  if (e.cd <= 0 && !(e.tele > 0) && !(e.stun > 0)) { e.cd += 1 / foeEmit(e, "attackRate", { v: (e.aHaste || 1) * e.v.spd }).v * (e.arrived ? 1 : FAR_RATE); enemyAttack(e); }
-  if (e.void && !e.boss && e.arrived && !(e.stun > 0)) { e.blinkT -= dt; if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); } }
+  if (e.cd <= 0 && !(e.tele > 0) && !(e.stun > 0)) { e.cd += 1 / foeEmit(e, "attackRate", { v: e.v.spd }).v * (e.arrived ? 1 : FAR_RATE); enemyAttack(e); }
 }
