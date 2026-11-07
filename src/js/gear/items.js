@@ -9,7 +9,7 @@ import { enemy, foes, inView } from "../enemies/foes.js";
 import { NOVA_MS, burst, fxBusy, ring, ringIfRoom, tempFx } from "../fx/effects.js";
 import { anim, reduce } from "../fx/gfx.js";
 import { heal, hero, setCounts } from "../hero/hero.js";
-import { ORBITALS, slotAtk, splitShot, throwBlade, wDelay } from "../hero/orbitals.js";
+import { ORBITALS, WEAPON, slotAtk, splitShot, throwBlade, wDelay } from "../hero/orbitals.js";
 import { mode } from "../modes/modes.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
@@ -17,8 +17,8 @@ import { view } from "../world/scene.js";
 
 export const PACK_CAP = 20;
 const SLOTS = [
-  // the weapon nouns are the item types in WEAPON (hero/orbitals.js); a new type needs adding to both
-  { id: "weapon", name: "Orbital", nouns: ["Drone", "Glaive", "Laser", "Swarm", "Hammer", "Coil"], shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack", stats: (p, q) => ({ atk: onBase(p) }), main: (p, q) => "+" + fmt(p) + " attack" },
+  // every weapon type in WEAPON (hero/orbitals.js) that isn't bare can drop (read when needed: WEAPON loads after this)
+  { id: "weapon", name: "Orbital", get nouns() { return Object.keys(WEAPON).filter(k => !WEAPON[k].bare); }, shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack", stats: (p, q) => ({ atk: onBase(p) }), main: (p, q) => "+" + fmt(p) + " attack" },
   { id: "armor", name: "Shell", nouns: ["Ring", "Lattice", "Carapace", "Aegis", "Bulwark", "Mirror"], shape: "M18 2 L32 10 L32 26 L18 34 L4 26 L4 10 Z M18 10 L25 14 L25 22 L18 26 L11 22 L11 14 Z", role: "health", stats: (p, q) => ({ maxHp: onBase(6 * p) }), main: (p, q) => "+" + fmt(6 * p) + " health" },
   { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Wake"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion", stats: (p, q) => ({ evaR: onBase(p), spd: 1 + .12 * q }), main: (p, q) => "+" + Math.round(12 * q) + "% attack speed, " + fmt(p) + " evasion" },
   { id: "charm", name: "Lens", nouns: ["Sigil", "Prism", "Eye", "Moon", "Star", "Cube"], shape: "M2 18 Q18 3 34 18 Q18 33 2 18 Z M18 12 A6 6 0 1 0 18.01 12 Z", role: "crit chance", stats: (p, q) => ({ crit: plus(.035 * q) }), main: (p, q) => "+" + (3.5 * q).toFixed(1) + "% crit chance" }
