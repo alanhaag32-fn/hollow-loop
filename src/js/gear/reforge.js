@@ -4,7 +4,7 @@ import { shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { fmt, pick } from "../core/util.js";
-import { RARITY, affPool, affText } from "./items.js";
+import { RARITY, affPool, affText, rollAffix } from "./items.js";
 import { TRANS_AT, cycleBest } from "../progress/transcend.js";
 import { action } from "../ui/actions.js";
 
@@ -13,7 +13,7 @@ let rfOpen = null, rfPend = null;
 const findItem = id => Object.values(S.equip).find(x => x && x.id === id) || S.inv.find(x => x.id === id);
 const honeCost = it => Math.ceil(3 * shardAmt(it.stage || 1) * Math.max(1, it.r) * Math.pow(1.5, it.rr || 0));
 const reforgeCost = it => 3 * honeCost(it);
-const rollAff = it => { const R = RARITY[it.r]; return Math.round((R.aff[0] + Math.random() * (R.aff[1] - R.aff[0])) * ST.affixPow); };
+const rollAff = it => rollAffix(RARITY[it.r], ST.affixPow);
 export function forgeUI(it) {
   if (!canForge() || !(it.affs && it.affs.length) || !RARITY[it.r].aff) return "";
   if (rfOpen !== it.id) return '<div class="acts"><button class="btn" data-act="rfOpen" data-id="' + it.id + '">Reforge</button></div>';

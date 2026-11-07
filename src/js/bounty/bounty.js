@@ -1,6 +1,6 @@
 // The bounty board: notices, progress, claiming and rerolling.
 import { lumenAt, lumenBase } from "../core/curves.js";
-import { addGold, addShards, goldScale, shardAmt } from "../progress/currency.js";
+import { addEchoes, addGold, addShards, goldScale, shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { $, fmt, mmss, pick, rnd } from "../core/util.js";
@@ -30,12 +30,13 @@ const BT = {};
  BOUNTY_T.forEach(b => BT[b.type] = b);
 // effort in "kills worth of time" for each bounty type; rewards are worth well over the time spent
 export const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n };
+export const bountyShards = tier => (3 + 3 * tier) * shardAmt(S.maxStage);
 function newBounty() {
   const t = pick(BOUNTY_T), roll = Math.random(), tier = roll < .04 ? 2 : roll < .19 ? 1 : 0, n = t.n();
   return {
     type: t.type, n, prog: 0, tier, poster: pick(POSTERS),
     eff: t.type === "gold" ? n / (lumenAt(S.maxStage) * (ST ? ST.gold : 1)) : EFFORT[t.type](n),
-    item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: (3 + 3 * tier) * shardAmt(S.maxStage)
+    item: tier >= 1, echo: tier === 2 ? 1 : 0, shards: bountyShards(tier)
   };
 }
 const bountyGold = b => b.eff ? Math.ceil(b.eff * lumenBase(S.maxStage) * (1 + .5 * b.tier) * ST.bountyGold * ST.gold) : (b.gold || 0);
@@ -61,7 +62,7 @@ function claim(i) {
   addGold(pay, false);
   let msg = "Bounty paid " + fmt(pay) + " lumen";
   if (b.shards) { addShards(b.shards); msg += ", " + b.shards + " shards"; }
-  if (b.echo) { S.echoes += b.echo; S.echoesTotal += b.echo; msg += " and " + b.echo + " echo"; markDirty("tree"); }
+  if (b.echo) { addEchoes(b.echo); msg += " and " + b.echo + " echo"; }
   log(msg, "good");
   if (b.item) receive(makeItem(S.maxStage, false, b.tier === 2 ? 3 : 2), true);
   S.bounties[i] = { empty: true, at: Date.now() + POST_CD * ST.postTime };

@@ -4,7 +4,7 @@ import { sfx } from "../audio/sound.js";
 import { alive, hit } from "../combat/combat.js";
 import { cds } from "../skills/skills.js";
 import { lumenAt } from "../core/curves.js";
-import { addGold } from "../progress/currency.js";
+import { addEchoes, addGold } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, cutBy, plus, statSource } from "../core/stats.js";
 import { $, fmt, starPts } from "../core/util.js";
@@ -16,7 +16,7 @@ import { fightStage } from "../modes/modes.js";
 import { ascGain, ascMin, doAscend, runStart, startStage } from "../progress/ascend.js";
 import { renderTrans, transOpen } from "../progress/transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
-import { action, confirmTap, markDirty, panel } from "../ui/actions.js";
+import { action, confirmTap, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { refreshPanel, tab } from "../ui/windows.js";
@@ -100,7 +100,7 @@ export const TREE = [
   { id: "f12", br: "fortune", x: -320, y: 110, s: "Spoils", name: "Elite Spoils", max: 5, c: 3, desc: "+15% chance per rank for elites to drop a second item", stats: n => ({ eliteSpoils: plus(.15 * n) }) },
   { id: "f11", br: "fortune", x: -350, y: -60, s: "Extra pin", name: "Extra Pin", max: 1, c: 10, desc: "Adds a fourth pin to the bounty board", stats: n => ({ bountySlots: plus(1) }) },
   { id: "f13", br: "fortune", x: -350, y: 60, s: "Swift", name: "Swift Postings", max: 5, c: 3, desc: "New bounties arrive 10% sooner per rank", stats: n => ({ postTime: 1 - .1 * n }) },
-  { id: "k4", br: "fortune", x: -392, y: 0, s: "Midas", name: "Midas", max: 1, c: 25, cap: true, key: true, desc: "Keystone. Bosses have a 25% chance to drop an echo", fx: { kill: c => { if (c.e.boss && Math.random() < .25) { S.echoes++; S.echoesTotal++; markDirty("tree"); log("Midas: the boss left an echo", "r4"); } } } },
+  { id: "k4", br: "fortune", x: -392, y: 0, s: "Midas", name: "Midas", max: 1, c: 25, cap: true, key: true, desc: "Keystone. Bosses have a 25% chance to drop an echo", fx: { kill: c => { if (c.e.boss && Math.random() < .25) { addEchoes(1); log("Midas: the boss left an echo", "r4"); } } } },
   { id: "x1", br: "bridge", x: 228, y: -228, s: "Juggernaut", name: "Juggernaut", max: 10, c: 3, desc: "+6% damage per rank while above 80% health", fx: { deal: (h, n) => { if (hero.hp > ST.maxHp * .8) h.dmg *= 1 + .06 * n; } } },
   { id: "x2", br: "bridge", x: 228, y: 228, s: "Arcane", name: "Arcane Shell", max: 5, c: 3, desc: "Barrier also restores 8% mana per rank", fx: { cast: (c, n) => { if (c.id === "barrier") hero.mp = Math.min(ST.maxMp, hero.mp + ST.maxMp * .08 * n); } } },
   { id: "x3", br: "bridge", x: -228, y: 228, s: "Fingers", name: "Quick Fingers", max: 10, c: 2, desc: "+10% tap damage and +2% attack speed per rank", stats: n => ({ tap: 1 + .1 * n, spd: 1 + .02 * n }) },

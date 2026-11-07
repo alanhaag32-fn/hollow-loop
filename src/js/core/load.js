@@ -4,7 +4,7 @@ import { itemPow, lumenAt } from "./curves.js";
 import { KEPT, S, fresh, readSave, setSave } from "./save.js";
 // the current economy version (what fresh saves start at)
 const ECO = KEPT().eco;
-import { AFF, LEGACY, RARITY, SLOT } from "../gear/items.js";
+import { AFF, LEGACY, RARITY, SLOT, rollAffix } from "../gear/items.js";
 import { AUTO_REFUND } from "../progress/automation.js";
 import { TRAIN } from "../train/train.js";
 
@@ -33,7 +33,7 @@ function migrateEco() {
   const fix = it => {
     if (!it) return; const r = RARITY[it.r] || RARITY[0];
     it.power = Math.max(1, Math.round(itemPow(it.stage || 1) * r.mult * (.95 + Math.random() * .1)));
-    (it.affs || []).forEach(a => { if (r.aff) a[1] = Math.round(r.aff[0] + Math.random() * (r.aff[1] - r.aff[0])); });
+    (it.affs || []).forEach(a => { if (r.aff) a[1] = rollAffix(r); });
   };
   Object.values(S.equip).forEach(fix); S.inv.forEach(fix);
   trimTraining();

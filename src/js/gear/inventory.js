@@ -93,13 +93,7 @@ function itemCard(it, mode, label, extra) {
   return '<div class="card r' + it.r + '">' + glyph(it.slot) + '<div class="nm">' + r.name + " " + it.name + '</div><div class="meta">' + (label || slot.name) + ": " + itemMain(it) + cmp + "</div>" + traitL + setl + affs + acts + (extra || "") + forgeUI(it) + "</div>";
 }
 // what an item's power actually gives, in plain numbers
-function itemMain(it) {
-  const qq = it.power / itemPow(it.stage || 1);
-  if (it.slot === "weapon") return "+" + fmt(it.power) + " attack";
-  if (it.slot === "armor") return "+" + fmt(it.power * 6) + " health";
-  if (it.slot === "boots") return "+" + Math.round(12 * qq) + "% attack speed, " + fmt(it.power) + " evasion";
-  return "+" + (3.5 * qq).toFixed(1) + "% crit chance";
-}
+const itemMain = it => SLOT[it.slot].main(it.power, it.power / itemPow(it.stage || 1));
 function renderStats() {
   const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
   $("statsBody").innerHTML =

@@ -4,7 +4,7 @@ import { itemPow, lumenAt } from "../core/curves.js";
 import { shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, cutBy, onBase, plus, statSource } from "../core/stats.js";
-import { $, pctS, pick, rnd, svgEl } from "../core/util.js";
+import { $, fmt, pctS, pick, rnd, svgEl } from "../core/util.js";
 import { enemy, foes, inView } from "../enemies/foes.js";
 import { burst, fxBusy, ring, ringIfRoom, tempFx } from "../fx/effects.js";
 import { anim, reduce } from "../fx/gfx.js";
@@ -17,10 +17,10 @@ import { view } from "../world/scene.js";
 
 export const PACK_CAP = 20;
 const SLOTS = [
-  { id: "weapon", name: "Orbital", nouns: ["Drone", "Glaive", "Laser", "Swarm", "Hammer", "Coil"], shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack", stats: (p, q) => ({ atk: onBase(p) }) },
-  { id: "armor", name: "Shell", nouns: ["Ring", "Lattice", "Carapace", "Aegis", "Bulwark", "Mirror"], shape: "M18 2 L32 10 L32 26 L18 34 L4 26 L4 10 Z M18 10 L25 14 L25 22 L18 26 L11 22 L11 14 Z", role: "health", stats: (p, q) => ({ maxHp: onBase(6 * p) }) },
-  { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Wake"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion", stats: (p, q) => ({ evaR: onBase(p), spd: 1 + .12 * q }) },
-  { id: "charm", name: "Lens", nouns: ["Sigil", "Prism", "Eye", "Moon", "Star", "Cube"], shape: "M2 18 Q18 3 34 18 Q18 33 2 18 Z M18 12 A6 6 0 1 0 18.01 12 Z", role: "crit chance", stats: (p, q) => ({ crit: plus(.035 * q) }) }
+  { id: "weapon", name: "Orbital", nouns: ["Drone", "Glaive", "Laser", "Swarm", "Hammer", "Coil"], shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack", stats: (p, q) => ({ atk: onBase(p) }), main: (p, q) => "+" + fmt(p) + " attack" },
+  { id: "armor", name: "Shell", nouns: ["Ring", "Lattice", "Carapace", "Aegis", "Bulwark", "Mirror"], shape: "M18 2 L32 10 L32 26 L18 34 L4 26 L4 10 Z M18 10 L25 14 L25 22 L18 26 L11 22 L11 14 Z", role: "health", stats: (p, q) => ({ maxHp: onBase(6 * p) }), main: (p, q) => "+" + fmt(6 * p) + " health" },
+  { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Wake"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion", stats: (p, q) => ({ evaR: onBase(p), spd: 1 + .12 * q }), main: (p, q) => "+" + Math.round(12 * q) + "% attack speed, " + fmt(p) + " evasion" },
+  { id: "charm", name: "Lens", nouns: ["Sigil", "Prism", "Eye", "Moon", "Star", "Cube"], shape: "M2 18 Q18 3 34 18 Q18 33 2 18 Z M18 12 A6 6 0 1 0 18.01 12 Z", role: "crit chance", stats: (p, q) => ({ crit: plus(.035 * q) }), main: (p, q) => "+" + (3.5 * q).toFixed(1) + "% crit chance" }
 ];
 export const SLOT = {};
  SLOTS.forEach(s => SLOT[s.id] = s);
@@ -266,8 +266,10 @@ export function makeItem(stage, boss, minR, forceSlot, up) {
   if (ri >= 4) it.u = pick(uniqFor(slot.id));
   for (let i = 0; i < count && keys.length; i++) {
     const k = keys.splice(rnd(keys.length), 1)[0];
-    it.affs.push([k, Math.round((r.aff[0] + Math.random() * (r.aff[1] - r.aff[0])) * craft)]);
+    it.affs.push([k, rollAffix(r, craft)]);
   }
   return it;
 }
 export const salvShards = it => it.r >= 3 ? (it.r - 2) * shardAmt(it.stage) : 0;
+// a fresh affix roll for this rarity (times Fine Craft and the like)
+export const rollAffix = (r, mult = 1) => Math.round((r.aff[0] + Math.random() * (r.aff[1] - r.aff[0])) * mult);

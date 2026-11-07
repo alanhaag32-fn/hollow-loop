@@ -13,3 +13,4 @@ export const goldScale = () => lumenAt(Math.max(1, S.maxStage)) * (ST ? ST.gold 
 // shards are scarce: you can't max every skill at each cap, so pick favorites
 export const shardAmt = st => 1 + Math.floor(st / 12);
 export function addShards(n, float) { if (n <= 0) return; S.shards += n; markDirty("skills"); if (float) { floatText("+" + n + " shard" + (n > 1 ? "s" : ""), "shardf", float === true ? "enemy" : float); sfx("shard", 0, 120); } }
+export function addEchoes(n) { S.echoes += n; S.echoesTotal += n; markDirty("tree"); }

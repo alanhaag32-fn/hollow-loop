@@ -1,8 +1,7 @@
 // Ascending: echoes, echo power, starting a run, and the Ascend tab.
 import { sfx } from "../audio/sound.js";
-import { ensureBoard } from "../bounty/bounty.js";
+import { bountyShards, ensureBoard } from "../bounty/bounty.js";
 import { cds } from "../skills/skills.js";
-import { shardAmt } from "./currency.js";
 import { RUN, S, save } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { clearFoes } from "../enemies/foes.js";
@@ -30,7 +29,7 @@ export function startRun() {
   clearFoes(false); resumeRun(); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
   resetCombat();
   recalc(); hero.hp = ST.maxHp; hero.mp = ST.maxMp;
-  S.bounties.forEach(b => { b.shards = (3 + 3 * b.tier) * shardAmt(S.maxStage); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
+  S.bounties.forEach(b => { b.shards = bountyShards(b.tier); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
   burst(view.HERO_X, view.HERO_Y, "#ffd04d", 14); equipFlash(4);
 }
 export function doAscend() {
