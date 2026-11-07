@@ -989,6 +989,12 @@ const PANELS = {}, ACTIONS = {};
 // bar() html for the tab row instead of tabs, fill(tab) to fill the sheet, shown() once it's on screen }
 const panel = (id, def) => { PANELS[id] = Object.assign({ stale: true }, def); };
 const action = (name, fn) => { ACTIONS[name] = fn; };
+// tabs a feature adds to another feature's window (the Transcend and Abyss tabs in the Tree). def: { label, at (tab
+// order), open() whether the tab shows, body: the element its render() html goes in }. The window lists and renders them.
+const SHEETS = {};
+const sheet = (win, id, def) => { (SHEETS[win] = SHEETS[win] || []).push(Object.assign({ id }, def)); SHEETS[win].sort((a, b) => a.at - b.at); };
+const sheetTabs = win => (SHEETS[win] || []).filter(s => s.open()).map(s => [s.id, s.label]);
+const renderSheets = win => (SHEETS[win] || []).forEach(s => { document.getElementById(s.body).innerHTML = s.render(); });
 function markDirty(...k) { k.forEach(x => { PANELS[x].stale = true; }); }
 let afterAction = () => {};
 // set once at boot: what follows every action that changed something
@@ -1173,6 +1179,10 @@ function refreshPanel() {
   $("p-" + tab).querySelectorAll("[data-cost]").forEach(b => b.classList.toggle("afford", !b.disabled && CURRENCY[b.dataset.cur || "gold"]() >= Number(b.dataset.cost)));
   if (PANELS[tab].refresh) PANELS[tab].refresh();
   applySub(tab);
+}
+// the open panel re-renders if an action or event marked it stale (the HUD calls this every tick)
+function renderIfStale() {
+  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
 }
 function openWindow(id) {
   tab = id;
@@ -1438,7 +1448,8 @@ function switchMode(m) {
   clearFoes(false); m.enter(); setZone(true); recalc();
 }
 
-const KILLS = 8, MOMENTUM_KILLS = 3;
+const KILLS = 8;
+const MOMENTUM_KILLS = 3;
 const killsNeeded = () => (isBoss(S.stage) ? 1 : momentum() ? MOMENTUM_KILLS : KILLS);
 
 // the button beside the stage title: push/farm in the main run, leave in the Abyss
@@ -1502,7 +1513,7 @@ function receive(it, quiet) {
 const glyph = slotId => '<svg class="glyph" viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[slotId].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
 function itemCard(it, mode, label, extra) {
   const slot = SLOT[it.slot], r = RARITY[it.r];
-  const tr = it.slot === "weapon" ? WTRAIT[weaponType(it)] : null;
+  const tr = it.slot === "weapon" ? WEAPON[weaponType(it)].trait : null;
   const im = implOf(it);
   const traitL = (tr ? '<div class="trait"><b>' + tr.name + "</b>: " + traitText(it) + "</div>" : "") + (im ? '<div class="impl">' + noun(it) + ": " + im.txt + "</div>" : "") +
     (it.u && UNIQ[it.u] ? '<div class="uniq"><b>' + UNIQ[it.u].name + "</b>: " + UNIQ[it.u].desc + "</div>" : "");
@@ -1527,7 +1538,7 @@ const itemMain = it => SLOT[it.slot].main(it.power, it.power / itemPow(it.stage 
 function renderStats() {
   const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
   $("statsBody").innerHTML =
-    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (S.equip.weapon ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WTRAIT[wType(o.key)].name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (S.equip.weapon ? " (" + WEAPON[wType()].trait.name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WEAPON[wType(o.key)].trait.name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
     G("Defense", [["Health", fmt(Math.max(0, hero.hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((1 - ST.blockLeak) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Move speed", pct(ST.move, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
     G("Mana and skills", [["Mana", fmt(Math.max(0, hero.mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
     G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
@@ -1544,7 +1555,7 @@ function coreSnap() {
   ring.setAttribute("class", "spinSlow");
   for (const id in pos) { const e = cl.querySelector("#" + id); if (e) { e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); const o = e.parentNode; if (o.style.display !== "none") ring.appendChild(o); else o.remove(); } }
   const bob = cl.querySelector(".bob") || cl; bob.appendChild(ring);
-  ring.querySelectorAll("path").forEach(pth => { if (pth.getAttribute("d") === HERO_WEAPON.Glaive) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
+  ring.querySelectorAll("path").forEach(pth => { if (Object.values(WEAPON).some(W => W.spin && W.path === pth.getAttribute("d"))) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
   cl.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); cl.removeAttribute("id"); cl.removeAttribute("class"); cl.removeAttribute("style");
   return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
 }
@@ -1593,7 +1604,7 @@ function spriteSvg(it) {
   const key = it.slot + noun(it) + it.r;
   if (spriteCache.has(key)) return spriteCache.get(key);
   const n = noun(it), c = ARENA_C[it.r], sv = svgEl("svg", { "aria-hidden": "true" }), g = svgEl("g", {}, sv);
-  if (it.slot === "weapon") { sv.setAttribute("viewBox", "-14 -14 28 28"); svgEl("path", { d: HERO_WEAPON[n] || HERO_WEAPON.Glaive, fill: c, stroke: "#000", "stroke-opacity": .3, "stroke-width": 1 }, g); if (it.r >= 3) { g.setAttribute("class", "glow"); g.style.color = c; } }
+  if (it.slot === "weapon") { sv.setAttribute("viewBox", "-14 -14 28 28"); svgEl("path", { d: WEAPON[weaponType(it)].path, fill: c, stroke: "#000", "stroke-opacity": .3, "stroke-width": 1 }, g); if (it.r >= 3) { g.setAttribute("class", "glow"); g.style.color = c; } }
   else if (it.slot === "armor") { sv.setAttribute("viewBox", "-30 -30 60 60"); shellSvg(n, c, it.r, g); }
   else if (it.slot === "boots") { sv.setAttribute("viewBox", "-37 -37 74 74"); const g2 = svgEl("g", {}, sv); coronaSvg(n, c, it.r, g, g2); }
   else { sv.setAttribute("viewBox", "-9 -9 18 18"); lensSvg(n, c, it.r, g); }
@@ -1630,7 +1641,7 @@ function renderPack() {
   const v = pkView(), L = packItems();
   if (pkSel != null && !S.inv.some(i => i.id === pkSel)) pkSel = null;
   const setsIn = [...new Set(S.inv.filter(i => i.set).map(i => i.set))];
-  const ico = k => k === "all" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" fill="currentColor"/></svg>' : k === "weapon" ? '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON.Drone + '" fill="currentColor"/></svg>' : '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[k].shape + '" fill="currentColor" fill-rule="evenodd"/></svg>';
+  const ico = k => k === "all" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" fill="currentColor"/></svg>' : k === "weapon" ? '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + WEAPON.Drone.path + '" fill="currentColor"/></svg>' : '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[k].shape + '" fill="currentColor" fill-rule="evenodd"/></svg>';
   let h = '<div class="pkBar"><div class="seg">' + PK_SLOT.map(([k, n]) => '<button class="' + (v.slot === k ? "on" : "") + '" data-act="pkSlot" data-id="' + k + '" type="button">' + ico(k) + n + "</button>").join("") + "</div>" +
     '<div class="pkRow"><label>Sort<select data-act="pkSort" aria-label="Sort">' + PK_SORT.map(([k, n]) => '<option value="' + k + '"' + (v.sort === k ? " selected" : "") + ">" + n + "</option>").join("") + "</select></label>" +
     '<label>Set<select data-act="pkSet" aria-label="Filter by set"><option value="any"' + (v.set === "any" ? " selected" : "") + '>All items</option><option value="sets"' + (v.set === "sets" ? " selected" : "") + '>Set items only</option><option value="none"' + (v.set === "none" ? " selected" : "") + '>No set</option>' +
@@ -1700,6 +1711,8 @@ const BOUNTY_T = [
 ];
 const BT = {};
  BOUNTY_T.forEach(b => BT[b.type] = b);
+// a finished bounty waits on the board to be claimed
+const bountyReady = () => S.bounties.some(b => !b.empty && b.prog >= b.n);
 // effort in "kills worth of time" for each bounty type; rewards are worth well over the time spent
 const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n };
 const bountyShards = tier => (3 + 3 * tier) * shardAmt(S.maxStage);
@@ -1937,8 +1950,8 @@ function updateUI() {
   $("mode").textContent = hd.button;
   $("hpTxt").textContent = fmt(Math.max(0, hero.hp));
   $("mpTxt").textContent = fmt(Math.max(0, hero.mp));
-  const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
-  $("menuDot").className = claim ? "dot" : "";
+  const claim = bountyReady() ? "dot" : "";
+  $("menuDot").className = claim;
   $("dpsVal").textContent = fmt(dps());
   const hb = $("hBarrier");
   hb.style.display = hero.shield > 0 ? "" : "none";
@@ -1951,7 +1964,7 @@ function updateUI() {
     if (Math.abs(v - f.mFrac) < .005) return;
     f.mFrac = v; f.el.mFg.setAttribute("d", v < .01 ? "" : arcD(f.mr, 40, 40 + 100 * v));
   });
-  $("boardDot").className = S.bounties.some(b => !b.empty && b.prog >= b.n) ? "dot" : "";
+  $("boardDot").className = claim;
   let chips = "";
   for (const k in STATUS) {
     const on = st(k); heroModel.classList.toggle("st-" + k, on);
@@ -1961,7 +1974,7 @@ function updateUI() {
   $("mechTxt").textContent = mechReadout(enemy).text;
   $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
   updateSkillbar();
-  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
+  renderIfStale();
 }
 
 // ---- js/progress/automation.js
@@ -1989,232 +2002,6 @@ function autoTick(dt) {
   }
 }
 
-// ---- js/abyss/abyss.js
-// The Abyss: endless depths of Void waves and a Guardian, its rules, Voidstone, the Altar and milestones.
-
-// the Abyss's wave state: phase 1-3 are waves, 4 is the Guardian
-const ab = { phase: 1, need: 0, spawned: 0, pause: 0 };
-const abyssOpen = () => (S.peak || 1) >= TRANS_AT;
-const AL = id => (S.abyss && S.abyss.altar && S.abyss.altar[id]) || 0;
-const abBest = () => (S.abyss && S.abyss.best) || 0;
-const abMile = d => abBest() >= d;
-const abyssStage = d => 143 + 2 * d;
-// one new rule per depth (from depth 2); after all twelve they start stacking
-const AB_RULES = [
-  { id: "thick", name: "Dense", d: n => "+" + 40 * n + "% enemy health", foe: (e, n) => { e.hp *= 1 + .4 * n; e.max = e.hp; } },
-  { id: "homing", name: "Seeking", d: n => "Enemy shots home in " + (50 * n) + "% harder", stats: n => ({ homing: plus(n) }) },
-  { id: "hasted", name: "Frenzy", d: n => "Enemies attack " + 25 * n + "% faster", foe: (e, n) => { e.fx.push({ attackRate: c => { c.v *= 1 + .25 * n; } }); } },
-  { id: "pools", name: "Corrosion", d: n => "Destroyed enemies leave poison pools (" + 3 * n + "% health per second)", fx: { kill: c => { if (c.e.void) addPool(c.e.px, c.e.py); } } },
-  { id: "vicious", name: "Vicious", d: n => "+" + 30 * n + "% enemy damage", foe: (e, n) => { e.dmg *= 1 + .3 * n; } },
-  { id: "halfheal", name: "Withering", d: n => "Your healing is cut to " + Math.round(Math.max(.25, Math.pow(.5, n)) * 100) + "%", stats: n => ({ healMult: Math.max(.25, Math.pow(.5, n)) }) },
-  { id: "shield", name: "Warded", d: () => "Every enemy is Shielded", foe: e => addMod(e, "shielded") },
-  { id: "swarm", name: "Swarm", d: n => "+" + Math.min(4, n) + " enemies per wave" },
-  { id: "split", name: "Fission", d: () => "Elites split apart when destroyed", foe: e => { if (e.elite) addMod(e, "splitting"); } },
-  { id: "static", name: "Null Field", d: n => "Your mana regen is " + Math.round((1 - Math.pow(.7, n)) * 100) + "% lower", stats: n => ({ mpRegen: Math.pow(.7, n) }) },
-  { id: "volatile", name: "Unstable", d: () => "Every enemy is Volatile", foe: e => addMod(e, "volatile") },
-  { id: "armor", name: "Plated", d: n => "Enemies take " + Math.round((1 - Math.max(.4, Math.pow(.8, n))) * 100) + "% less damage", foe: (e, n) => { e.fx.push({ take(h) { h.dmg *= Math.max(.4, Math.pow(.8, n)); } }); } }
-];
-function abSeq() {
-  let x = (S.abyss.seed || 1) >>> 0; const ids = AB_RULES.map(r => r.id);
-  for (let i = ids.length - 1; i > 0; i--) { x = (x * 1103515245 + 12345) >>> 0; const j = x % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  return ids;
-}
-const ruleCountAt = (id, d) => { const seq = abSeq(), pos = seq.indexOf(id), k = Math.max(0, d - 1); return Math.floor(k / 12) + (k % 12 > pos ? 1 : 0); };
-const ruleN = id => mode === ABYSS ? ruleCountAt(id, S.abyss.depth) : 0;
-statSource(give => AB_RULES.forEach(r => { const n = ruleN(r.id); if (n) give(r, n); }));
-const ALTAR = [
-  { id: "might", name: "Abyssal Might", max: 50, cost: r => Math.ceil(3 * Math.pow(1.22, r)), desc: r => "+" + 10 * r + "% attack and health", nx: "+10%", stats: r => ({ atk: 1 + .1 * r, maxHp: 1 + .1 * r }) },
-  { id: "reson", name: "Echo Resonance", max: 20, cost: r => Math.ceil(5 * Math.pow(1.3, r)), desc: r => "+" + 5 * r + "% echoes from ascending", nx: "+5%", stats: r => ({ echoGain: 1 + .05 * r }) },
-  { id: "memory", name: "Abyss Memory", max: 5, cost: r => [10, 20, 40, 70, 110][r] || 999, desc: r => "+" + r + "% attack for every depth of your best (now +" + r * abBest() + "%)", nx: "+1% per depth", stats: r => ({ atk: 1 + .01 * r * abBest() }) },
-  { id: "lure", name: "Mythic Lure", max: 10, cost: r => Math.ceil(8 * Math.pow(1.35, r)), desc: r => "+" + 15 * r + "% Mythic drop chance", nx: "+15%", stats: r => ({ mythChance: 1 + .15 * r }) },
-  { id: "flow", name: "Momentum", max: 5, cost: r => [6, 12, 24, 40, 60][r] || 999, desc: r => "Momentum lasts until " + (50 + 5 * r) + "% of your best stage", nx: "+5%", stats: r => ({ momentumAt: plus(.05 * r) }) },
-  { id: "stone", name: "Deep Pockets", max: 10, cost: r => Math.ceil(4 * Math.pow(1.4, r)), desc: r => "+" + 10 * r + "% Voidstone", nx: "+10%", stats: r => ({ stoneGain: 1 + .1 * r }) }
-];
-const ALT = {};
-statSource(give => ALTAR.forEach(a => give(a, AL(a.id))));
- ALTAR.forEach(a => ALT[a.id] = a);
-const AB_MILES = [
-  [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge", { stats: () => ({ orbit3Min: plus(.4) }) }],
-  [10, "Void Step", "Dash tears a rift along its path that deals 300% attack", { fx: {
-    dash(c) {
-      const { x0, y0 } = c;
-      setTimeout(() => {
-        const x1 = view.HERO_X, y1 = view.HERO_Y, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
-        if (!reduce) tempFx(svgEl("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#c08bff", "stroke-width": 10, "stroke-linecap": "round", opacity: .5, class: "glow" }), [{ opacity: .7 }, { opacity: 0 }], 500);
-        foes.forEach(f => { if (f.dead) return; const t = Math.max(0, Math.min(1, ((f.px - x0) * vx + (f.py - y0) * vy) / L2)); if (Math.hypot(f.px - (x0 + vx * t), f.py - (y0 + vy * t)) < f.R + 40) land(f, ST.atk * 3, "aoe"); });
-      }, DASH_TIME * 1000 + 20);
-    }
-  } }],
-  [25, "Rift Keystone", "+25% echo power", { stats: () => ({ echoBonus: 1.25 }) }],
-  [50, "Abyss Heart", "+50% attack and health", { stats: () => ({ atk: 1.5, maxHp: 1.5 }) }],
-  [100, "Endless", "Double Voidstone", { stats: () => ({ stoneGain: 2 }) }]
-];
-statSource(give => AB_MILES.forEach(([d, , , def]) => { if (def && abMile(d)) give(def); }));
-const VOID_SHAPES = [
-  { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
-  { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
-  { n: "Slant", p: [[-.95, -.5], [.45, -.5], [.95, .5], [-.45, .5]] },
-  { n: "Trapeze", p: [[-.45, -.55], [.45, -.55], [.95, .55], [-.95, .55]] },
-  { n: "Chevron", p: [[-.9, -.6], [.3, -.6], [.9, 0], [.3, .6], [-.9, .6], [-.4, 0]] },
-  { n: "Bowtie", p: [[-1, -.7], [0, -.2], [1, -.7], [1, .7], [0, .2], [-1, .7]] },
-  { n: "Notch", p: [[-.8, -.8], [.8, -.8], [.8, .8], [0, .25], [-.8, .8]] },
-  { n: "Shard", p: [[-.9, .6], [.95, .75], [-.2, -.95]] },
-  { n: "Dart", p: [[0, -1], [.7, .8], [0, .35], [-.7, .8]] },
-  { n: "Warp", p: [[-.5, -.9], [.6, -.7], [1, .1], [.4, .85], [-.7, .7], [-.95, -.1]] },
-  { n: "Bolt", p: [[-.3, -1], [.6, -1], [.15, -.15], [.75, -.15], [-.35, 1], [0, .15], [-.6, .15]] },
-  { n: "Spark", p: [[0, -1], [.3, -.3], [1, 0], [.3, .3], [0, 1], [-.3, .3], [-1, 0], [-.3, -.3]] },
-  { n: "Rift", p: [[-.9, -.3], [-.1, -1], [.8, -.6], [.85, .5], [0, .95], [.1, .2]] },
-  { n: "Ell", p: [[-.7, -1], [-.1, -1], [-.1, .3], [.8, .3], [.8, .9], [-.7, .9]] }
-];
-function jitterShape(pts) {
-  let q = pts.map(([x, y]) => [x * (.88 + Math.random() * .24), y * (.88 + Math.random() * .24)]);
-  const cx = q.reduce((a, p) => a + p[0], 0) / q.length, cy = q.reduce((a, p) => a + p[1], 0) / q.length;
-  q = q.map(([x, y]) => [x - cx, y - cy]);
-  const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
-  return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
-}
-const pools = [];
-let poolAcc = 0, poolT = 0;
-const abWaveSize = () => 5 + Math.min(4, ruleN("swarm")) + Math.floor(S.abyss.depth / 15);
-function abStartDepth(pause) { ab.phase = 1; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = pause || 1.5; recalc(); }
-function enterAbyss() {
-  if (mode === ABYSS || !abyssOpen() || heroDown) return;
-  if (!S.abyss.seed) S.abyss.seed = 1 + Math.floor(Math.random() * 1e9);
-  switchMode(ABYSS); closeWindow();
-  log("You enter the Abyss at depth " + S.abyss.depth + ". Clear 3 waves, then the Guardian", "r5"); sfx("chord", 0, 0);
-  floatText("Depth " + S.abyss.depth, "info", "hero", "#ff5fa8");
-}
-function exitAbyss() {
-  if (mode !== ABYSS) return;
-  switchMode(MAIN);
-  log("You left the Abyss. Back to stage " + S.stage, "r0");
-}
-function abyssCleared(e) {
-  const A = S.abyss, d = A.depth, first = d > A.best;
-  const g = Math.ceil((2 + Math.floor(d / 2)) * (first ? 3 : 1) * ST.stoneGain);
-  A.stone += g; A.total += g;
-  if (first) {
-    A.best = d;
-    AB_MILES.forEach(([m, n]) => { if (d === m) { log("Abyss milestone, depth " + m + ": " + n + " unlocked", "r5"); sfx("chord", 0, 300); } });
-  }
-  log("Depth " + d + " cleared: +" + g + " Voidstone" + (first ? " (new best)" : ""), "r5");
-  floatText("+" + g + " Voidstone", "info", e || "hero", "#ff5fa8");
-  A.depth = d + 1; abStartDepth(2.2); setZone(true);
-  markDirty("tree"); save();
-}
-function abyssFail(why) {
-  const A = S.abyss, back = why === "death" ? 2 : 0;
-  A.depth = Math.max(1, A.depth - back); pools.length = 0;
-  log(why === "death" ? "Your core collapsed in the Abyss. Back to depth " + A.depth : "The Guardian slipped away. Depth " + A.depth + " starts over", "bad");
-  abStartDepth(2); markDirty("tree");
-}
-const ABYSS = {
-  stage: () => abyssStage(S.abyss.depth),
-  look: () => ({
-    key: "abyss", hue: 285, sky: "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)",
-    shape: i => jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p)
-  }),
-  mythic: () => true,
-  lumen: () => 1,
-  auto: false,
-  enter() { pools.length = 0; abStartDepth(1.5); },
-  leave() { pools.length = 0; },
-  stepSpawns(dt) {
-    if (ab.pause > 0) { ab.pause -= dt; return; }
-    const live = foes.filter(f => !f.dead).length;
-    if (ab.spawned < ab.need) {
-      spawn.spawnT -= dt;
-      const cap = ab.phase === 4 ? 1 : 6;
-      if (spawn.spawnT > 0 || live >= cap) return;
-      const n = ab.phase === 4 ? 1 : Math.min(1 + rnd(3), cap - live, ab.need - ab.spawned);
-      const base = pickSpawnAngle();
-      for (let i = 0; i < n; i++) {
-        const last = ab.spawned === ab.need - 1;
-        const kind = ab.phase === 4 ? "g" : last && (ab.phase === 3 || (ab.phase === 2 && S.abyss.depth >= 10)) ? "e" : "n";
-        spawnFoe(makeVoid(kind), base + (i - (n - 1) / 2) * .32, i * 22); ab.spawned++;
-      }
-      spawn.spawnT = .7 + Math.random() * .6;
-      return;
-    }
-    if (live > 0 || ab.phase === 4) return;
-    if (ab.phase < 3) { ab.phase++; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = 1.2; floatText("Wave " + ab.phase + "/3", "info", "hero", "#c08bff"); }
-    else { ab.phase = 4; ab.need = 1; ab.spawned = 0; ab.pause = 1.6; floatText("Guardian", "info", "hero", "#ff5fa8"); sfx("warn"); }
-  },
-  step(dt) {
-    const n = ruleN("pools"); poolT += dt;
-    for (let i = pools.length - 1; i >= 0; i--) {
-      const P = pools[i]; P.t -= dt;
-      if (P.t <= 0) { pools.splice(i, 1); continue; }
-      if (!heroDown && !(dashIT > 0) && Math.hypot(view.HERO_X - P.x, view.HERO_Y - P.y) < P.R) poolAcc += ST.maxHp * .03 * Math.max(1, n) * dt;
-    }
-    if (poolT >= .5) { poolT = 0; if (poolAcc > 0) { trueDamage(poolAcc, "Poison"); poolAcc = 0; } }
-  },
-  kill(e) { if (e.boss) abyssCleared(e); },
-  death() { abyssFail("death"); },
-  escape() { clearFoes(true); abyssFail("escape"); },
-  hud() {
-    const live = foes.filter(f => !f.dead).length;
-    return { title: "Depth " + S.abyss.depth, button: "Leave Abyss", prog: ab.need ? (ab.spawned - live) / ab.need : 0, sub: (ab.phase === 4 ? "Guardian" : "Wave " + ab.phase + "/3") + ", best " + abBest() };
-  },
-  button() { exitAbyss(); }
-};
-function addPool(x, y) {
-  pools.push({ x, y, R: 34, t: 5 });
-  if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 34, fill: "rgba(120,255,140,.16)", stroke: "#7dff8a", "stroke-width": 1.5, "stroke-dasharray": "4 4" }), [{ opacity: 0 }, { opacity: 1, offset: .08 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 5000);
-}
-// Void enemies blink: every few seconds they vanish and reappear somewhere else around you
-const VOID_BLINK = {
-  tick(c, e) {
-    if (e.boss || !e.arrived || e.stun > 0) return;
-    e.blinkT -= c.dt;
-    if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); }
-  }
-};
-function makeVoid(kind) {
-  const d = S.abyss.depth, boss = kind === "g";
-  const v = pick(VARIANTS), T0 = pick(VOID_SHAPES), shape = jitterShape(T0.p), hue = pick([280, 300, 190, 320, 165, 250]);
-  const e = makeFoe({ stage: abyssStage(d), boss, elite: kind === "e", v, zone: 5 + d % 8, timer: 75 + ST.bossTime });
-  Object.assign(e, {
-    sides: shape.length, shape, void: true, tone: "r5", hue, fill: "hsl(" + hue + " 40% 9%)", stroke: "hsl(" + hue + " 95% 66%)",
-    tier: Math.min(4, 2 + (boss ? 2 : e.elite ? 1 : 0) + (Math.random() < .3 ? 1 : 0)), R: Math.round((boss ? 36 : e.elite ? 31 : 26) * v.size),
-    name: (boss ? "Guardian " : e.elite ? "Elite " : "") + "Void " + T0.n, blinkT: 3 + Math.random() * 4
-  });
-  e.fx.push(VOID_BLINK);
-  AB_RULES.forEach(r => { const n = ruleN(r.id); if (n && r.foe) r.foe(e, n); });
-  return e;
-}
-function voidBlink(e) {
-  ringIfRoom(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
-  const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;
-  e.px = view.HERO_X + Math.cos(a) * dist; e.py = view.HERO_Y + Math.sin(a) * dist; e.vx = 0; e.vy = 0;
-  newWaypoint(e); setFoePos(e); ringIfRoom(e.px, e.py, e.stroke, .2, 2, 300, 2);
-}
-function renderAbyss() {
-  if (!abyssOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to open the Abyss.</p>";
-  const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
-  let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
-    '<div class="note" style="margin:0">The Abyss is an endless climb that never resets, not even when you transcend. Each depth is 3 waves of Void shapes and a Guardian. Clear it for Voidstone and go one deeper. Every depth adds a rule. Die and you fall back 2 depths. Mythics can drop from Guardians. Your build comes with you; leaving puts you back on stage ' + S.stage + ".</div>" +
-    '<div class="ctrls" style="margin:0"><button class="btn go" data-act="' + (mode === ABYSS ? "abLeave" : "abEnter") + '">' + (mode === ABYSS ? "Leave the Abyss" : "Enter at depth " + d) + "</button>" +
-    (mode !== ABYSS && d > 1 ? '<button class="btn" data-act="abDown">Start 5 depths lower</button>' : "") + "</div></div>";
-  h += '<h4 class="forgeH">Depth ' + d + " rules</h4>" + (rules.length ? rules.map(([r, n]) => '<div class="row forge"><span class="n">' + r.name + (n > 1 ? " x" + n : "") + '</span><span class="d">' + r.d(n) + "</span></div>").join("") : '<p class="note">None yet. A new rule joins at every depth from depth 2.</p>');
-  h += '<h4 class="forgeH">Milestones</h4>' + AB_MILES.map(([m, n, t]) => '<div class="row forge"><span class="n">Depth ' + m + ": " + n + (A.best >= m ? " ✓" : "") + '</span><span class="d"' + (A.best >= m ? "" : ' style="opacity:.6"') + ">" + t + "</span></div>").join("");
-  h += '<h4 class="forgeH">Abyss Altar</h4>';
-  ALTAR.forEach(a => {
-    const r = AL(a.id), maxed = r >= a.max, c = a.cost(r);
-    h += '<div class="row forge"><span class="n">' + a.name + " · Rank " + r + " / " + a.max + '</span><span class="d">' + a.desc(r) + (maxed ? "" : '<span class="nx"> → ' + a.nx + "</span>") + "</span>" +
-      '<div class="side">' + (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn voidb" data-act="altar" data-id="' + a.id + '">' + c + " Voidstone</button>") + "</div></div>";
-  });
-  return h;
-}
-action("abEnter", () => enterAbyss());
-action("abLeave", () => { exitAbyss(); closeWindow(); });
-action("abDown", () => { S.abyss.depth = Math.max(1, S.abyss.depth - 5); });
-action("altar", id => {
-  const a = ALT[id], r = AL(id), c = a.cost(r);
-  if (r >= a.max || S.abyss.stone < c) return false;
-  S.abyss.stone -= c; S.abyss.altar[id] = r + 1; sfx("chord", 0, 0); log("Abyss Altar: " + a.name + " rank " + (r + 1), "r5");
-});
-
 // ---- js/web/web.js
 // The ascension web: nodes and what they do, buying and refunding, and the web window with its gestures.
 
@@ -2240,7 +2027,7 @@ const TREE = [
   { id: "e5", br: "edge", x: 75, y: -190, s: "Echo tap", name: "Echoing Tap", max: 10, c: 2, desc: "+5% chance per rank for taps to strike twice", fx: { tap: (c, n) => { if (Math.random() < .05 * n) hit(c.base, 140, "tap"); } } },
   { id: "e6", br: "edge", x: -60, y: -250, s: "Execute", name: "Execute", max: 5, c: 3, desc: "+10% damage per rank to enemies under 30% health", fx: { deal: (h, n) => { if (h.e.hp / h.e.max < .3) h.dmg *= 1 + .1 * n; } } },
   { id: "e7", br: "edge", x: 60, y: -250, s: "Slayer", name: "Giant Slayer", max: 10, c: 3, desc: "+10% damage per rank to bosses", stats: n => ({ bossDmg: 1 + .1 * n }) },
-  { id: "e8", br: "edge", x: 0, y: -290, s: "Supernova", name: "Supernova", max: 1, c: 15, cap: true, desc: "Nova strikes twice", fx: { cast: c => { if (c.id === "nova") setTimeout(() => { if (alive()) { novaFx(); hit(c.dmg, 220, "nova"); } }, 350); } } },
+  { id: "e8", br: "edge", x: 0, y: -290, s: "Supernova", name: "Supernova", max: 1, c: 15, cap: true, desc: "Nova strikes twice", fx: { cast: c => { if (c.id === "nova") setTimeout(() => { if (alive()) { novaFx(); hit(c.dmg, NOVA_MS, "nova"); } }, 350); } } },
   { id: "w1", br: "ward", x: 70, y: 0, s: "Vital", name: "Vital Core", max: 20, c: 1, desc: "x1.10 health per rank, compounding", stats: n => ({ maxHp: Math.pow(1.1, n) }) },
   { id: "w2", br: "ward", x: 130, y: -45, s: "Spring", name: "Mana Spring", max: 10, c: 2, desc: "+10% max mana and mana regen per rank", stats: n => ({ maxMp: 1 + .1 * n, mpRegen: 1 + .1 * n }) },
   { id: "w3", br: "ward", x: 130, y: 45, s: "Thick", name: "Thick Shell", max: 10, c: 2, desc: "-3% damage taken per rank", stats: n => ({ dmgTaken: cutBy("armor", .03 * n) }) },
@@ -2329,8 +2116,7 @@ const owned = n => T(n.id) > 0;
 const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
 const nodeR = n => n.key ? 20 : n.cap ? 17 : n.id === "core" ? 16 : n.br === "bridge" ? 12 : n.c >= 2 ? 13 : 11;
 function renderTree() {
-  $("transBody").innerHTML = renderTrans();
-  $("abyssBody").innerHTML = renderAbyss();
+  renderSheets("tree");
   const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
   $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
     '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
@@ -2377,7 +2163,7 @@ function renderTree() {
 }
 panel("tree", {
   render: renderTree,
-  tabs: () => [["web", "Web"], ["asc", "Ascend"]].concat(transOpen() ? [["trans", "Transcend"]] : [], abyssOpen() ? [["abyss", "Abyss"]] : []),
+  tabs: () => [["web", "Web"], ["asc", "Ascend"]].concat(sheetTabs("tree")),
   fill: sub => sub === "web" ? "web" : "",
   shown: centerWeb
 });
@@ -2501,7 +2287,7 @@ const SKILLS = [
     id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, smart: 3, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z",
     dmg: L => ST.atk * 2.5 * skMult(L) * ST.skillPow * ST.novaPow,
     desc: L => "Burst for " + fmt(SK.nova.dmg(L)) + " damage",
-    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, 220, "nova"); }
+    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, NOVA_MS, "nova"); }
   },
   {
     id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, reserve: true, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z",
@@ -2761,6 +2547,7 @@ function renderTrans() {
   h += row("Smart Cast", "Auto-cast saves big skills for elites, bosses and groups.", '<button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button>");
   return h;
 }
+sheet("tree", "trans", { label: "Transcend", at: 1, open: () => transOpen(), body: "transBody", render: renderTrans });
 action("transcend", (id, b) => {
   if (!transOpen() || !canTrans()) return false;
   if (!confirmTap(b, "Tap again to transcend")) return false;
@@ -2784,50 +2571,94 @@ action("smartT", () => { S.autoCfg.smart = S.autoCfg.smart === false; });
 // ---- js/hero/orbitals.js
 // The hero's orbitals: the three slots, weapon types and traits, firing, posing and their projectiles.
 
-const HERO_WEAPON = {
-  Drone: "M-5 -3 L0 -6 L5 -3 L5 3 L0 6 L-5 3 Z M-10 -1.5 L-5 -1.5 L-5 1.5 L-10 1.5 Z M5 -1.5 L10 -1.5 L10 1.5 L5 1.5 Z",
-  Glaive: "M0 -12 Q5 -4 0 0 Q-5 -4 0 -12 Z M0 12 Q-5 4 0 0 Q5 4 0 12 Z M-12 0 Q-4 -5 0 0 Q-4 5 -12 0 Z M12 0 Q4 5 0 0 Q4 -5 12 0 Z",
-  Laser: "M0 -10 L8 6 L-8 6 Z M0 -1 A2.5 2.5 0 1 1 0.01 -1 Z",
-  Swarm: "M0 -10 L2.5 -6 L0 -2 L-2.5 -6 Z M-6 2 L-3.5 6 L-6 10 L-8.5 6 Z M6 2 L8.5 6 L6 10 L3.5 6 Z",
-  Hammer: "M-9 -7 L9 -7 L9 3 L-9 3 Z M-2 3 L2 3 L2 11 L-2 11 Z",
-  Coil: "M-6 -10 L6 -10 L6 -7 L-6 -7 Z M-5 -4 L5 -4 L5 -1 L-5 -1 Z M-4 2 L4 2 L4 5 L-4 5 Z M-1.5 5 L1.5 5 L1.5 12 L-1.5 12 Z"
-};
-const WTRAIT = {
-  Drone: { rate: 1.3, dmg: .8, name: "Rapid", up: hi => ({ rate: [1.3, 1.4, 1.5][hi] }), text: o => "Fires " + pc(o.rate - 1) + "% faster at " + pc(o.dmg) + "% damage per volley" },
-  Glaive: { rate: 1, dmg: .55, knock: 9, name: "Returning", up: hi => ({ dmg: [.55, .65, .75][hi] }), text: o => "Hits on the way out and again on the way back, " + pc(o.dmg) + "% each" },
-  Laser: { rate: 1, dmg: .95, pierce: true, name: "Piercing", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Ignores Shielded blocks and Armored damage reduction" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
-  Swarm: { rate: 1, dmg: 1, seeking: true, name: "Seeking", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Can't be dodged by Umbrals and pops boss shard motes like a tap" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
-  Hammer: { rate: .7, dmg: 1.6, knock: 20, name: "Crushing", up: hi => ({ stun: [.2, .3, .4][hi] }), text: o => "Slow, heavy hits with a " + pc(o.stun) + "% chance to briefly stun the target" },
-  Coil: { rate: 1, dmg: .85, name: "Chaining", up: (hi, r) => ({ chain: COIL[r] }), text: o => pc(o.chain[0]) + "% chance to chain to " + o.chain[1] + " more " + (o.chain[1] > 1 ? "enemies" : "enemy") + " for 60% damage each" },
-  Mote: { rate: 1, dmg: 1, name: "Mote" }
-};
 const SLOT2_AT = 25, SLOT2_DMG = .6;
-const WDELAY = { Glaive: 170, Drone: 120, Laser: 60, Swarm: 190, Hammer: 230, Coil: 60 };
-const MOTE = "M0 -3.5 A3.5 3.5 0 1 1 0.01 -3.5 Z";
 const COIL = [[.3, 1], [.3, 1], [.3, 2], [.35, 3], [.4, 4], [.5, 5]];
 const pc = v => Math.round(v * 100);
+// Every orbital weapon type in one place.
+//   path: its sprite. trait: what it does at each rarity (see traitOf). bare: not an item type (an empty main slot).
+//   Timing, so the hit lands as the shot arrives: fixed ms for beams, else flight at speed px/s, or wait ms with no
+//   target to measure. muzzle: how far ahead of the orbital shots start. flash: muzzle flash and recoil on firing.
+//   spin: the orbital spins in place instead of aiming. again: a second hit at this multiple of the flight time.
+//   impact: how its hits look ("spark", "beam" = spark and ring, "arc" = a slash). shoot(c): draws one volley.
+const WEAPON = {
+  Drone: { path: "M-5 -3 L0 -6 L5 -3 L5 3 L0 6 L-5 3 Z M-10 -1.5 L-5 -1.5 L-5 1.5 L-10 1.5 Z M5 -1.5 L10 -1.5 L10 1.5 L5 1.5 Z", trait: { rate: 1.3, dmg: .8, name: "Rapid", up: hi => ({ rate: [1.3, 1.4, 1.5][hi] }), text: o => "Fires " + pc(o.rate - 1) + "% faster at " + pc(o.dmg) + "% damage per volley" },
+    wait: 120, speed: 900, muzzle: 6, flash: true, impact: "spark", shoot: c => bolts(c, 2) },
+  Glaive: { path: "M0 -12 Q5 -4 0 0 Q-5 -4 0 -12 Z M0 12 Q-5 4 0 0 Q5 4 0 12 Z M-12 0 Q-4 -5 0 0 Q-4 5 -12 0 Z M12 0 Q4 5 0 0 Q4 -5 12 0 Z", trait: { rate: 1, dmg: .55, knock: 9, name: "Returning", up: hi => ({ dmg: [.55, .65, .75][hi] }), text: o => "Hits on the way out and again on the way back, " + pc(o.dmg) + "% each" },
+    wait: 170, speed: 760, muzzle: 0, spin: true, again: 1.4, impact: "arc", shoot: c => {
+      // the glaive itself flies out, spins on the target and comes back to its spot in orbit
+      const g = svgEl("g", {}); g.style.color = c.glowC;
+      svgEl("path", { d: WEAPON.Glaive.path, fill: c.col, class: "glow", transform: c.crit ? "scale(1.4)" : "" }, g);
+      if (c.idx === undefined) hideFor(c.orbit, c.T * (WEAPON.Glaive.again + 1));
+      launch(g, c.ox, c.oy, c.tgt, c.T, { glaive: c.slot, fast: c.crit, offy: c.off });
+    } },
+  Laser: { path: "M0 -10 L8 6 L-8 6 Z M0 -1 A2.5 2.5 0 1 1 0.01 -1 Z", trait: { rate: 1, dmg: .95, pierce: true, name: "Piercing", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Ignores Shielded blocks and Armored damage reduction" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
+    fixed: 60, muzzle: 10, flash: true, impact: "beam", shoot: c => {
+      const g = svgEl("g", {}); g.style.color = c.glowC;
+      svgEl("line", { x1: c.ox, y1: c.oy, x2: c.tx, y2: c.ty, stroke: c.col, "stroke-width": c.crit ? 7 : 4.5, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
+      svgEl("line", { x1: c.ox, y1: c.oy, x2: c.tx, y2: c.ty, stroke: "#fff", "stroke-width": c.crit ? 2.5 : 1.5, "stroke-linecap": "round" }, g);
+      svgEl("circle", { cx: c.ox, cy: c.oy, r: c.crit ? 6 : 4, fill: "#fff" }, g);
+      tempFx(g, [{ opacity: 1 }, { opacity: 1, offset: .5 }, { opacity: 0 }], 200);
+    } },
+  Swarm: { path: "M0 -10 L2.5 -6 L0 -2 L-2.5 -6 Z M-6 2 L-3.5 6 L-6 10 L-8.5 6 Z M6 2 L8.5 6 L6 10 L3.5 6 Z", trait: { rate: 1, dmg: 1, seeking: true, name: "Seeking", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Can't be dodged by Umbrals and pops boss shard motes like a tap" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
+    wait: 190, speed: 700, muzzle: 10, flash: true, impact: "arc", shoot: c => {
+      for (let i = 0; i < 3; i++) {
+        const g = svgEl("g", {}); g.style.color = c.glowC;
+        svgEl("polygon", { points: c.crit ? "0,-6 4,0 0,6 -4,0" : "0,-4.5 3,0 0,4.5 -3,0", fill: c.col, class: "glow" }, g);
+        launch(g, c.ox, c.oy, c.tgt, c.T, { bulge: (i - 1) * 24, face: 90, offy: c.off + (i - 1) * 4, wait: i * 30 });
+      }
+    } },
+  Hammer: { path: "M-9 -7 L9 -7 L9 3 L-9 3 Z M-2 3 L2 3 L2 11 L-2 11 Z", trait: { rate: .7, dmg: 1.6, knock: 20, name: "Crushing", up: hi => ({ stun: [.2, .3, .4][hi] }), text: o => "Slow, heavy hits with a " + pc(o.stun) + "% chance to briefly stun the target" },
+    wait: 230, speed: 620, muzzle: 7, impact: "arc", shoot: c => {
+      if (c.idx === undefined) hideFor(c.orbit, c.T + 110);
+      const g = svgEl("g", {}); g.style.color = c.glowC;
+      svgEl("path", { d: WEAPON.Hammer.path, fill: c.col, class: "glow", transform: "scale(" + (c.crit ? 1.9 : 1.5) + ")" }, g);
+      launch(g, c.ox, c.oy, c.tgt, c.T, { spin: c.crit ? 720 : 540, offy: c.off, done: (x, y) => { ringIfRoom(x, y, c.col, .8, 3.2, 300, 4); shake(c.crit ? 5 : 2, 140); } });
+    } },
+  Coil: { path: "M-6 -10 L6 -10 L6 -7 L-6 -7 Z M-5 -4 L5 -4 L5 -1 L-5 -1 Z M-4 2 L4 2 L4 5 L-4 5 Z M-1.5 5 L1.5 5 L1.5 12 L-1.5 12 Z", trait: { rate: 1, dmg: .85, name: "Chaining", up: (hi, r) => ({ chain: COIL[r] }), text: o => pc(o.chain[0]) + "% chance to chain to " + o.chain[1] + " more " + (o.chain[1] > 1 ? "enemies" : "enemy") + " for 60% damage each" },
+    fixed: 60, muzzle: 10, flash: true, impact: "spark", shoot: c => {
+      const g = svgEl("g", {}); g.style.color = c.glowC;
+      const d = zigzag(c.ox, c.oy, c.tx, c.ty, 7, 16);
+      svgEl("path", { d, fill: "none", stroke: c.col, "stroke-width": c.crit ? 5 : 3.5, "stroke-linejoin": "round", class: "glow" }, g);
+      svgEl("path", { d, fill: "none", stroke: "#fff", "stroke-width": 1.2, "stroke-linejoin": "round" }, g);
+      const bx = c.ox + (c.tx - c.ox) * .55, by = c.oy + (c.ty - c.oy) * .55;
+      svgEl("path", { d: zigzag(bx, by, bx + 14, by + 26, 3, 8), fill: "none", stroke: c.col, "stroke-width": 1.5 }, g);
+      tempFx(g, [{ opacity: 1 }, { opacity: .3, offset: .3 }, { opacity: 1, offset: .5 }, { opacity: 0 }], 200);
+    } },
+  Mote: { path: "M0 -3.5 A3.5 3.5 0 1 1 0.01 -3.5 Z", bare: true, trait: { rate: 1, dmg: 1, name: "Mote" },
+    wait: 120, speed: 850, muzzle: 3, flash: true, impact: "spark", shoot: c => bolts(c, 1) }
+};
+// Drone and Mote: straight bolts, Drone's two from either side of the orbital
+function bolts(c, n) {
+  const O = c.O, px = -O.uy, py = O.ux;
+  for (let i = 0; i < n; i++) {
+    const g = svgEl("g", {}); g.style.color = c.glowC;
+    const sd = n === 2 ? (i ? 8 : -8) : 0, sx = n === 2 ? view.HERO_X + O.x + px * sd + O.ux * 2 : c.ox, sy = n === 2 ? view.HERO_Y + O.y + py * sd + O.uy * 2 : c.oy;
+    svgEl("line", { x1: -7, y1: 0, x2: 7, y2: 0, stroke: c.col, "stroke-width": c.crit ? 4 : 3, "stroke-linecap": "round", class: "glow" }, g);
+    launch(g, sx, sy, c.tgt, c.T, { face: 0, offx: px * sd * .4, offy: c.off + py * sd * .4, wait: i * 50 });
+  }
+}
+// an orbital that throws itself is hidden from its slot while it's away
+function hideFor(el, ms) { el.style.opacity = "0"; setTimeout(() => { el.style.opacity = ""; }, ms); }
 // an orbital's trait at its rarity: Legendary and Mythic strengthen it (hi 1 and 2); boost multiplies its damage
 function traitOf(it) {
-  const t = it ? weaponType(it) : "Mote", b = WTRAIT[t], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+  const t = it ? weaponType(it) : "Mote", b = WEAPON[t].trait, r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
   const o = Object.assign({ name: b.name, rate: b.rate, dmg: b.dmg, boost: 1, stun: 0, chain: null, pierce: !!b.pierce, seeking: !!b.seeking, knock: b.knock || 12 }, b.up ? b.up(hi, r) : {});
   o.dmg *= o.boost;
   return o;
 }
 const wTr = slot => traitOf(S.equip[slot]);
-const traitText = it => WTRAIT[weaponType(it)].text(traitOf(it));
+const traitText = it => WEAPON[weaponType(it)].trait.text(traitOf(it));
 let attackCount = 0;
-const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
 // an orbital item's weapon type (old names it doesn't know fall back to Glaive)
-const weaponType = it => HERO_WEAPON[noun(it)] ? noun(it) : "Glaive";
+const weaponType = it => { const n = noun(it); return WEAPON[n] && !WEAPON[n].bare ? n : "Glaive"; };
 const wType = (slot = "weapon") => S.equip[slot] ? weaponType(S.equip[slot]) : "Mote";
 // flight time from the orbital's muzzle to the target; the hit lands exactly when the shot arrives
-const SHOT_SPD = { Drone: 900, Mote: 850, Swarm: 700, Hammer: 620, Glaive: 760 };
 function wDelay(slot = "weapon") {
-  const t = wType(slot);
-  if (t === "Laser" || t === "Coil") return 60;
-  if (!enemy) return WDELAY[t] || 120;
+  const W = WEAPON[wType(slot)];
+  if (W.fixed) return W.fixed;
+  if (!enemy) return W.wait;
   const [ox, oy] = orbitPos(slot), d = Math.max(0, Math.hypot(enemy.px - ox, enemy.py - oy) - enemy.R * .35);
-  return Math.round(Math.max(70, Math.min(800, d / (SHOT_SPD[t] || 850) * 1000)));
+  return Math.round(Math.max(70, Math.min(800, d / W.speed * 1000)));
 }
 // projectiles are moved every frame toward where their target is now, so they always connect
 const shots = [];
@@ -2854,8 +2685,8 @@ function stepShots(now) {
       // out to the target, a quick spin on it, then back to its spot in orbit
       const O = ORBIT[o.glaive].pose, bx = view.HERO_X + O.x, by = view.HERO_Y + O.y;
       if (el < 1) { const u = 1 - (1 - el) * (1 - el); x = sh.x0 + (ex - sh.x0) * u; y = sh.y0 + (ey - sh.y0) * u; }
-      else if (el < 1.4) { x = ex; y = ey; }
-      else { const u = Math.min(1, (el - 1.4) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
+      else if (el < WEAPON.Glaive.again) { x = ex; y = ey; }
+      else { const u = Math.min(1, (el - WEAPON.Glaive.again) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
       rot = (now - sh.t0) * (o.fast ? 1.6 : 1.1);
     } else {
       const u = Math.min(1, el), dx = ex - sh.x0, dy = ey - sh.y0, L = Math.hypot(dx, dy) || 1, bulge = (o.bulge || 0) * Math.sin(Math.PI * u);
@@ -2868,7 +2699,7 @@ function stepShots(now) {
     if (done) { sh.el.remove(); shots.splice(i, 1); if (o.done) o.done(x, y); }
   }
 }
-// The three orbital slots. The main one always fires (a bare Glaive when empty); the others fire when open and filled.
+// The three orbital slots. The main one always fires (a bare Mote when empty); the others fire when open and filled.
 // share: damage relative to the main orbital. pose: where it sits around the core right now. cd: time to its next volley.
 const ORBITALS = [
   { key: "weapon", label: "Main orbital", nth: "main", share: () => 1, open: () => true, ids: ["hBladeOrbit", "hWpn1", "hWeapon"], cd0: .5, pose: { a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 } },
@@ -2888,7 +2719,6 @@ function slotAtk(slot) {
   return ST.atk * (5 + p2) / (5 + p1) * ORBIT[slot].share() * ST.orbDmg;
 }
 // orbitals glide around the core toward the target's side and keep their muzzles pointed at it
-const MUZ = { Drone: 6, Laser: 10, Swarm: 10, Coil: 10, Hammer: 7, Glaive: 0, Mote: 3 };
 let orbT = 0;
 function poseOrbitals(dt) {
   const t = enemy && !enemy.dead ? enemy : null, od = hero.odT > 0;
@@ -2898,7 +2728,7 @@ function poseOrbitals(dt) {
   for (let i = 0; i < 3; i++) {
     if (!act[i]) continue;
     k++;
-    const o = ORBITALS[i].pose, type = wType(ORBITALS[i].key);
+    const o = ORBITALS[i].pose, W = WEAPON[wType(ORBITALS[i].key)];
     const spread = n === 1 ? 0 : n === 2 ? (k ? .55 : -.55) : [-.8, 0, .8][k];
     if (t) {
       const goal = Math.atan2(t.py - view.HERO_Y, t.px - view.HERO_X) + spread + (reduce ? 0 : Math.sin(orbT * [1.2, .9, 1.05][i] + i * 2.1) * (n > 1 ? .3 : .55));
@@ -2909,73 +2739,35 @@ function poseOrbitals(dt) {
     const aim = t ? Math.atan2(t.py - (view.HERO_Y + o.y), t.px - (view.HERO_X + o.x)) : o.a;
     o.ux = Math.cos(aim); o.uy = Math.sin(aim);
     let rot = aim * 57.2958 + 90;
-    if (type === "Glaive") { if (!reduce) o.sp = (o.sp + dt * (od ? 900 : 420)) % 360; rot = o.sp; }
+    if (W.spin) { if (!reduce) o.sp = (o.sp + dt * (od ? 900 : 420)) % 360; rot = o.sp; }
     $(ORBITALS[i].ids[1]).setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ") rotate(" + rot.toFixed(1) + ")");
   }
 }
 function orbitPos(slot = "weapon") {
-  const o = ORBIT[slot].pose, L = MUZ[wType(slot)] || 0;
+  const o = ORBIT[slot].pose, L = WEAPON[wType(slot)].muzzle;
   return [view.HERO_X + o.x + o.ux * L, view.HERO_Y + o.y + o.uy * L];
 }
 function throwBlade(crit, idx, slot = "weapon") {
   if (slot === "weapon" && idx === undefined) sfx(wType(slot), 0, 200);
   anim($("hCore"), [{ transform: "scale(1)" }, { transform: "scale(1.35)" }, { transform: "scale(1)" }], 200);
   if (reduce || !enemy) return;
-  const hBladeOrbit = $(ORBIT[slot].ids[0]), tgt = enemy, T = wDelay(slot);
-  const w = S.equip[slot], type = wType(slot), col = w ? ARENA_C[w.r] : "#effffc", glowC = w ? col : "#7be0d0";
-  const off = idx ? ((idx % 3) - 1) * 14 : 0, [ox, oy] = orbitPos(slot), O = ORBIT[slot].pose;
+  const tgt = enemy, T = wDelay(slot);
+  const w = S.equip[slot], W = WEAPON[wType(slot)], col = w ? ARENA_C[w.r] : "#effffc", glowC = w ? col : "#7be0d0";
+  const off = idx ? ((idx % 3) - 1) * 14 : 0, [ox, oy] = orbitPos(slot);
   let tx = tgt.px, ty = tgt.py + off;
   { const dd = Math.hypot(tx - ox, ty - oy) || 1, pull = tgt.R * .35; tx -= (tx - ox) / dd * pull; ty -= (ty - oy) / dd * pull; }
-  if (type !== "Glaive" && type !== "Hammer") {
+  if (W.flash) {
     anim($(ORBIT[slot].ids[2]), [{ transform: "translate(0px,0px)" }, { transform: "translate(0px,3.5px)", offset: .25 }, { transform: "translate(0px,0px)" }], 160);
     tempFx(svgEl("circle", { cx: ox, cy: oy, r: crit ? 5 : 3.5, fill: "#fff" }), [{ opacity: .95 }, { opacity: 0 }], 120);
   }
-  if (type === "Glaive") {
-    const g = svgEl("g", {}); g.style.color = glowC;
-    svgEl("path", { d: HERO_WEAPON.Glaive, fill: col, class: "glow", transform: crit ? "scale(1.4)" : "" }, g);
-    if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, T * 2.4); }
-    launch(g, ox, oy, tgt, T, { glaive: slot, fast: crit, offy: off });
-  } else if (type === "Laser") {
-    const g = svgEl("g", {}); g.style.color = glowC;
-    svgEl("line", { x1: ox, y1: oy, x2: tx, y2: ty, stroke: col, "stroke-width": crit ? 7 : 4.5, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
-    svgEl("line", { x1: ox, y1: oy, x2: tx, y2: ty, stroke: "#fff", "stroke-width": crit ? 2.5 : 1.5, "stroke-linecap": "round" }, g);
-    svgEl("circle", { cx: ox, cy: oy, r: crit ? 6 : 4, fill: "#fff" }, g);
-    tempFx(g, [{ opacity: 1 }, { opacity: 1, offset: .5 }, { opacity: 0 }], 200);
-  } else if (type === "Coil") {
-    const g = svgEl("g", {}); g.style.color = glowC;
-    const d = zigzag(ox, oy, tx, ty, 7, 16);
-    svgEl("path", { d, fill: "none", stroke: col, "stroke-width": crit ? 5 : 3.5, "stroke-linejoin": "round", class: "glow" }, g);
-    svgEl("path", { d, fill: "none", stroke: "#fff", "stroke-width": 1.2, "stroke-linejoin": "round" }, g);
-    const bx = ox + (tx - ox) * .55, by = oy + (ty - oy) * .55;
-    svgEl("path", { d: zigzag(bx, by, bx + 14, by + 26, 3, 8), fill: "none", stroke: col, "stroke-width": 1.5 }, g);
-    tempFx(g, [{ opacity: 1 }, { opacity: .3, offset: .3 }, { opacity: 1, offset: .5 }, { opacity: 0 }], 200);
-  } else if (type === "Swarm") {
-    for (let i = 0; i < 3; i++) {
-      const g = svgEl("g", {}); g.style.color = glowC;
-      svgEl("polygon", { points: crit ? "0,-6 4,0 0,6 -4,0" : "0,-4.5 3,0 0,4.5 -3,0", fill: col, class: "glow" }, g);
-      launch(g, ox, oy, tgt, T, { bulge: (i - 1) * 24, face: 90, offy: off + (i - 1) * 4, wait: i * 30 });
-    }
-  } else if (type === "Hammer") {
-    if (idx === undefined) { hBladeOrbit.style.opacity = "0"; setTimeout(() => { hBladeOrbit.style.opacity = ""; }, T + 110); }
-    const g = svgEl("g", {}); g.style.color = glowC;
-    svgEl("path", { d: HERO_WEAPON.Hammer, fill: col, class: "glow", transform: "scale(" + (crit ? 1.9 : 1.5) + ")" }, g);
-    launch(g, ox, oy, tgt, T, { spin: crit ? 720 : 540, offy: off, done: (x, y) => { ringIfRoom(x, y, col, .8, 3.2, 300, 4); shake(crit ? 5 : 2, 140); } });
-  } else {
-    const n = type === "Drone" ? 2 : 1, px = -O.uy, py = O.ux;
-    for (let i = 0; i < n; i++) {
-      const g = svgEl("g", {}); g.style.color = glowC;
-      const sd = n === 2 ? (i ? 8 : -8) : 0, sx = n === 2 ? view.HERO_X + O.x + px * sd + O.ux * 2 : ox, sy = n === 2 ? view.HERO_Y + O.y + py * sd + O.uy * 2 : oy;
-      svgEl("line", { x1: -7, y1: 0, x2: 7, y2: 0, stroke: col, "stroke-width": crit ? 4 : 3, "stroke-linecap": "round", class: "glow" }, g);
-      launch(g, sx, sy, tgt, T, { face: 0, offx: px * sd * .4, offy: off + py * sd * .4, wait: i * 50 });
-    }
-  }
+  W.shoot({ crit, idx, slot, tgt, T, col, glowC, ox, oy, tx, ty, off, O: ORBIT[slot].pose, orbit: $(ORBIT[slot].ids[0]) });
 }
 function fireOrbital(slot) {
-  const t = wType(slot), tr = wTr(slot), base = slotAtk(slot) * tr.dmg;
+  const W = WEAPON[wType(slot)], tr = wTr(slot), base = slotAtk(slot) * tr.dmg;
   const T = wDelay(slot);
   throwBlade(false, undefined, slot);
   hit(base, T, "blade", slot);
-  if (t === "Glaive") hit(base, Math.round(T * 1.4), "blade", slot);
+  if (W.again) hit(base, Math.round(T * W.again), "blade", slot);
   if (tr.chain && Math.random() < tr.chain[0]) setTimeout(() => chainZap(enemy, tr.chain[1], slotAtk(slot) * .6, slot), T + 20);
   emit("fire", { slot, delay: T });
 }
@@ -3020,6 +2812,7 @@ function heroAttack() {
 
 const PACK_CAP = 20;
 const SLOTS = [
+  // the weapon nouns are the item types in WEAPON (hero/orbitals.js); a new type needs adding to both
   { id: "weapon", name: "Orbital", nouns: ["Drone", "Glaive", "Laser", "Swarm", "Hammer", "Coil"], shape: "M18 2 L25 26 L18 34 L11 26 Z", role: "attack", stats: (p, q) => ({ atk: onBase(p) }), main: (p, q) => "+" + fmt(p) + " attack" },
   { id: "armor", name: "Shell", nouns: ["Ring", "Lattice", "Carapace", "Aegis", "Bulwark", "Mirror"], shape: "M18 2 L32 10 L32 26 L18 34 L4 26 L4 10 Z M18 10 L25 14 L25 22 L18 26 L11 22 L11 14 Z", role: "health", stats: (p, q) => ({ maxHp: onBase(6 * p) }), main: (p, q) => "+" + fmt(6 * p) + " health" },
   { id: "boots", name: "Corona", nouns: ["Sunburst", "Petal", "Spire", "Ember", "Halo", "Wake"], shape: "M25 18 A7 7 0 1 1 11 18 A7 7 0 1 1 25 18 Z M18 1 L20.5 8 L15.5 8 Z M18 35 L15.5 28 L20.5 28 Z M1 18 L8 15.5 L8 20.5 Z M35 18 L28 20.5 L28 15.5 Z M6 6 L12 10 L10 12 Z M30 30 L24 26 L26 24 Z M30 6 L26 12 L24 10 Z M6 30 L10 24 L12 26 Z", role: "speed and evasion", stats: (p, q) => ({ evaR: onBase(p), spd: 1 + .12 * q }), main: (p, q) => "+" + Math.round(12 * q) + "% attack speed, " + fmt(p) + " evasion" },
@@ -3057,7 +2850,7 @@ const SETS = [
     b4: { d: "Nova damage x2, and Nova marks its target to take +15% damage for 4s", stats: () => ({ novaPow: 2 }), fx: { hit(h) { if (h.kind === "nova") h.e.voidT = performance.now() + 4000; }, deal(h) { if (h.e.voidT > performance.now()) h.dmg *= 1.15; } } },
     b6: { d: "Nova leaves a void field for 3s that deals 50% attack per second and pulls enemies in", fx: {
       fields: [],
-      cast(c) { const tg = enemy; if (c.id === "nova" && tg) setTimeout(() => { if (!tg.dead) this.field(tg.px, tg.py); }, 220); },
+      cast(c) { const tg = enemy; if (c.id === "nova" && tg) setTimeout(() => { if (!tg.dead) this.field(tg.px, tg.py); }, NOVA_MS); },
       field(x, y) {
         this.fields.push({ x, y, R: 70, t: 3 });
         if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 70, fill: "rgba(122,69,224,.18)", stroke: "#b48cff", "stroke-width": 2, "stroke-dasharray": "6 5" }), [{ opacity: 0 }, { opacity: 1, offset: .1 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 3000);
@@ -3378,14 +3171,14 @@ function lensSvg(n, c, r, into) {
 }
 function drawHero() {
   const w = S.equip.weapon, a = S.equip.armor, b = S.equip.boots, c = S.equip.charm, hw = $("hWeapon");
-  hw.setAttribute("d", w ? HERO_WEAPON[weaponType(w)] : MOTE);
+  hw.setAttribute("d", WEAPON[w ? weaponType(w) : "Mote"].path);
   hw.setAttribute("fill", w ? ARENA_C[w.r] : "#effffc");
   hw.style.color = w ? ARENA_C[w.r] : "#7be0d0";
   hw.classList.toggle("glow", !w || w.r >= 3);
   ORBITALS.slice(1).forEach(o => {
     const wo = o.open() ? S.equip[o.key] : null, el = $(o.ids[2]);
     $(o.ids[0]).style.display = wo ? "" : "none";
-    if (wo) { el.setAttribute("d", HERO_WEAPON[weaponType(wo)]); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
+    if (wo) { el.setAttribute("d", WEAPON[weaponType(wo)].path); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
   });
   if (a) shellSvg(noun(a), ARENA_C[a.r], a.r); else $("hShell").innerHTML = "";
   if (b) coronaSvg(noun(b), ARENA_C[b.r], b.r); else { $("hCorona").innerHTML = ""; $("hCoronaStatic").innerHTML = ""; }
@@ -3418,11 +3211,12 @@ function startDash(L) {
   dashVX = dx / l * v; dashVY = dy / l * v; dashT = DASH_TIME; dashIT = SK.dash.guard(L); dashHit = new Set(); dashD = SK.dash.dmg(L);
   const x0 = view.HERO_X, y0 = view.HERO_Y;
   dashD *= ST.dashPow; dashIT += ST.dashGuard;
-  emit("dash", { x0, y0 });
+  dashFrom = { x0, y0 };
+  emit("dash", dashFrom);
   dashFx(x0, y0, x0 + dashVX * DASH_TIME, y0 + dashVY * DASH_TIME);
   heroModel.classList.add("dashing");
 }
-let lastDX = 0, lastDY = 0, lastDT = 0;
+let lastDX = 0, lastDY = 0, lastDT = 0, dashFrom = null;
 function stepHero(dt) {
   let ix = hero.joyX, iy = hero.joyY;
   const kx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
@@ -3436,6 +3230,8 @@ function stepHero(dt) {
     hvx = dashVX * .25; hvy = dashVY * .25;
     for (const f of foes) if (!f.dead && !dashHit.has(f) && Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y) < f.R + 34) { dashHit.add(f); land(f, dashD, "storm"); }
   }
+  // the dash is over (or was cut short): effects that need where it ended hook dashEnd, with where it started
+  if (dashFrom && !(dashT > 0)) { const c = dashFrom; dashFrom = null; emit("dashEnd", c); }
   const k = 1 - Math.exp(-dt * 18);
   const spd = HERO_SPD * (ST ? ST.move : 1);
   hvx += (ix * spd - hvx) * k; hvy += (iy * spd - hvy) * k;
@@ -3600,18 +3396,45 @@ listen((type, n, e) => { if (type === "kill") recordKill(e); });
 // ---- js/enemies/enemies.js
 // Enemy kinds: variants, modifiers, boss mechanics and statuses they carry, and making a regular enemy.
 
-// all four are ranged: needler (Pale), ripper rails (Crimson), mortar (Bastion), void lance (Umbral)
-const ENEMY_WEAPON = [
-  "M-6 2 L-6 -22 L-2 -22 L-2 2 Z M2 2 L2 -22 L6 -22 L6 2 Z M-8 -3 L8 -3 L8 3 L-8 3 Z M-7 -25 L-1 -25 L-1 -22 L-7 -22 Z M1 -25 L7 -25 L7 -22 L1 -22 Z",
-  "M-8 3 L-3 3 L-3 -14 L-8 -12 Z M3 3 L8 3 L8 -12 L3 -14 Z M-8 -1 L8 -1 L8 3 L-8 3 Z",
-  "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
-  "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z"
-];
+// The four variants. All are ranged; their attacks are in shots.js (ATTACK). weapon: the gun's sprite.
+// look: how the body is drawn. edge: outline width, dash: outline dashes, inner: fill of the inner shape, innerDash,
+// innerOp: its dashes and opacity, rim: extra radius the gun sits out at, phased: the flickering Umbral look, saw: shows the
+// loaded saw, trail: has speed lines that point away from the hero, deco(e, g, cy, verts): draws the rest.
 const VARIANTS = [
-  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45 },
-  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4, size: 1.08, move: .75, muzzle: 21, spin: .2 },
-  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, w: 1, from: 7, size: 1, move: 1, muzzle: 22, spin: .3 },
-  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36 }
+  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45,
+    weapon: "M-6 2 L-6 -22 L-2 -22 L-2 2 Z M2 2 L2 -22 L6 -22 L6 2 Z M-8 -3 L8 -3 L8 3 L-8 3 Z M-7 -25 L-1 -25 L-1 -22 L-7 -22 Z M1 -25 L7 -25 L7 -22 L1 -22 Z",
+    // needler; thin edges and speed lines streaming behind
+    look: { edge: 1.5, innerDash: "3 3", trail: true, deco(e, g, cy, verts) {
+      const R = e.R;
+      svgEl("polygon", { points: ePts(e, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
+      [-8, 0, 8].forEach((dy, i) => svgEl("line", { x1: R * .95, y1: cy + dy, x2: R * .95 + 10 + i * 4, y2: cy + dy, stroke: e.stroke, "stroke-width": 1.5, "stroke-linecap": "round", opacity: .55 }, e.el.trail));
+    } } },
+  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, from: 4, size: 1.08, move: .75, muzzle: 21, spin: .2,
+    weapon: "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
+    // mortar; heavy plated edges, rivets and an outer shell
+    look: { edge: 5, rim: 3.5, inner: v => "hsl(" + v.hue + " " + v.sat + "% " + (v.lit - 14) + "%)", innerOp: 1, deco(e, g, cy, verts) {
+      verts.forEach(([x, y]) => svgEl("circle", { cx: (x * .78).toFixed(1), cy: (cy + (y - cy) * .78).toFixed(1), r: 2.4, fill: e.stroke }, g));
+      svgEl("polygon", { points: ePts(e, e.R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + e.v.hue + " 20% 25%)", "stroke-width": 2 }, g);
+    } } },
+  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, from: 7, size: 1, move: 1, muzzle: 22, spin: .3,
+    weapon: "M-8 3 L-3 3 L-3 -14 L-8 -12 Z M3 3 L8 3 L8 -12 L3 -14 Z M-8 -1 L8 -1 L8 3 L-8 3 Z",
+    // ripper rails with a saw loaded; spikes on every edge and a scar
+    look: { saw: true, deco(e, g, cy, verts) {
+      const R = e.R;
+      verts.forEach(([x, y], i) => {
+        const [x2, y2] = verts[(i + 1) % verts.length], mx = (x + x2) / 2, my = (y + y2) / 2, a = Math.atan2(my - cy, mx), px = -Math.sin(a) * 3.5, py = Math.cos(a) * 3.5;
+        svgEl("polygon", { points: (mx + px).toFixed(1) + "," + (my + py).toFixed(1) + " " + (mx + Math.cos(a) * 9).toFixed(1) + "," + (my + Math.sin(a) * 9).toFixed(1) + " " + (mx - px).toFixed(1) + "," + (my - py).toFixed(1), fill: e.stroke }, g);
+      });
+      svgEl("path", { d: "M" + (-R * .45) + " " + (cy + R * .35) + " L" + (R * .4) + " " + (cy - R * .3), stroke: "#2a0606", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
+    } } },
+  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36,
+    weapon: "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z",
+    // void lance; dashed edges, a dark eye socket and orbiting motes
+    look: { dash: "7 4", phased: true, deco(e, g, cy) {
+      const R = e.R;
+      svgEl("circle", { cx: 0, cy, r: R * .32, fill: "#07050d", stroke: e.stroke, "stroke-width": 1.5 }, g);
+      [0, 1, 2].forEach(i => { const a = i * 2.09 + .5; svgEl("circle", { cx: (Math.cos(a) * (R + 9)).toFixed(1), cy: (cy + Math.sin(a) * (R + 9)).toFixed(1), r: 2, fill: e.stroke, opacity: .6 }, g); });
+    } } }
 ];
 const VAR = {};
  VARIANTS.forEach(v => VAR[v.id] = v);
@@ -3780,7 +3603,7 @@ function makeFoe({ stage, boss, elite, v, zone, timer, scale = 1, hit = 1 }) {
   elite = !!elite && !boss;
   const hp = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * scale * v.hp, mods = rollMods(boss, elite), m = boss ? bossMechs(zone) : null;
   return {
-    hp, max: hp, fresh: true, dmg: stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * hit * v.dmg, boss, elite, v, weapon: ENEMY_WEAPON[v.w],
+    hp, max: hp, fresh: true, dmg: stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * hit * v.dmg, boss, elite, v, weapon: v.weapon,
     timer: boss ? timer : 0, timerMax: boss ? timer : 1, specT: 4, tele: 0, enraged: false,
     statuses: enemyStatuses(stage, boss, elite, v), mods, m, fx: foeFx(mods, m), stun: 0
   };
@@ -3844,11 +3667,11 @@ function sparks(x, y, n, col, dist) {
 }
 function slash(crit, slot = "weapon", t) {
   if (reduce) return;
-  const ty = wType(slot), SX = t ? t.px : view.ENEMY_X, SY = t ? t.py : enemyCY();
-  if (ty === "Laser" || ty === "Coil" || ty === "Drone" || ty === "Mote") {
+  const look = WEAPON[wType(slot)].impact, SX = t ? t.px : view.ENEMY_X, SY = t ? t.py : enemyCY();
+  if (look !== "arc") {
     const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff";
     sparks(SX, SY, crit ? 9 : 5, crit ? "#ff8a3d" : col, crit ? 40 : 26);
-    if (crit || ty === "Laser") ringIfRoom(SX, SY, col, .4, crit ? 2.4 : 1.4, 220, 2);
+    if (crit || look === "beam") ringIfRoom(SX, SY, col, .4, crit ? 2.4 : 1.4, 220, 2);
     return;
   }
   const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff", cy = SY, s = crit ? 1.35 : 1;
@@ -3882,11 +3705,13 @@ function ring(x, y, col, from, to, ms, width) {
   tempFx(svgEl("circle", { cx: 0, cy: 0, r: 10, fill: "none", stroke: col, "stroke-width": width || 3 }), [{ transform: "translate(" + x + "px," + y + "px) scale(" + from + ")", opacity: 1 }, { transform: "translate(" + x + "px," + y + "px) scale(" + to + ")", opacity: 0 }], ms);
 }
 function burst(x, y, col, n) { ringIfRoom(x, y, col, .5, 3, 450); sparks(x, y, n, col, 40); }
+// a Nova reaches the target this long after the cast: its hit and anything that follows it wait this long
+const NOVA_MS = 220;
 function novaFx() {
   ring(view.HERO_X, view.HERO_Y, "#effffc", 1, 17, 320, 4);
   ring(view.HERO_X, view.HERO_Y, "#7be0d0", .6, 15, 360, 8);
   const tg = enemy;
-  setTimeout(() => { if (tg && !tg.dead) { ring(tg.px, tg.py, "#effffc", .5, 4, 420, 3); sparks(tg.px, tg.py, 10, "#effffc", 40); } }, 220);
+  setTimeout(() => { if (tg && !tg.dead) { ring(tg.px, tg.py, "#effffc", .5, 4, 420, 3); sparks(tg.px, tg.py, 10, "#effffc", 40); } }, NOVA_MS);
 }
 function dashFx(x0, y0, x1, y1) {
   if (reduce) return;
@@ -4137,22 +3962,15 @@ function hurt(d, noEvade, from) {
   checkDeath();
   return true;
 }
-function crush(e) {
-  e.el.model.classList.remove("tele");
-  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
-  shake(9, 450); sfx("crush");
-  // the Crush lands where the warning ring was
-  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
-  log("Crush!", "bad");
-  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
-}
+// shards a kill drops: elites always drop ELITE_SHARDS lots, regular shapes one lot SHARD_CHANCE of the time
+const SHARD_CHANCE = .08, ELITE_SHARDS = 2;
 function killFoe(e) {
   if (e.removed) return;
   e.removed = true;
   const boss = e.boss, elite = e.elite, c = foeEmit(e, "death", { e, split: false });
   const st = fightStage(), g = Math.ceil(lumenAt(st) * mode.lumen() * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
   addGold(g, true); S.totalKills++;
-  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
+  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(ELITE_SHARDS * sa), e); else if (Math.random() < SHARD_CHANCE) addShards(Math.round(sa), e); }
   tell("kill", 1, e); if (boss) tell("boss", 1); if (elite) tell("elite", 1);
   floatText("+" + fmt(g) + " lumen", "gold", e);
   heal(ST.maxHp * ST.killHeal);
@@ -4250,11 +4068,146 @@ function enemyAttack(e) {
   if (t > 0 && !document.hidden) setTimeout(() => land(), t); else land();
 }
 const eshots = [];
-const SHOT_SPEC = {
-  pale: { spd: 560, r: 4.5 },      // twin darts: fast, aimed ahead of you, slight homing
-  crimson: { spd: 290, r: 10 },    // saw: homes in on you and curves after you
-  bastion: { spd: 240, r: 8 },     // mortar shell: aimed where you're heading, wide burst
-  umbral: { spd: 0, r: 0 }         // lance: tracks you, locks at the last moment, instant beam
+// Each variant's attack. spd, r: its projectile's speed and size. shot(e, heavy, land, tc, sp): fired on screen as real
+// projectiles you can sidestep. far(e, heavy, k): how it looks from off screen, where it can't miss; returns the ms until
+// it lands. k holds the shooter's aim helpers (see enemyAttackFx).
+const ATTACK = {
+  // twin darts: fast, aimed ahead of you, slight homing
+  pale: { spd: 560, r: 4.5, shot(e, heavy, land, tc, sp) {
+    [0, 1].forEach(i => setTimeout(() => {
+      if (e.dead || heroDown) return;
+      kick(e, 4, 120);
+      const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
+      svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
+      svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
+      const o = addShot({ src: e, g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
+      const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
+    }, i * 110));
+  }, far(e, heavy, { tc, aim, hitPt, recoil, flash, travel }) {
+    // needler: two quick darts, one from each barrel
+    const T = travel(620, 140, 700);
+    [0, 1].forEach(i => setTimeout(() => {
+      if (e.dead) return;
+      recoil(4, 120);
+      if (reduce) return;
+      const a = aim(), sd = i ? 4 : -4, sx = a.mx - a.uy * sd, sy = a.my + a.ux * sd, [hx, hy] = hitPt(a);
+      flash(sx, sy, 3.5, "#fff");
+      const g = svgEl("g", {}), rot = "rotate(" + a.deg.toFixed(1) + ")";
+      svgEl("line", { x1: -18, y1: 0, x2: -5, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6, transform: rot }, g);
+      svgEl("polygon", { points: "-7,-1.9 7,0 -7,1.9", fill: "#fff", transform: rot }, g);
+      moveFx(g, sx, sy, hx - a.uy * sd * .5, hy + a.ux * sd * .5, T, null, 0, "linear");
+      setTimeout(() => sparks(hx, hy, 3, tc, 12), T);
+    }, i * 85));
+    return T;
+  } },
+  // saw: homes in on you and curves after you
+  crimson: { spd: 290, r: 10, shot(e, heavy, land, tc, sp) {
+    kick(e, 6, 200);
+    if (e.el && e.el.saw) anim(e.el.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
+    const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
+    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
+    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
+    addShot({ src: e, g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
+  }, far(e, heavy, { tc, E, aim, hitPt, recoil, travel }) {
+    // ripper: the loaded saw launches off the rails and a new one spins up
+    const T = travel(470, 240, 1000);
+    recoil(6, 200);
+    if (reduce) return T;
+    const a = aim(), [hx, hy] = hitPt(a);
+    anim(E.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
+    const g = svgEl("g", {}); g.style.color = tc;
+    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
+    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
+    moveFx(g, a.mx, a.my, hx, hy, T, null, 900 + T * 1.5, "linear");
+    setTimeout(() => sparks(hx, hy, heavy ? 12 : 6, "#ffb36b", heavy ? 34 : 22), T);
+    return T;
+  } },
+  // mortar shell: aimed where you're heading, wide burst
+  bastion: { spd: 240, r: 8, shot(e, heavy, land, tc, sp) {
+    // mortar: lobs a shell, marked on the ground, and bursts there
+    const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
+    const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
+    const C = 170;
+    setTimeout(() => {
+      if (e.dead || heroDown) { mark.remove(); return; }
+      kick(e, 8, 260);
+      const a = aimFrom(e), sx = a.x, sy = a.y, d = Math.hypot(tx - sx, ty - sy) || 1, T = Math.max(.35, d / sp.spd);
+      const g = svgEl("g", {}, fx); g.style.color = tc;
+      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
+      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
+      addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
+    }, C);
+  }, far(e, heavy, { tc, E, aim, hitPt, recoil, flash, travel }) {
+    // mortar: a short charge glow, a hard kick, then a slow heavy shell
+    const C = 170, T = travel(300, 380, 1500);
+    if (!reduce) { const a = aim(); const g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = tc; const c = svgEl("circle", { r: 6, fill: tc, class: "glow" }, g); tempFx(g, [{ opacity: 0 }, { opacity: 1 }], C); anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1)" }], C); }
+    setTimeout(() => {
+      if (e.dead) return;
+      recoil(8, 260);
+      anim(E.model, [{ transform: "translate(0px,0px)" }, { transform: lungeT(e, -6), offset: .25 }, { transform: "translate(0px,0px)" }], 300);
+      if (reduce) return;
+      const a = aim(), [hx, hy] = hitPt(a);
+      flash(a.mx, a.my, 8, "#fff");
+      const g = svgEl("g", {}); g.style.color = tc;
+      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
+      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
+      moveFx(g, a.mx, a.my, hx, hy, T, null, 240 + T * .3, "linear");
+      setTimeout(() => { ringIfRoom(hx, hy, tc, .5, 3, 300, 4); sparks(hx, hy, 6, tc, 24); }, T);
+    }, C);
+    return C + T;
+  } },
+  // lance: tracks you, locks at the last moment, instant beam
+  umbral: { spd: 0, r: 0, shot(e, heavy, land) {
+    // locks onto where you are, shows a thin aim line, then fires down that line
+    const C = Math.max(380, 560 - 80 * shotSkill(e)), LOCK = Math.max(120, 230 - 50 * shotSkill(e));
+    let a = aimFrom(e), len = a.d + 160, ex = a.x + a.ux * len, ey = a.y + a.uy * len;
+    const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
+    if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    // the aim line follows you, then locks (turns solid) a moment before the beam
+    const t0 = performance.now();
+    const track = () => {
+      const el = performance.now() - t0;
+      if (el >= C - LOCK || e.dead) { tel.setAttribute("stroke-dasharray", "none"); tel.setAttribute("stroke-width", 2.2); tel.setAttribute("opacity", 1); return; }
+      a = aimFrom(e); len = a.d + 160; ex = a.x + a.ux * len; ey = a.y + a.uy * len;
+      tel.setAttribute("x1", a.x.toFixed(1)); tel.setAttribute("y1", a.y.toFixed(1)); tel.setAttribute("x2", ex.toFixed(1)); tel.setAttribute("y2", ey.toFixed(1));
+      requestAnimationFrame(track);
+    };
+    requestAnimationFrame(track);
+    setTimeout(() => {
+      tel.remove();
+      if (e.dead || heroDown) return;
+      kick(e, 3, 160);
+      const g = svgEl("g", {}, fx); g.style.color = "#b48cff";
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#b48cff", "stroke-width": heavy ? 9 : 6, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#1a0f2e", "stroke-width": 2 }, g);
+      tempFx(g, [{ opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }], 260);
+      // distance from the core to the beam's line segment
+      const vx = ex - a.x, vy = ey - a.y, t = Math.max(0, Math.min(1, ((view.HERO_X - a.x) * vx + (view.HERO_Y - a.y) * vy) / (vx * vx + vy * vy))), px = a.x + vx * t, py = a.y + vy * t;
+      if (Math.hypot(view.HERO_X - px, view.HERO_Y - py) < (heavy ? 22 : 17) + 10) { land(); ringIfRoom(view.HERO_X, view.HERO_Y, "#b48cff", 1.2, .5, 240, 3); }
+    }, C);
+  }, far(e, heavy, { E, aim, hitPt, recoil }) {
+    // gathers a void orb at the tip, then a beam
+    const C = 240;
+    anim(E.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    if (!reduce) {
+      const a = aim(), g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = "#b48cff";
+      const c = svgEl("circle", { r: 6, fill: "#1a0f2e", stroke: "#b48cff", "stroke-width": 2, class: "glow" }, g);
+      tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1 }], C);
+      anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1.1)" }], C);
+    }
+    setTimeout(() => {
+      if (e.dead) return;
+      recoil(3, 160);
+      if (reduce) return;
+      const a = aim(), [hx, hy] = hitPt(a), g = svgEl("g", {});
+      g.style.color = "#b48cff";
+      svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#b48cff", "stroke-width": 6, "stroke-linecap": "round", class: "glow", opacity: .8 }, g);
+      svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#1a0f2e", "stroke-width": 2 }, g);
+      tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: .5, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 0 }], 260);
+      ringIfRoom(hx, hy, "#b48cff", 1.2, .5, 240, 3);
+    }, C);
+    return C + 20;
+  } }
 };
 const shotSkill = e => Math.min(1.6, .55 + fightStage() / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
 // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
@@ -4288,71 +4241,8 @@ function killShot(o, burst) {
   if (burst) { anim(o.g, [{ opacity: 1 }, { opacity: 0 }], 160); setTimeout(() => o.g.remove(), 150); } else o.g.remove();
 }
 function fireShot(e, heavy, land) {
-  const id = e.v.id, tc = ARENA_C[e.tier], sp = SHOT_SPEC[id] || SHOT_SPEC.pale;
-  if (id === "pale") {
-    [0, 1].forEach(i => setTimeout(() => {
-      if (e.dead || heroDown) return;
-      kick(e, 4, 120);
-      const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
-      svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
-      svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
-      const o = addShot({ src: e, g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
-      const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
-    }, i * 110));
-    return;
-  }
-  if (id === "crimson") {
-    kick(e, 6, 200);
-    if (e.el && e.el.saw) anim(e.el.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
-    const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
-    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
-    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-    addShot({ src: e, g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
-    return;
-  }
-  if (id === "bastion") {
-    // mortar: lobs a shell, marked on the ground, and bursts there
-    const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
-    const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
-    const C = 170;
-    setTimeout(() => {
-      if (e.dead || heroDown) { mark.remove(); return; }
-      kick(e, 8, 260);
-      const a = aimFrom(e), sx = a.x, sy = a.y, d = Math.hypot(tx - sx, ty - sy) || 1, T = Math.max(.35, d / sp.spd);
-      const g = svgEl("g", {}, fx); g.style.color = tc;
-      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
-      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
-      addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
-    }, C);
-    return;
-  }
-  // umbral lance: locks onto where you are, shows a thin aim line, then fires down that line
-  const C = Math.max(380, 560 - 80 * shotSkill(e)), LOCK = Math.max(120, 230 - 50 * shotSkill(e));
-  let a = aimFrom(e), len = a.d + 160, ex = a.x + a.ux * len, ey = a.y + a.uy * len;
-  const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
-  if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
-  // the aim line follows you, then locks (turns solid) a moment before the beam
-  const t0 = performance.now();
-  const track = () => {
-    const el = performance.now() - t0;
-    if (el >= C - LOCK || e.dead) { tel.setAttribute("stroke-dasharray", "none"); tel.setAttribute("stroke-width", 2.2); tel.setAttribute("opacity", 1); return; }
-    a = aimFrom(e); len = a.d + 160; ex = a.x + a.ux * len; ey = a.y + a.uy * len;
-    tel.setAttribute("x1", a.x.toFixed(1)); tel.setAttribute("y1", a.y.toFixed(1)); tel.setAttribute("x2", ex.toFixed(1)); tel.setAttribute("y2", ey.toFixed(1));
-    requestAnimationFrame(track);
-  };
-  requestAnimationFrame(track);
-  setTimeout(() => {
-    tel.remove();
-    if (e.dead || heroDown) return;
-    kick(e, 3, 160);
-    const g = svgEl("g", {}, fx); g.style.color = "#b48cff";
-    svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#b48cff", "stroke-width": heavy ? 9 : 6, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
-    svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#1a0f2e", "stroke-width": 2 }, g);
-    tempFx(g, [{ opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }], 260);
-    // distance from the core to the beam's line segment
-    const vx = ex - a.x, vy = ey - a.y, t = Math.max(0, Math.min(1, ((view.HERO_X - a.x) * vx + (view.HERO_Y - a.y) * vy) / (vx * vx + vy * vy))), px = a.x + vx * t, py = a.y + vy * t;
-    if (Math.hypot(view.HERO_X - px, view.HERO_Y - py) < (heavy ? 22 : 17) + 10) { land(); ringIfRoom(view.HERO_X, view.HERO_Y, "#b48cff", 1.2, .5, 240, 3); }
-  }, C);
+  const A = ATTACK[e.v.id] || ATTACK.umbral;
+  A.shot(e, heavy, land, ARENA_C[e.tier], A);
 }
 const HERO_HIT = 15;
 function stepEShots(dt) {
@@ -4383,7 +4273,7 @@ function stepEShots(dt) {
   }
 }
 function enemyAttackFx(e, heavy) {
-  const id = e.v.id, tc = ARENA_C[e.tier], E = e.el, L = e.v.muzzle;
+  const tc = ARENA_C[e.tier], E = e.el, L = e.v.muzzle;
   // aim is re-read at fire time because the shooter keeps moving
   const aim = () => {
     const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = view.HERO_X - ax, dy = view.HERO_Y - ay, l = Math.hypot(dx, dy) || 1;
@@ -4397,81 +4287,12 @@ function enemyAttackFx(e, heavy) {
   const flash = (x, y, r, col) => tempFx(svgEl("circle", { cx: x, cy: y, r, fill: col }), [{ opacity: 1 }, { opacity: 0 }], 130);
   const travel = (spd, lo, hi) => { const a = aim(), [hx, hy] = hitPt(a); return Math.round(Math.max(lo, Math.min(hi, Math.hypot(hx - a.mx, hy - a.my) / spd * 1000))); };
   if (E.ind && e.offShown) anim(E.indP, [{ filter: "brightness(2.6)" }, { filter: "brightness(1)" }], 300);
-  if (id === "pale") {
-    // needler: two quick darts, one from each barrel
-    const T = travel(620, 140, 700);
-    [0, 1].forEach(i => setTimeout(() => {
-      if (e.dead) return;
-      recoil(4, 120);
-      if (reduce) return;
-      const a = aim(), sd = i ? 4 : -4, sx = a.mx - a.uy * sd, sy = a.my + a.ux * sd, [hx, hy] = hitPt(a);
-      flash(sx, sy, 3.5, "#fff");
-      const g = svgEl("g", {}), rot = "rotate(" + a.deg.toFixed(1) + ")";
-      svgEl("line", { x1: -18, y1: 0, x2: -5, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6, transform: rot }, g);
-      svgEl("polygon", { points: "-7,-1.9 7,0 -7,1.9", fill: "#fff", transform: rot }, g);
-      moveFx(g, sx, sy, hx - a.uy * sd * .5, hy + a.ux * sd * .5, T, null, 0, "linear");
-      setTimeout(() => sparks(hx, hy, 3, tc, 12), T);
-    }, i * 85));
-    return T;
-  }
-  if (id === "bastion") {
-    // mortar: a short charge glow, a hard kick, then a slow heavy shell
-    const C = 170, T = travel(300, 380, 1500);
-    if (!reduce) { const a = aim(); const g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = tc; const c = svgEl("circle", { r: 6, fill: tc, class: "glow" }, g); tempFx(g, [{ opacity: 0 }, { opacity: 1 }], C); anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1)" }], C); }
-    setTimeout(() => {
-      if (e.dead) return;
-      recoil(8, 260);
-      anim(E.model, [{ transform: "translate(0px,0px)" }, { transform: lungeT(e, -6), offset: .25 }, { transform: "translate(0px,0px)" }], 300);
-      if (reduce) return;
-      const a = aim(), [hx, hy] = hitPt(a);
-      flash(a.mx, a.my, 8, "#fff");
-      const g = svgEl("g", {}); g.style.color = tc;
-      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
-      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
-      moveFx(g, a.mx, a.my, hx, hy, T, null, 240 + T * .3, "linear");
-      setTimeout(() => { ringIfRoom(hx, hy, tc, .5, 3, 300, 4); sparks(hx, hy, 6, tc, 24); }, T);
-    }, C);
-    return C + T;
-  }
-  if (id === "crimson") {
-    // ripper: the loaded saw launches off the rails and a new one spins up
-    const T = travel(470, 240, 1000);
-    recoil(6, 200);
-    if (reduce) return T;
-    const a = aim(), [hx, hy] = hitPt(a);
-    anim(E.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
-    const g = svgEl("g", {}); g.style.color = tc;
-    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
-    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-    moveFx(g, a.mx, a.my, hx, hy, T, null, 900 + T * 1.5, "linear");
-    setTimeout(() => sparks(hx, hy, heavy ? 12 : 6, "#ffb36b", heavy ? 34 : 22), T);
-    return T;
-  }
-  // umbral lance: gathers a void orb at the tip, then a beam
-  const C = 240;
-  anim(E.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
-  if (!reduce) {
-    const a = aim(), g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = "#b48cff";
-    const c = svgEl("circle", { r: 6, fill: "#1a0f2e", stroke: "#b48cff", "stroke-width": 2, class: "glow" }, g);
-    tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1 }], C);
-    anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1.1)" }], C);
-  }
-  setTimeout(() => {
-    if (e.dead) return;
-    recoil(3, 160);
-    if (reduce) return;
-    const a = aim(), [hx, hy] = hitPt(a), g = svgEl("g", {});
-    g.style.color = "#b48cff";
-    svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#b48cff", "stroke-width": 6, "stroke-linecap": "round", class: "glow", opacity: .8 }, g);
-    svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#1a0f2e", "stroke-width": 2 }, g);
-    tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: .5, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 0 }], 260);
-    ringIfRoom(hx, hy, "#b48cff", 1.2, .5, 240, 3);
-  }, C);
-  return C + 20;
+  return (ATTACK[e.v.id] || ATTACK.umbral).far(e, heavy, { tc, E, aim, hitPt, recoil, flash, travel });
 }
 
 // ---- js/ui/reticle.js
 // The target's ring (health, boss timer, mechanic progress) and the name tag above it.
+
 
 const FR_A = [-45, 225];
 let rEls = null, rV = [-1, -1, -1];
@@ -4548,6 +4369,8 @@ function placeTags(dt) {
 const FOE_TPL = '<g class="eModel"><g class="hover"><g class="eBody"><g class="eSpin"><g class="eRing"></g><polygon class="ePlate" fill="none" stroke-width="3" stroke-linejoin="round"/><g class="eSpikes"></g><polygon class="ePoly" stroke-width="2.5" stroke-linejoin="round"/><polygon class="eInner" fill="none" stroke-width="1.5" opacity=".7"/><g class="eDeco"></g><g class="eCracks" style="display:none"></g></g><g class="eTrail"></g><g class="eCrown"></g><circle class="eEye" r="5" fill="#fff"/><circle class="ePupil" r="2.2"/></g><g class="eFacetWrap"><g class="eFacets spinSlow"></g></g><g class="eMoteWrap"><g class="eMotes spinRev"></g></g><g class="eModMarks"></g><g class="eArm"><g class="eSwing"><g class="eAim"><path class="eWeapon" stroke="#000" stroke-opacity=".35" stroke-width="1"/><g transform="translate(0 -22)"><g class="eSaw sawSpin"></g></g></g></g></g></g></g><g class="eMini" fill="none"><path class="mBg" stroke="rgba(255,255,255,.14)" stroke-width="2.2"/><path class="mFg" stroke="#ff6b6b" stroke-width="2.2"/></g>';
 const foes = [];
 let moveT = 0;
+// the height the current target's body is drawn at (in the hero's frame when there is none)
+const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
 const targeting = {
   focus: null
 };
@@ -4588,7 +4411,7 @@ function poseFoe(e, dt) {
   const wa = e.wAng;
   let rel = wa - (e.rot - Math.PI / 2 + seg / 2);
   rel = ((rel % seg) + seg) % seg; if (rel > seg / 2) rel -= seg;
-  const Rb = e.R + (e.tier >= 1 ? 5 : e.v.id === "bastion" ? 3.5 : 0) + 1.5;
+  const Rb = e.R + (e.tier >= 1 ? 5 : e.v.look.rim || 0) + 1.5;
   const dist = Rb * Math.cos(Math.PI / n) / Math.cos(rel);
   const mx = Math.cos(wa) * dist, my = cy + Math.sin(wa) * dist;
   const hx = view.HERO_X - e.px, hy = view.HERO_Y - e.py, hd = Math.hypot(hx, hy) || 1, ux = hx / hd, uy = hy / hd;
@@ -4605,7 +4428,7 @@ function poseFoe(e, dt) {
     const ix = Math.max(view.VX0 + 12, Math.min(VX1() - 12, e.px)), iy = Math.max(top, Math.min(bot, e.py));
     E.ind.setAttribute("transform", "translate(" + ix.toFixed(1) + " " + iy.toFixed(1) + ") rotate(" + (Math.atan2(e.py - iy, e.px - ix) * 57.2958).toFixed(0) + ")");
   }
-  if (e.v.id === "pale") E.trail.setAttribute("transform", "rotate(" + (Math.atan2(-uy, -ux) * 57.2958).toFixed(1) + " 0 " + cy.toFixed(1) + ")");
+  if (e.v.look.trail) E.trail.setAttribute("transform", "rotate(" + (Math.atan2(-uy, -ux) * 57.2958).toFixed(1) + " 0 " + cy.toFixed(1) + ")");
 }
 function spinInit(e) {
   e.rot = Math.random() * 6.28;
@@ -4842,7 +4665,7 @@ function drawFoe(e) {
   const ew = E.weapon;
   ew.setAttribute("d", e.weapon); ew.setAttribute("fill", tc); ew.style.color = tc; ew.classList.toggle("glow", e.tier >= 3);
   const saw = E.saw; saw.innerHTML = "";
-  if (e.v.id === "crimson") { svgEl("polygon", { points: starPts(10, 11, 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35 }, saw); svgEl("circle", { r: 3, fill: "#120f1c" }, saw); }
+  if (e.v.look.saw) { svgEl("polygon", { points: starPts(10, 11, 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35 }, saw); svgEl("circle", { r: 3, fill: "#120f1c" }, saw); }
   E.facetWrap.setAttribute("transform", "translate(0 " + cy + ")");
   E.moteWrap.setAttribute("transform", "translate(0 " + cy + ")");
   // targeted: a segmented ring; everyone else: a short arc underneath
@@ -4855,31 +4678,24 @@ function drawFoe(e) {
   e.mods.forEach((k, i) => { const x = (i - (e.mods.length - 1) / 2) * 11; svgEl("polygon", { points: x + ",0 " + (x + 4) + ",5 " + x + ",10 " + (x - 4) + ",5", fill: "#ff8463" }, mm); });
 }
 function drawVariant(e, cy) {
-  const v = e.v, g = e.el.deco, poly = e.el.poly, inner = e.el.inner, R = e.R;
-  g.innerHTML = ""; e.el.trail.innerHTML = "";
-  poly.setAttribute("stroke-width", v.id === "bastion" ? 5 : v.id === "pale" ? 1.5 : 2.5);
-  poly.setAttribute("stroke-dasharray", v.id === "umbral" ? "7 4" : "none");
-  inner.setAttribute("fill", v.id === "bastion" ? "hsl(" + v.hue + " " + v.sat + "% " + (v.lit - 14) + "%)" : "none");
-  inner.setAttribute("stroke-dasharray", v.id === "pale" ? "3 3" : "none");
-  inner.setAttribute("opacity", v.id === "bastion" ? 1 : .7);
-  e.el.model.classList.toggle("umbral", v.id === "umbral");
-  const verts = eVerts(e, R, 0, 0, cy);
-  if (v.id === "pale") {
-    svgEl("polygon", { points: ePts(e, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
-    [-8, 0, 8].forEach((dy, i) => svgEl("line", { x1: R * .95, y1: cy + dy, x2: R * .95 + 10 + i * 4, y2: cy + dy, stroke: e.stroke, "stroke-width": 1.5, "stroke-linecap": "round", opacity: .55 }, e.el.trail));
-  } else if (v.id === "bastion") {
-    verts.forEach(([x, y]) => svgEl("circle", { cx: (x * .78).toFixed(1), cy: (cy + (y - cy) * .78).toFixed(1), r: 2.4, fill: e.stroke }, g));
-    svgEl("polygon", { points: ePts(e, R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + v.hue + " 20% 25%)", "stroke-width": 2 }, g);
-  } else if (v.id === "crimson") {
-    verts.forEach(([x, y], i) => {
-      const [x2, y2] = verts[(i + 1) % verts.length], mx = (x + x2) / 2, my = (y + y2) / 2, a = Math.atan2(my - cy, mx), px = -Math.sin(a) * 3.5, py = Math.cos(a) * 3.5;
-      svgEl("polygon", { points: (mx + px).toFixed(1) + "," + (my + py).toFixed(1) + " " + (mx + Math.cos(a) * 9).toFixed(1) + "," + (my + Math.sin(a) * 9).toFixed(1) + " " + (mx - px).toFixed(1) + "," + (my - py).toFixed(1), fill: e.stroke }, g);
-    });
-    svgEl("path", { d: "M" + (-R * .45) + " " + (cy + R * .35) + " L" + (R * .4) + " " + (cy - R * .3), stroke: "#2a0606", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
-  } else {
-    svgEl("circle", { cx: 0, cy, r: R * .32, fill: "#07050d", stroke: e.stroke, "stroke-width": 1.5 }, g);
-    [0, 1, 2].forEach(i => { const a = i * 2.09 + .5; svgEl("circle", { cx: (Math.cos(a) * (R + 9)).toFixed(1), cy: (cy + Math.sin(a) * (R + 9)).toFixed(1), r: 2, fill: e.stroke, opacity: .6 }, g); });
-  }
+  const v = e.v, k = v.look, E = e.el;
+  E.deco.innerHTML = ""; E.trail.innerHTML = "";
+  E.poly.setAttribute("stroke-width", k.edge || 2.5);
+  E.poly.setAttribute("stroke-dasharray", k.dash || "none");
+  E.inner.setAttribute("fill", k.inner ? k.inner(v) : "none");
+  E.inner.setAttribute("stroke-dasharray", k.innerDash || "none");
+  E.inner.setAttribute("opacity", k.innerOp || .7);
+  E.model.classList.toggle("umbral", !!k.phased);
+  k.deco(e, E.deco, cy, eVerts(e, e.R, 0, 0, cy));
+}
+// a boss Crush: lands where the warning ring was shown 1.3s earlier
+function crush(e) {
+  e.el.model.classList.remove("tele");
+  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
+  shake(9, 450); sfx("crush");
+  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
+  log("Crush!", "bad");
+  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
 }
 function stepFoe(e, dt) {
   if (e.dead || !foes.includes(e)) return;
@@ -5248,7 +5064,8 @@ function offlineGains(sec) {
   sec = Math.min(sec, offCap());
   const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * ST.offRate, st = Math.max(1, S.stage);
   const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
-  const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
+  // as if each stage had one elite (past stage 10) and the rest regular shapes, at 60% of the shards
+  const shards = Math.floor(kills * (SHARD_CHANCE * (KILLS - 1) / KILLS + (st > 10 ? ELITE_SHARDS / KILLS : 0)) * shardAmt(st) * .6);
   const items = Math.min(3, Math.floor(kills * ST.drop / 40));
   return { sec, kills: Math.floor(kills), gold, shards, items };
 }
@@ -5272,8 +5089,234 @@ function initOffline() {
   $("awayOk").addEventListener("click", () => { $("away").hidden = true; hold("away", false); updateUI(); });
 }
 
+// ---- js/abyss/abyss.js
+// The Abyss: endless depths of Void waves and a Guardian, its rules, Voidstone, the Altar and milestones.
+
+// the Abyss's wave state: phase 1-3 are waves, 4 is the Guardian
+const ab = { phase: 1, need: 0, spawned: 0, pause: 0 };
+const abyssOpen = () => (S.peak || 1) >= TRANS_AT;
+const AL = id => (S.abyss && S.abyss.altar && S.abyss.altar[id]) || 0;
+const abBest = () => (S.abyss && S.abyss.best) || 0;
+const abMile = d => abBest() >= d;
+const abyssStage = d => 143 + 2 * d;
+// one new rule per depth (from depth 2); after all twelve they start stacking
+const AB_RULES = [
+  { id: "thick", name: "Dense", d: n => "+" + 40 * n + "% enemy health", foe: (e, n) => { e.hp *= 1 + .4 * n; e.max = e.hp; } },
+  { id: "homing", name: "Seeking", d: n => "Enemy shots home in " + (50 * n) + "% harder", stats: n => ({ homing: plus(n) }) },
+  { id: "hasted", name: "Frenzy", d: n => "Enemies attack " + 25 * n + "% faster", foe: (e, n) => { e.fx.push({ attackRate: c => { c.v *= 1 + .25 * n; } }); } },
+  { id: "pools", name: "Corrosion", d: n => "Destroyed enemies leave poison pools (" + 3 * n + "% health per second)", fx: { kill: c => { if (c.e.void) addPool(c.e.px, c.e.py); } } },
+  { id: "vicious", name: "Vicious", d: n => "+" + 30 * n + "% enemy damage", foe: (e, n) => { e.dmg *= 1 + .3 * n; } },
+  { id: "halfheal", name: "Withering", d: n => "Your healing is cut to " + Math.round(Math.max(.25, Math.pow(.5, n)) * 100) + "%", stats: n => ({ healMult: Math.max(.25, Math.pow(.5, n)) }) },
+  { id: "shield", name: "Warded", d: () => "Every enemy is Shielded", foe: e => addMod(e, "shielded") },
+  { id: "swarm", name: "Swarm", d: n => "+" + Math.min(4, n) + " enemies per wave" },
+  { id: "split", name: "Fission", d: () => "Elites split apart when destroyed", foe: e => { if (e.elite) addMod(e, "splitting"); } },
+  { id: "static", name: "Null Field", d: n => "Your mana regen is " + Math.round((1 - Math.pow(.7, n)) * 100) + "% lower", stats: n => ({ mpRegen: Math.pow(.7, n) }) },
+  { id: "volatile", name: "Unstable", d: () => "Every enemy is Volatile", foe: e => addMod(e, "volatile") },
+  { id: "armor", name: "Plated", d: n => "Enemies take " + Math.round((1 - Math.max(.4, Math.pow(.8, n))) * 100) + "% less damage", foe: (e, n) => { e.fx.push({ take(h) { h.dmg *= Math.max(.4, Math.pow(.8, n)); } }); } }
+];
+function abSeq() {
+  let x = (S.abyss.seed || 1) >>> 0; const ids = AB_RULES.map(r => r.id);
+  for (let i = ids.length - 1; i > 0; i--) { x = (x * 1103515245 + 12345) >>> 0; const j = x % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  return ids;
+}
+const ruleCountAt = (id, d) => { const seq = abSeq(), pos = seq.indexOf(id), k = Math.max(0, d - 1); return Math.floor(k / 12) + (k % 12 > pos ? 1 : 0); };
+const ruleN = id => mode === ABYSS ? ruleCountAt(id, S.abyss.depth) : 0;
+statSource(give => AB_RULES.forEach(r => { const n = ruleN(r.id); if (n) give(r, n); }));
+const ALTAR = [
+  { id: "might", name: "Abyssal Might", max: 50, cost: r => Math.ceil(3 * Math.pow(1.22, r)), desc: r => "+" + 10 * r + "% attack and health", nx: "+10%", stats: r => ({ atk: 1 + .1 * r, maxHp: 1 + .1 * r }) },
+  { id: "reson", name: "Echo Resonance", max: 20, cost: r => Math.ceil(5 * Math.pow(1.3, r)), desc: r => "+" + 5 * r + "% echoes from ascending", nx: "+5%", stats: r => ({ echoGain: 1 + .05 * r }) },
+  { id: "memory", name: "Abyss Memory", max: 5, cost: r => [10, 20, 40, 70, 110][r] || 999, desc: r => "+" + r + "% attack for every depth of your best (now +" + r * abBest() + "%)", nx: "+1% per depth", stats: r => ({ atk: 1 + .01 * r * abBest() }) },
+  { id: "lure", name: "Mythic Lure", max: 10, cost: r => Math.ceil(8 * Math.pow(1.35, r)), desc: r => "+" + 15 * r + "% Mythic drop chance", nx: "+15%", stats: r => ({ mythChance: 1 + .15 * r }) },
+  { id: "flow", name: "Momentum", max: 5, cost: r => [6, 12, 24, 40, 60][r] || 999, desc: r => "Momentum lasts until " + (50 + 5 * r) + "% of your best stage", nx: "+5%", stats: r => ({ momentumAt: plus(.05 * r) }) },
+  { id: "stone", name: "Deep Pockets", max: 10, cost: r => Math.ceil(4 * Math.pow(1.4, r)), desc: r => "+" + 10 * r + "% Voidstone", nx: "+10%", stats: r => ({ stoneGain: 1 + .1 * r }) }
+];
+const ALT = {};
+statSource(give => ALTAR.forEach(a => give(a, AL(a.id))));
+ ALTAR.forEach(a => ALT[a.id] = a);
+const AB_MILES = [
+  [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge", { stats: () => ({ orbit3Min: plus(.4) }) }],
+  [10, "Void Step", "Dash tears a rift along its path that deals 300% attack", { fx: {
+    dashEnd(c) {
+      const { x0, y0 } = c;
+      const x1 = view.HERO_X, y1 = view.HERO_Y, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
+      if (!reduce) tempFx(svgEl("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#c08bff", "stroke-width": 10, "stroke-linecap": "round", opacity: .5, class: "glow" }), [{ opacity: .7 }, { opacity: 0 }], 500);
+      foes.forEach(f => { if (f.dead) return; const t = Math.max(0, Math.min(1, ((f.px - x0) * vx + (f.py - y0) * vy) / L2)); if (Math.hypot(f.px - (x0 + vx * t), f.py - (y0 + vy * t)) < f.R + 40) land(f, ST.atk * 3, "aoe"); });
+    }
+  } }],
+  [25, "Rift Keystone", "+25% echo power", { stats: () => ({ echoBonus: 1.25 }) }],
+  [50, "Abyss Heart", "+50% attack and health", { stats: () => ({ atk: 1.5, maxHp: 1.5 }) }],
+  [100, "Endless", "Double Voidstone", { stats: () => ({ stoneGain: 2 }) }]
+];
+statSource(give => AB_MILES.forEach(([d, , , def]) => { if (def && abMile(d)) give(def); }));
+const VOID_SHAPES = [
+  { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
+  { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
+  { n: "Slant", p: [[-.95, -.5], [.45, -.5], [.95, .5], [-.45, .5]] },
+  { n: "Trapeze", p: [[-.45, -.55], [.45, -.55], [.95, .55], [-.95, .55]] },
+  { n: "Chevron", p: [[-.9, -.6], [.3, -.6], [.9, 0], [.3, .6], [-.9, .6], [-.4, 0]] },
+  { n: "Bowtie", p: [[-1, -.7], [0, -.2], [1, -.7], [1, .7], [0, .2], [-1, .7]] },
+  { n: "Notch", p: [[-.8, -.8], [.8, -.8], [.8, .8], [0, .25], [-.8, .8]] },
+  { n: "Shard", p: [[-.9, .6], [.95, .75], [-.2, -.95]] },
+  { n: "Dart", p: [[0, -1], [.7, .8], [0, .35], [-.7, .8]] },
+  { n: "Warp", p: [[-.5, -.9], [.6, -.7], [1, .1], [.4, .85], [-.7, .7], [-.95, -.1]] },
+  { n: "Bolt", p: [[-.3, -1], [.6, -1], [.15, -.15], [.75, -.15], [-.35, 1], [0, .15], [-.6, .15]] },
+  { n: "Spark", p: [[0, -1], [.3, -.3], [1, 0], [.3, .3], [0, 1], [-.3, .3], [-1, 0], [-.3, -.3]] },
+  { n: "Rift", p: [[-.9, -.3], [-.1, -1], [.8, -.6], [.85, .5], [0, .95], [.1, .2]] },
+  { n: "Ell", p: [[-.7, -1], [-.1, -1], [-.1, .3], [.8, .3], [.8, .9], [-.7, .9]] }
+];
+function jitterShape(pts) {
+  let q = pts.map(([x, y]) => [x * (.88 + Math.random() * .24), y * (.88 + Math.random() * .24)]);
+  const cx = q.reduce((a, p) => a + p[0], 0) / q.length, cy = q.reduce((a, p) => a + p[1], 0) / q.length;
+  q = q.map(([x, y]) => [x - cx, y - cy]);
+  const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
+  return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
+}
+const pools = [];
+let poolAcc = 0, poolT = 0;
+const abWaveSize = () => 5 + Math.min(4, ruleN("swarm")) + Math.floor(S.abyss.depth / 15);
+function abStartDepth(pause) { ab.phase = 1; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = pause || 1.5; recalc(); }
+function enterAbyss() {
+  if (mode === ABYSS || !abyssOpen() || heroDown) return;
+  if (!S.abyss.seed) S.abyss.seed = 1 + Math.floor(Math.random() * 1e9);
+  switchMode(ABYSS); closeWindow();
+  log("You enter the Abyss at depth " + S.abyss.depth + ". Clear 3 waves, then the Guardian", "r5"); sfx("chord", 0, 0);
+  floatText("Depth " + S.abyss.depth, "info", "hero", "#ff5fa8");
+}
+function exitAbyss() {
+  if (mode !== ABYSS) return;
+  switchMode(MAIN);
+  log("You left the Abyss. Back to stage " + S.stage, "r0");
+}
+function abyssCleared(e) {
+  const A = S.abyss, d = A.depth, first = d > A.best;
+  const g = Math.ceil((2 + Math.floor(d / 2)) * (first ? 3 : 1) * ST.stoneGain);
+  A.stone += g; A.total += g;
+  if (first) {
+    A.best = d;
+    AB_MILES.forEach(([m, n]) => { if (d === m) { log("Abyss milestone, depth " + m + ": " + n + " unlocked", "r5"); sfx("chord", 0, 300); } });
+  }
+  log("Depth " + d + " cleared: +" + g + " Voidstone" + (first ? " (new best)" : ""), "r5");
+  floatText("+" + g + " Voidstone", "info", e || "hero", "#ff5fa8");
+  A.depth = d + 1; abStartDepth(2.2); setZone(true);
+  markDirty("tree"); save();
+}
+function abyssFail(why) {
+  const A = S.abyss, back = why === "death" ? 2 : 0;
+  A.depth = Math.max(1, A.depth - back); pools.length = 0;
+  log(why === "death" ? "Your core collapsed in the Abyss. Back to depth " + A.depth : "The Guardian slipped away. Depth " + A.depth + " starts over", "bad");
+  abStartDepth(2); markDirty("tree");
+}
+const ABYSS = {
+  stage: () => abyssStage(S.abyss.depth),
+  look: () => ({
+    key: "abyss", hue: 285, sky: "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)",
+    shape: i => jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p)
+  }),
+  mythic: () => true,
+  lumen: () => 1,
+  auto: false,
+  enter() { pools.length = 0; abStartDepth(1.5); },
+  leave() { pools.length = 0; },
+  stepSpawns(dt) {
+    if (ab.pause > 0) { ab.pause -= dt; return; }
+    const live = foes.filter(f => !f.dead).length;
+    if (ab.spawned < ab.need) {
+      spawn.spawnT -= dt;
+      const cap = ab.phase === 4 ? 1 : 6;
+      if (spawn.spawnT > 0 || live >= cap) return;
+      const n = ab.phase === 4 ? 1 : Math.min(1 + rnd(3), cap - live, ab.need - ab.spawned);
+      const base = pickSpawnAngle();
+      for (let i = 0; i < n; i++) {
+        const last = ab.spawned === ab.need - 1;
+        const kind = ab.phase === 4 ? "g" : last && (ab.phase === 3 || (ab.phase === 2 && S.abyss.depth >= 10)) ? "e" : "n";
+        spawnFoe(makeVoid(kind), base + (i - (n - 1) / 2) * .32, i * 22); ab.spawned++;
+      }
+      spawn.spawnT = .7 + Math.random() * .6;
+      return;
+    }
+    if (live > 0 || ab.phase === 4) return;
+    if (ab.phase < 3) { ab.phase++; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = 1.2; floatText("Wave " + ab.phase + "/3", "info", "hero", "#c08bff"); }
+    else { ab.phase = 4; ab.need = 1; ab.spawned = 0; ab.pause = 1.6; floatText("Guardian", "info", "hero", "#ff5fa8"); sfx("warn"); }
+  },
+  step(dt) {
+    const n = ruleN("pools"); poolT += dt;
+    for (let i = pools.length - 1; i >= 0; i--) {
+      const P = pools[i]; P.t -= dt;
+      if (P.t <= 0) { pools.splice(i, 1); continue; }
+      if (!heroDown && !(dashIT > 0) && Math.hypot(view.HERO_X - P.x, view.HERO_Y - P.y) < P.R) poolAcc += ST.maxHp * .03 * Math.max(1, n) * dt;
+    }
+    if (poolT >= .5) { poolT = 0; if (poolAcc > 0) { trueDamage(poolAcc, "Poison"); poolAcc = 0; } }
+  },
+  kill(e) { if (e.boss) abyssCleared(e); },
+  death() { abyssFail("death"); },
+  escape() { clearFoes(true); abyssFail("escape"); },
+  hud() {
+    const live = foes.filter(f => !f.dead).length;
+    return { title: "Depth " + S.abyss.depth, button: "Leave Abyss", prog: ab.need ? (ab.spawned - live) / ab.need : 0, sub: (ab.phase === 4 ? "Guardian" : "Wave " + ab.phase + "/3") + ", best " + abBest() };
+  },
+  button() { exitAbyss(); }
+};
+function addPool(x, y) {
+  pools.push({ x, y, R: 34, t: 5 });
+  if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 34, fill: "rgba(120,255,140,.16)", stroke: "#7dff8a", "stroke-width": 1.5, "stroke-dasharray": "4 4" }), [{ opacity: 0 }, { opacity: 1, offset: .08 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 5000);
+}
+// Void enemies blink: every few seconds they vanish and reappear somewhere else around you
+const VOID_BLINK = {
+  tick(c, e) {
+    if (e.boss || !e.arrived || e.stun > 0) return;
+    e.blinkT -= c.dt;
+    if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); }
+  }
+};
+function makeVoid(kind) {
+  const d = S.abyss.depth, boss = kind === "g";
+  const v = pick(VARIANTS), T0 = pick(VOID_SHAPES), shape = jitterShape(T0.p), hue = pick([280, 300, 190, 320, 165, 250]);
+  const e = makeFoe({ stage: abyssStage(d), boss, elite: kind === "e", v, zone: 5 + d % 8, timer: 75 + ST.bossTime });
+  Object.assign(e, {
+    sides: shape.length, shape, void: true, tone: "r5", hue, fill: "hsl(" + hue + " 40% 9%)", stroke: "hsl(" + hue + " 95% 66%)",
+    tier: Math.min(4, 2 + (boss ? 2 : e.elite ? 1 : 0) + (Math.random() < .3 ? 1 : 0)), R: Math.round((boss ? 36 : e.elite ? 31 : 26) * v.size),
+    name: (boss ? "Guardian " : e.elite ? "Elite " : "") + "Void " + T0.n, blinkT: 3 + Math.random() * 4
+  });
+  e.fx.push(VOID_BLINK);
+  AB_RULES.forEach(r => { const n = ruleN(r.id); if (n && r.foe) r.foe(e, n); });
+  return e;
+}
+function voidBlink(e) {
+  ringIfRoom(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
+  const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;
+  e.px = view.HERO_X + Math.cos(a) * dist; e.py = view.HERO_Y + Math.sin(a) * dist; e.vx = 0; e.vy = 0;
+  newWaypoint(e); setFoePos(e); ringIfRoom(e.px, e.py, e.stroke, .2, 2, 300, 2);
+}
+function renderAbyss() {
+  if (!abyssOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to open the Abyss.</p>";
+  const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
+  let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
+    '<div class="note" style="margin:0">The Abyss is an endless climb that never resets, not even when you transcend. Each depth is 3 waves of Void shapes and a Guardian. Clear it for Voidstone and go one deeper. Every depth adds a rule. Die and you fall back 2 depths. Mythics can drop from Guardians. Your build comes with you; leaving puts you back on stage ' + S.stage + ".</div>" +
+    '<div class="ctrls" style="margin:0"><button class="btn go" data-act="' + (mode === ABYSS ? "abLeave" : "abEnter") + '">' + (mode === ABYSS ? "Leave the Abyss" : "Enter at depth " + d) + "</button>" +
+    (mode !== ABYSS && d > 1 ? '<button class="btn" data-act="abDown">Start 5 depths lower</button>' : "") + "</div></div>";
+  h += '<h4 class="forgeH">Depth ' + d + " rules</h4>" + (rules.length ? rules.map(([r, n]) => '<div class="row forge"><span class="n">' + r.name + (n > 1 ? " x" + n : "") + '</span><span class="d">' + r.d(n) + "</span></div>").join("") : '<p class="note">None yet. A new rule joins at every depth from depth 2.</p>');
+  h += '<h4 class="forgeH">Milestones</h4>' + AB_MILES.map(([m, n, t]) => '<div class="row forge"><span class="n">Depth ' + m + ": " + n + (A.best >= m ? " ✓" : "") + '</span><span class="d"' + (A.best >= m ? "" : ' style="opacity:.6"') + ">" + t + "</span></div>").join("");
+  h += '<h4 class="forgeH">Abyss Altar</h4>';
+  ALTAR.forEach(a => {
+    const r = AL(a.id), maxed = r >= a.max, c = a.cost(r);
+    h += '<div class="row forge"><span class="n">' + a.name + " · Rank " + r + " / " + a.max + '</span><span class="d">' + a.desc(r) + (maxed ? "" : '<span class="nx"> → ' + a.nx + "</span>") + "</span>" +
+      '<div class="side">' + (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn voidb" data-act="altar" data-id="' + a.id + '">' + c + " Voidstone</button>") + "</div></div>";
+  });
+  return h;
+}
+sheet("tree", "abyss", { label: "Abyss", at: 2, open: () => abyssOpen(), body: "abyssBody", render: renderAbyss });
+action("abEnter", () => enterAbyss());
+action("abLeave", () => { exitAbyss(); closeWindow(); });
+action("abDown", () => { S.abyss.depth = Math.max(1, S.abyss.depth - 5); });
+action("altar", id => {
+  const a = ALT[id], r = AL(id), c = a.cost(r);
+  if (r >= a.max || S.abyss.stone < c) return false;
+  S.abyss.stone -= c; S.abyss.altar[id] = r + 1; sfx("chord", 0, 0); log("Abyss Altar: " + a.name + " rank " + (r + 1), "r5");
+});
+
 // ---- js/main.js
 // Boot and the main loop.
+// the Abyss only registers itself (its mode, tab, actions and bonuses); nothing else needs to call into it
 
 // drawing: everything that moves smoothly, once per animation frame
 let lastFrame = 0;

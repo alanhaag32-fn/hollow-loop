@@ -335,7 +335,7 @@ function drawVariant(e, cy) {
   E.inner.setAttribute("fill", k.inner ? k.inner(v) : "none");
   E.inner.setAttribute("stroke-dasharray", k.innerDash || "none");
   E.inner.setAttribute("opacity", k.innerOp || .7);
-  E.model.classList.toggle("umbral", k.cls === "umbral");
+  E.model.classList.toggle("umbral", !!k.phased);
   k.deco(e, E.deco, cy, eVerts(e, e.R, 0, 0, cy));
 }
 // a boss Crush: lands where the warning ring was shown 1.3s earlier

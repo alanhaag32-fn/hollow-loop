@@ -12,7 +12,7 @@ import { log } from "../ui/log.js";
 
 // The four variants. All are ranged; their attacks are in shots.js (ATTACK). weapon: the gun's sprite.
 // look: how the body is drawn. edge: outline width, dash: outline dashes, inner: fill of the inner shape, innerDash,
-// innerOp: its dashes and opacity, rim: extra radius the gun sits out at, cls: a class on the model, saw: shows the
+// innerOp: its dashes and opacity, rim: extra radius the gun sits out at, phased: the flickering Umbral look, saw: shows the
 // loaded saw, trail: has speed lines that point away from the hero, deco(e, g, cy, verts): draws the rest.
 export const VARIANTS = [
   { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45,
@@ -44,7 +44,7 @@ export const VARIANTS = [
   { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36,
     weapon: "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z",
     // void lance; dashed edges, a dark eye socket and orbiting motes
-    look: { dash: "7 4", cls: "umbral", deco(e, g, cy) {
+    look: { dash: "7 4", phased: true, deco(e, g, cy) {
       const R = e.R;
       svgEl("circle", { cx: 0, cy, r: R * .32, fill: "#07050d", stroke: e.stroke, "stroke-width": 1.5 }, g);
       [0, 1, 2].forEach(i => { const a = i * 2.09 + .5; svgEl("circle", { cx: (Math.cos(a) * (R + 9)).toFixed(1), cy: (cy + Math.sin(a) * (R + 9)).toFixed(1), r: 2, fill: e.stroke, opacity: .6 }, g); });

@@ -19,7 +19,7 @@ import { setZone, view } from "../world/scene.js";
 
 // the Abyss's wave state: phase 1-3 are waves, 4 is the Guardian
 const ab = { phase: 1, need: 0, spawned: 0, pause: 0 };
-export const abyssOpen = () => (S.peak || 1) >= TRANS_AT;
+const abyssOpen = () => (S.peak || 1) >= TRANS_AT;
 const AL = id => (S.abyss && S.abyss.altar && S.abyss.altar[id]) || 0;
 const abBest = () => (S.abyss && S.abyss.best) || 0;
 const abMile = d => abBest() >= d;

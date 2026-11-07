@@ -132,7 +132,7 @@ function drawHero() {
 }
 const HERO_SPD = 170;
 export let hvx = 0, hvy = 0, dashT = 0, dashIT = 0, dashVX = 0, dashVY = 0, dashHit = null, dashD = 0;
-export const DASH_TIME = .2;
+const DASH_TIME = .2;
 export function startDash(L) {
   // direction: where you're steering, else where you're drifting, else straight away from the nearest foe
   let dx = hero.joyX, dy = hero.joyY;

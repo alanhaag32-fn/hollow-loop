@@ -29,7 +29,7 @@ export const WEAPON = {
       // the glaive itself flies out, spins on the target and comes back to its spot in orbit
       const g = svgEl("g", {}); g.style.color = c.glowC;
       svgEl("path", { d: WEAPON.Glaive.path, fill: c.col, class: "glow", transform: c.crit ? "scale(1.4)" : "" }, g);
-      if (c.idx === undefined) hideFor(c.orbit, c.T * 2.4);
+      if (c.idx === undefined) hideFor(c.orbit, c.T * (WEAPON.Glaive.again + 1));
       launch(g, c.ox, c.oy, c.tgt, c.T, { glaive: c.slot, fast: c.crit, offy: c.off });
     } },
   Laser: { path: "M0 -10 L8 6 L-8 6 Z M0 -1 A2.5 2.5 0 1 1 0.01 -1 Z", trait: { rate: 1, dmg: .95, pierce: true, name: "Piercing", up: hi => ({ boost: [1, 1.15, 1.25][hi] }), text: o => "Ignores Shielded blocks and Armored damage reduction" + (o.boost > 1 ? ", +" + pc(o.boost - 1) + "% damage" : "") },
@@ -126,8 +126,8 @@ export function stepShots(now) {
       // out to the target, a quick spin on it, then back to its spot in orbit
       const O = ORBIT[o.glaive].pose, bx = view.HERO_X + O.x, by = view.HERO_Y + O.y;
       if (el < 1) { const u = 1 - (1 - el) * (1 - el); x = sh.x0 + (ex - sh.x0) * u; y = sh.y0 + (ey - sh.y0) * u; }
-      else if (el < 1.4) { x = ex; y = ey; }
-      else { const u = Math.min(1, (el - 1.4) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
+      else if (el < WEAPON.Glaive.again) { x = ex; y = ey; }
+      else { const u = Math.min(1, (el - WEAPON.Glaive.again) / 1), uu = u * u; x = ex + (bx - ex) * uu; y = ey + (by - ey) * uu; done = u >= 1; }
       rot = (now - sh.t0) * (o.fast ? 1.6 : 1.1);
     } else {
       const u = Math.min(1, el), dx = ex - sh.x0, dy = ey - sh.y0, L = Math.hypot(dx, dy) || 1, bulge = (o.bulge || 0) * Math.sin(Math.PI * u);
@@ -140,7 +140,7 @@ export function stepShots(now) {
     if (done) { sh.el.remove(); shots.splice(i, 1); if (o.done) o.done(x, y); }
   }
 }
-// The three orbital slots. The main one always fires (a bare Glaive when empty); the others fire when open and filled.
+// The three orbital slots. The main one always fires (a bare Mote when empty); the others fire when open and filled.
 // share: damage relative to the main orbital. pose: where it sits around the core right now. cd: time to its next volley.
 export const ORBITALS = [
   { key: "weapon", label: "Main orbital", nth: "main", share: () => 1, open: () => true, ids: ["hBladeOrbit", "hWpn1", "hWeapon"], cd0: .5, pose: { a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 } },
