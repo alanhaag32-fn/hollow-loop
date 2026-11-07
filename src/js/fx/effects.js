@@ -7,7 +7,7 @@ import { enemy } from "../enemies/foes.js";
 import { ARENA_C, anim, perf, reduce } from "./gfx.js";
 
 import { heroModel } from "../hero/hero.js";
-import { enemyCY, wType } from "../hero/orbitals.js";
+import { WEAPON, enemyCY, wType } from "../hero/orbitals.js";
 import { STATUS, st } from "../hero/statuses.js";
 import { VX1, view } from "../world/scene.js";
 
@@ -48,11 +48,11 @@ export function sparks(x, y, n, col, dist) {
 }
 export function slash(crit, slot = "weapon", t) {
   if (reduce) return;
-  const ty = wType(slot), SX = t ? t.px : view.ENEMY_X, SY = t ? t.py : enemyCY();
-  if (ty === "Laser" || ty === "Coil" || ty === "Drone" || ty === "Mote") {
+  const look = WEAPON[wType(slot)].impact, SX = t ? t.px : view.ENEMY_X, SY = t ? t.py : enemyCY();
+  if (look !== "arc") {
     const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff";
     sparks(SX, SY, crit ? 9 : 5, crit ? "#ff8a3d" : col, crit ? 40 : 26);
-    if (crit || ty === "Laser") ringIfRoom(SX, SY, col, .4, crit ? 2.4 : 1.4, 220, 2);
+    if (crit || look === "beam") ringIfRoom(SX, SY, col, .4, crit ? 2.4 : 1.4, 220, 2);
     return;
   }
   const w = S.equip[slot], col = w ? ARENA_C[w.r] : "#ffffff", cy = SY, s = crit ? 1.35 : 1;

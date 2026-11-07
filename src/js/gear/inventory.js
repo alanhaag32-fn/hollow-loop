@@ -10,7 +10,7 @@ import { ARENA_C, reduce } from "../fx/gfx.js";
 import { PACK_CAP, RARITY, SET, SETS, SLOT, UNIQ, affText, implOf, noun, salvShards, salvValue, score } from "./items.js";
 import { forgeUI } from "./reforge.js";
 import { coronaSvg, evadeChance, hero, lensSvg, recalc, setCounts, shellSvg } from "../hero/hero.js";
-import { HERO_WEAPON, ORBIT, ORBITALS, SLOT2_AT, WTRAIT, baseSlot, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType, weaponType } from "../hero/orbitals.js";
+import { ORBIT, ORBITALS, SLOT2_AT, WEAPON, baseSlot, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType, weaponType } from "../hero/orbitals.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
@@ -72,7 +72,7 @@ export function receive(it, quiet) {
 const glyph = slotId => '<svg class="glyph" viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[slotId].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
 function itemCard(it, mode, label, extra) {
   const slot = SLOT[it.slot], r = RARITY[it.r];
-  const tr = it.slot === "weapon" ? WTRAIT[weaponType(it)] : null;
+  const tr = it.slot === "weapon" ? WEAPON[weaponType(it)].trait : null;
   const im = implOf(it);
   const traitL = (tr ? '<div class="trait"><b>' + tr.name + "</b>: " + traitText(it) + "</div>" : "") + (im ? '<div class="impl">' + noun(it) + ": " + im.txt + "</div>" : "") +
     (it.u && UNIQ[it.u] ? '<div class="uniq"><b>' + UNIQ[it.u].name + "</b>: " + UNIQ[it.u].desc + "</div>" : "");
@@ -97,7 +97,7 @@ const itemMain = it => SLOT[it.slot].main(it.power, it.power / itemPow(it.stage 
 function renderStats() {
   const G = (title, rows, id) => '<div class="wsub" data-sub="' + id + '"><div class="sgroup"><h3>' + title + "</h3>" + rows.filter(Boolean).map(([a, b]) => '<div class="srow"><span>' + a + "</span><b>" + b + "</b></div>").join("") + "</div></div>";
   $("statsBody").innerHTML =
-    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (S.equip.weapon ? " (" + WTRAIT[wType()].name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WTRAIT[wType(o.key)].name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
+    G("Offense", [["Damage per second", fmt(dps())], ["Attack", fmt(ST.atk)], ["Attack speed", effSpd().toFixed(2) + " per second"], ["Main orbital", wType() + (S.equip.weapon ? " (" + WEAPON[wType()].trait.name + ")" : "") + ", " + (effSpd() * orbRate("weapon")).toFixed(2) + " attacks/s"], ...ORBITALS.slice(1).map(o => o.open() ? [o.label, o.has() ? wType(o.key) + " (" + WEAPON[wType(o.key)].trait.name + "), " + fmt(slotAtk(o.key)) + " attack" : "Empty"] : o.lockRow ? [o.label, o.lockRow] : null), ["Damage to bosses", pct(ST.bossDmg, 0)], ["Crit chance", pct(ST.crit)], ["Crit damage", pct(ST.critDmg, 0)], ["Red crit chance", pct(Math.max(0, ST.crit - 1)) + (ST.crit > 1 ? "" : " (crit chance past 100%)")], ["Red crit power", "x" + ST.redPow.toFixed(2) + " on top of crit damage"], ["Tap damage", fmt(ST.atk * ST.tap) + " (" + pct(ST.tap, 0) + " of attack)"], ["Life steal", pct(ST.leech)]], "off") +
     G("Defense", [["Health", fmt(Math.max(0, hero.hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((1 - ST.blockLeak) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Move speed", pct(ST.move, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
     G("Mana and skills", [["Mana", fmt(Math.max(0, hero.mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
     G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
@@ -114,7 +114,7 @@ function coreSnap() {
   ring.setAttribute("class", "spinSlow");
   for (const id in pos) { const e = cl.querySelector("#" + id); if (e) { e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); const o = e.parentNode; if (o.style.display !== "none") ring.appendChild(o); else o.remove(); } }
   const bob = cl.querySelector(".bob") || cl; bob.appendChild(ring);
-  ring.querySelectorAll("path").forEach(pth => { if (pth.getAttribute("d") === HERO_WEAPON.Glaive) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
+  ring.querySelectorAll("path").forEach(pth => { if (Object.values(WEAPON).some(W => W.spin && W.path === pth.getAttribute("d"))) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
   cl.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); cl.removeAttribute("id"); cl.removeAttribute("class"); cl.removeAttribute("style");
   return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
 }
@@ -163,7 +163,7 @@ function spriteSvg(it) {
   const key = it.slot + noun(it) + it.r;
   if (spriteCache.has(key)) return spriteCache.get(key);
   const n = noun(it), c = ARENA_C[it.r], sv = svgEl("svg", { "aria-hidden": "true" }), g = svgEl("g", {}, sv);
-  if (it.slot === "weapon") { sv.setAttribute("viewBox", "-14 -14 28 28"); svgEl("path", { d: HERO_WEAPON[n] || HERO_WEAPON.Glaive, fill: c, stroke: "#000", "stroke-opacity": .3, "stroke-width": 1 }, g); if (it.r >= 3) { g.setAttribute("class", "glow"); g.style.color = c; } }
+  if (it.slot === "weapon") { sv.setAttribute("viewBox", "-14 -14 28 28"); svgEl("path", { d: WEAPON[weaponType(it)].path, fill: c, stroke: "#000", "stroke-opacity": .3, "stroke-width": 1 }, g); if (it.r >= 3) { g.setAttribute("class", "glow"); g.style.color = c; } }
   else if (it.slot === "armor") { sv.setAttribute("viewBox", "-30 -30 60 60"); shellSvg(n, c, it.r, g); }
   else if (it.slot === "boots") { sv.setAttribute("viewBox", "-37 -37 74 74"); const g2 = svgEl("g", {}, sv); coronaSvg(n, c, it.r, g, g2); }
   else { sv.setAttribute("viewBox", "-9 -9 18 18"); lensSvg(n, c, it.r, g); }
@@ -200,7 +200,7 @@ function renderPack() {
   const v = pkView(), L = packItems();
   if (pkSel != null && !S.inv.some(i => i.id === pkSel)) pkSel = null;
   const setsIn = [...new Set(S.inv.filter(i => i.set).map(i => i.set))];
-  const ico = k => k === "all" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" fill="currentColor"/></svg>' : k === "weapon" ? '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON.Drone + '" fill="currentColor"/></svg>' : '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[k].shape + '" fill="currentColor" fill-rule="evenodd"/></svg>';
+  const ico = k => k === "all" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" fill="currentColor"/></svg>' : k === "weapon" ? '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + WEAPON.Drone.path + '" fill="currentColor"/></svg>' : '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[k].shape + '" fill="currentColor" fill-rule="evenodd"/></svg>';
   let h = '<div class="pkBar"><div class="seg">' + PK_SLOT.map(([k, n]) => '<button class="' + (v.slot === k ? "on" : "") + '" data-act="pkSlot" data-id="' + k + '" type="button">' + ico(k) + n + "</button>").join("") + "</div>" +
     '<div class="pkRow"><label>Sort<select data-act="pkSort" aria-label="Sort">' + PK_SORT.map(([k, n]) => '<option value="' + k + '"' + (v.sort === k ? " selected" : "") + ">" + n + "</option>").join("") + "</select></label>" +
     '<label>Set<select data-act="pkSet" aria-label="Filter by set"><option value="any"' + (v.set === "any" ? " selected" : "") + '>All items</option><option value="sets"' + (v.set === "sets" ? " selected" : "") + '>Set items only</option><option value="none"' + (v.set === "none" ? " selected" : "") + '>No set</option>' +

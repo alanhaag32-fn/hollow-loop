@@ -8,7 +8,7 @@ import { foes } from "../enemies/foes.js";
 import { dashFx } from "../fx/effects.js";
 import { ARENA_C, reduce } from "../fx/gfx.js";
 import { SET, noun } from "../gear/items.js";
-import { HERO_WEAPON, MOTE, ORBITALS, weaponType } from "./orbitals.js";
+import { ORBITALS, WEAPON, weaponType } from "./orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { SK } from "../skills/skills.js";
 import { clearStatuses } from "./statuses.js";
@@ -109,14 +109,14 @@ export function lensSvg(n, c, r, into) {
 }
 function drawHero() {
   const w = S.equip.weapon, a = S.equip.armor, b = S.equip.boots, c = S.equip.charm, hw = $("hWeapon");
-  hw.setAttribute("d", w ? HERO_WEAPON[weaponType(w)] : MOTE);
+  hw.setAttribute("d", WEAPON[w ? weaponType(w) : "Mote"].path);
   hw.setAttribute("fill", w ? ARENA_C[w.r] : "#effffc");
   hw.style.color = w ? ARENA_C[w.r] : "#7be0d0";
   hw.classList.toggle("glow", !w || w.r >= 3);
   ORBITALS.slice(1).forEach(o => {
     const wo = o.open() ? S.equip[o.key] : null, el = $(o.ids[2]);
     $(o.ids[0]).style.display = wo ? "" : "none";
-    if (wo) { el.setAttribute("d", HERO_WEAPON[weaponType(wo)]); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
+    if (wo) { el.setAttribute("d", WEAPON[weaponType(wo)].path); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
   });
   if (a) shellSvg(noun(a), ARENA_C[a.r], a.r); else $("hShell").innerHTML = "";
   if (b) coronaSvg(noun(b), ARENA_C[b.r], b.r); else { $("hCorona").innerHTML = ""; $("hCoronaStatic").innerHTML = ""; }
