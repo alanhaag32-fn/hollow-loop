@@ -113,7 +113,6 @@ function fireShot(e, heavy, land) {
       svgEl("circle", { r: 2.2, fill: "#fff" }, g);
       addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
     }, C);
-    void a0;
     return;
   }
   // umbral lance: locks onto where you are, shows a thin aim line, then fires down that line

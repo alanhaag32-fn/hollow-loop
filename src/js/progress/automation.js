@@ -15,10 +15,10 @@ export function autoTick(dt) {
   if (heroDown) return;
   autoT += dt;
   if (!autoOn()) return;
-  if (S.autoCfg.trainOn !== false && autoT >= 2) { autoT = 0; autoTrain(); }
-  if ((S.autoCfg.push ?? 60) > 0 && !S.push) { farmT += dt; if (farmT >= (S.autoCfg.push ?? 60)) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
+  if (S.autoCfg.trainOn && autoT >= 2) { autoT = 0; autoTrain(); }
+  if (S.autoCfg.push > 0 && !S.push) { farmT += dt; if (farmT >= S.autoCfg.push) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
   {
-    if (S.maxStage > stallMax) { stallMax = S.maxStage; stallT = 0; } else stallT += dt;
+    if (S.maxStage !== stallMax) { stallMax = S.maxStage; stallT = 0; } else stallT += dt;
     const at = S.autoCfg.ascAt || 0;
     // never ascend right where a run starts (Head Start), or it would loop forever
     const floor = ascMin();

@@ -52,8 +52,7 @@ function applySub(win) {
   $("p-" + win).querySelectorAll(".wsub").forEach(el => el.classList.toggle("on", !list || list.length < 2 || el.dataset.sub === cur));
   // a panel can fill the whole sheet (the web, the board) instead of scrolling
   const fill = PANELS[win].fill ? PANELS[win].fill(cur) : "";
-  $("sheetInner").classList.toggle("fill", !!fill);
-  $("sheetInner").classList.toggle("fillBoard", fill === "board");
+  $("sheetInner").className = "sheetInner" + (fill ? " fill fill-" + fill : "");
 }
 export let tab = null;
 const CURRENCY = { echo: () => S.echoes, shard: () => S.shards, dust: () => S.stardust || 0, gold: () => S.gold };
@@ -79,7 +78,7 @@ function openWindow(id) {
   if (PANELS[id].shown) requestAnimationFrame(PANELS[id].shown);
   $("sheetClose").focus();
 }
-export function closeWindow() { $("sheetInner").classList.remove("fill", "fillBoard"); $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
+export function closeWindow() { $("sheetInner").className = "sheetInner"; $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
 const MENU_ORDER = ["stats", "gear", "pack", "skills", "train", "index", "board", "tree", "-", "log", "guide"];
 function openMenu() { $("menuDrop").hidden = false; $("menuBtn").setAttribute("aria-expanded", "true"); }
 function closeMenu() { $("menuDrop").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); }

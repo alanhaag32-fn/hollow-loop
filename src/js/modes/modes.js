@@ -96,7 +96,7 @@ export const fightStage = () => mode.stage();
 // a reset (ascend, transcend) always lands in the main run, without the "you left" fanfare
 export function returnToMain() { if (mode !== MAIN) { mode.leave(); mode = MAIN; } }
 // pick the main run up where the save left it
-export function resumeRun() { spawn.stageSpawned = S.kills; }
+export function resumeRun(delay = spawn.spawnT) { spawn.stageSpawned = S.kills; spawn.spawnT = delay; }
 export function switchMode(m) {
   mode.leave(); mode = m;
   clearFoes(false); m.enter(); setZone(true); recalc();

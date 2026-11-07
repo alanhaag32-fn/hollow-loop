@@ -10,12 +10,11 @@ import { clearFoes, enemy, fdir, foes, knock, lungeT, moveFoes, pickTarget, remo
 import { blockFx, burst, evadeFx, lootBeam, ringIfRoom, shake, shatter, slash, sparks, statusFx } from "../fx/effects.js";
 import { receive } from "../gear/inventory.js";
 import { makeItem } from "../gear/items.js";
-import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy } from "../hero/hero.js";
+import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy, resetCombat } from "../hero/hero.js";
 import { ORBITALS, fireOrbital, heroAttack, orbRate, wTr } from "../hero/orbitals.js";
 import { stepStatuses } from "../hero/statuses.js";
 import { recordKill } from "../index/index.js";
-import { fightStage, mode, spawn } from "../modes/modes.js";
-import { resetCombat } from "../hero/hero.js";
+import { fightStage, mode, resumeRun } from "../modes/modes.js";
 import { autoCast, stepSkills } from "../skills/skills.js";
 import { dmgFloat, floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
@@ -80,9 +79,7 @@ export function land(e, base, kind, slot) {
   const show = () => {
     if (kind === "blade" || kind === "storm") slash(crit, slot, e);
     else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
-    if (note) sfx("miss", 0, 120);
-    else if (crit) sfx("crit", 0, 160);
-    else if (kind !== "tap") sfx("hit", 0, 70);
+    if (crit && !note) sfx("crit", 0, 160);
     if (note) floatText(note, "info", e);
     else dmgFloat(e, dmg, crit, kind === "tap", red);
     if (red && !document.hidden) sparks(e.px, e.py, 5, "#ff2e4d", 28);
@@ -209,7 +206,7 @@ function onDeath() {
   setTimeout(() => clearFoes(true), 450);
   setTimeout(() => {
     if (fall) fall.cancel();
-    hero.hp = ST.maxHp; hero.mp = ST.maxMp; heroDown = false; spawn.spawnT = .4;
+    hero.hp = ST.maxHp; hero.mp = ST.maxMp; heroDown = false; resumeRun(.4);
     anim(heroModel, [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1.2)", offset: .7 }, { opacity: 1, transform: "scale(1)" }], 400);
     burst(view.HERO_X, view.HERO_Y, "#ffffff", 6);
   }, 1300);

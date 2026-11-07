@@ -77,13 +77,13 @@ export const SETS = [
   { id: "sun", name: "Sunwake", col: "#ffd04d", cv: "var(--c4)",
     b2: { d: "+20% attack speed", stats: () => ({ spd: 1.2 }) },
     b4: { d: "Every 8th attack fires 3 extra volleys", fx: {
-      attack(c, n) {
+      attack(c) {
         if (c.count % 8 !== 0) return;
-        const sl = n >= 6 ? ORBITALS.filter(o => o.active()).map(o => o.key) : ["weapon"];
+        const sl = ST.volleysAll ? ORBITALS.filter(o => o.active()).map(o => o.key) : ["weapon"];
         sl.forEach(k => { for (let i = 0; i < 3; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1, k); hit(slotAtk(k) * .7, wDelay(k), "blade", k); } }, 80 * i + 60); });
       }
     } },
-    b6: { d: "Those extra volleys fire from every orbital you have" }
+    b6: { d: "Those extra volleys fire from every orbital you have", stats: () => ({ volleysAll: plus(1) }) }
   },
   { id: "tide", name: "Tidecaller", col: "#4fd3e4", cv: "var(--c1)",
     b2: { d: "+30% mana regen", stats: () => ({ mpRegen: 1.3 }) },

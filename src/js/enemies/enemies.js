@@ -208,6 +208,7 @@ export function makeEnemy(stage, elite, scale = { hp: 1, dmg: 1 }) {
 export function makeChild(p) {
   return Object.assign({}, p, {
     hp: p.max * .4, max: p.max * .4, dmg: p.dmg * .6, R: Math.max(16, Math.round(p.R * .7)), child: true, dead: false, fresh: true, elite: false, boss: false,
-    mods: p.mods.filter(k => k !== "splitting"), fx: foeFx(p.mods.filter(k => k !== "splitting"), null), name: "Split " + p.name.replace(/^Elite /, ""), m: null, hitN: 0, stun: 0
+    // the copy keeps every hook its parent had (Abyss rules included) except splitting and boss mechanics
+    mods: p.mods.filter(k => k !== "splitting"), fx: p.fx.filter(f => f !== MODS.splitting.fx && !Object.values(MECHS).some(m => m.fx === f)), name: "Split " + p.name.replace(/^Elite /, ""), m: null, hitN: 0, stun: 0
   });
 }

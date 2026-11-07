@@ -5,7 +5,7 @@ import { ST, effectSource, emit } from "../core/stats.js";
 import { sparks, statusHitFx, tempFx } from "../fx/effects.js";
 import { hero } from "./hero.js";
 import { floatText } from "../ui/floats.js";
-import { svgEl } from "../core/util.js";
+import { $, svgEl } from "../core/util.js";
 import { view } from "../world/scene.js";
 import { anim } from "../fx/gfx.js";
 

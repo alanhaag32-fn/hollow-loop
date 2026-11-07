@@ -1,6 +1,6 @@
 // Transcending: Stardust, Star Power, the Star Forge, and the Transcend tab.
 import { sfx } from "../audio/sound.js";
-import { CYCLE, RUN, S, save } from "../core/save.js";
+import { CYCLE, RUN, S } from "../core/save.js";
 import { plus, statSource } from "../core/stats.js";
 import { fmt } from "../core/util.js";
 import { fillOrbital } from "../gear/inventory.js";
@@ -10,7 +10,6 @@ import { autoOn } from "./automation.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { TRAIN } from "../train/train.js";
 import { action, confirmTap } from "../ui/actions.js";
-import { updateUI } from "../ui/hud.js";
 import { log } from "../ui/log.js";
 
 const FR = id => (S.forge && S.forge[id]) || 0;
@@ -50,11 +49,10 @@ const dustGain = () => Math.floor(Math.sqrt(dustEchoes()) * Math.max(S.cyclePeak
 function doTranscend() {
   const g = dustGain();
   if (!transOpen() || !canTrans()) return false;
-  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1, seenIntro: true });
+  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1 });
   startRun();
   log("Transcended for " + g + " Stardust. Spend it in the Star Forge", "r4"); sfx("ascend", 0, 0);
   log("Echoes, the web and ascension modifiers have reset. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
-  save(); updateUI();
   return true;
 }
 export function renderTrans() {

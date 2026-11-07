@@ -342,11 +342,11 @@ body.noanim .eModel.umbral .eBody { animation: none; }
 /* the web tab fills the window: no page scrolling, the map takes the space */
 .sheetInner.fill .sheetBody { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
 .sheetInner.fill #panels, .sheetInner.fill .panel:not([hidden]), .sheetInner.fill .wsub.on { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.sheetInner.fillBoard .sheetBody { overflow-y: auto; }
-.sheetInner.fillBoard #panels, .sheetInner.fillBoard #p-board, .sheetInner.fillBoard #boardBody { flex: 1 0 auto; display: flex; flex-direction: column; }
-.sheetInner.fillBoard .board { flex: 1 0 auto; display: flex; flex-direction: column; gap: 11px; padding: 11px 9px 9px; }
-.sheetInner.fillBoard .paper { flex: 1 0 auto; padding: 9px 12px 8px; }
-.sheetInner.fillBoard .paper.blank { display: flex; flex-direction: column; justify-content: center; }
+.sheetInner.fill-board .sheetBody { overflow-y: auto; }
+.sheetInner.fill-board #panels, .sheetInner.fill-board #p-board, .sheetInner.fill-board #boardBody { flex: 1 0 auto; display: flex; flex-direction: column; }
+.sheetInner.fill-board .board { flex: 1 0 auto; display: flex; flex-direction: column; gap: 11px; padding: 11px 9px 9px; }
+.sheetInner.fill-board .paper { flex: 1 0 auto; padding: 9px 12px 8px; }
+.sheetInner.fill-board .paper.blank { display: flex; flex-direction: column; justify-content: center; }
 /* compact bounty card: details on the left, claim on the right */
 .paper:not(.blank) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-content: center; }
 .paper:not(.blank) > * { grid-column: 1; }
@@ -367,7 +367,7 @@ body.noanim .eModel.umbral .eBody { animation: none; }
   .wt, .wx { height: 46px; }
   .wx { width: 46px; }
   .sheetBody { padding-top: 10px; }
-  .sheetInner.fillBoard .paper { padding: 7px 11px 6px; }
+  .sheetInner.fill-board .paper { padding: 7px 11px 6px; }
   .paper .obj { margin-bottom: 4px; }
 }
 .barInfo { flex: 1; min-width: 0; align-self: center; font-size: 11.5px; line-height: 1.35; color: var(--muted); }

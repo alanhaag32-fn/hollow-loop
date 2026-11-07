@@ -8,7 +8,7 @@ export let unread = 0;
 export function log(text, cls) {
   feed.unshift({ text, cls, t: new Date() });
   if (feed.length > 150) feed.pop();
-  if (typeof tab !== "undefined" && tab === "log") markDirty("log"); else unread++;
+  if (tab === "log") markDirty("log"); else unread++;
 }
 function renderLog() {
   unread = 0;

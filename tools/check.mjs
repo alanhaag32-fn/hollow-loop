@@ -16,7 +16,7 @@ const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => { cons
 walk(path.join(ROOT, "src/js"));
 
 const CODES = {
-  2304: "undeclared", 2552: "undeclared", 2305: "missing export", 2724: "missing export", 2614: "missing export",
+  2304: "undeclared", 2552: "undeclared", 2580: "undeclared", 2582: "undeclared", 2591: "undeclared", 2592: "undeclared", 2305: "missing export", 2724: "missing export", 2614: "missing export",
   2632: "assigns an import", 2630: "assigns a function", 2448: "used before declared", 2454: "used before assigned",
   6133: "unused", 6192: "unused", 6198: "unused", 6196: "unused"
 };

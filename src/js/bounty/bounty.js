@@ -99,7 +99,7 @@ function renderBoard() {
   if ($("boardDone")) $("boardDone").textContent = S.bountyDone;
 }
 panel("board", {
-  bar: () => '<div class="barInfo"><b id="boardDone">' + S.bountyDone + '</b> completed<br>New posting 5 min after a claim</div><button class="btn" type="button" id="rerollBtn" data-act="reroll">Reroll</button>',
+  bar: () => '<div class="barInfo"><b id="boardDone">' + S.bountyDone + '</b> completed<br>New posting ' + mmss(POST_CD * ST.postTime) + ' after a claim</div><button class="btn" type="button" id="rerollBtn" data-act="reroll">Reroll</button>',
   fill: () => "board",
   render: renderBoard,
   refresh() {

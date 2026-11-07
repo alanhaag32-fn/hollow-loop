@@ -1,6 +1,5 @@
 // The arena: layout, camera, starfield backdrop and zone.
 import { $ } from "../core/util.js";
-import { syncTarget } from "../enemies/foes.js";
 import { arena } from "../fx/effects.js";
 import { mode } from "../modes/modes.js";
 
@@ -87,7 +86,6 @@ export function layout() {
   if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
 
   $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
-  syncTarget();
   setZone(true);
 }
 export const keys = {};

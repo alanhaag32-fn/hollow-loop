@@ -8,7 +8,7 @@ import { clearFoes } from "../enemies/foes.js";
 import { burst, equipFlash } from "../fx/effects.js";
 import { makeItem } from "../gear/items.js";
 import { hero, recalc, resetCombat } from "../hero/hero.js";
-import { resumeRun, returnToMain, spawn } from "../modes/modes.js";
+import { resumeRun, returnToMain } from "../modes/modes.js";
 import { ECHO_K } from "./transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { PANELS, markDirty } from "../ui/actions.js";
@@ -26,7 +26,7 @@ export function startRun() {
   S.stage = S.maxStage = st0; S.runStart = st0; S.cyclePeak = Math.max(S.cyclePeak || 1, st0);
   if (ST.starterKit) starterKit(st0);
   returnToMain();
-  clearFoes(false); resumeRun(); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
+  clearFoes(false); resumeRun(.8); Object.keys(cds).forEach(k => cds[k] = 0);
   resetCombat();
   recalc(); hero.hp = ST.maxHp; hero.mp = ST.maxMp;
   S.bounties.forEach(b => { b.shards = bountyShards(b.tier); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
@@ -36,7 +36,7 @@ export function doAscend() {
   const g = ascGain();
   if (S.maxStage < ascMin() || g < 1) return false;
   const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
-  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB, seenIntro: true });
+  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB });
   startRun();
   log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
   log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");

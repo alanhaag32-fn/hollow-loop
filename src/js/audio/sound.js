@@ -61,10 +61,8 @@ const SFX = {
   Hammer: () => { tone("sine", 165, 82, .28, .07, .21); tone("triangle", 330, 165, .18, .018, .21); },
   Coil: () => { tone("sine", 1318.5, 1318.5, .12, .012); tone("sine", 1330, 1330, .12, .012); },
   Mote: () => tone("sine", 1046.5, 1046.5, .07, .014),
-  hit: () => {},
   crit: () => bell(pickN(10, 13), .045),
   tap: () => tone("sine", pickN(8, 12), 0, .05, .012),
-  miss: () => {},
   shatter: big => {
     const n = big ? 5 : 2, start = big ? 12 : 13;
     for (let i = 0; i < n; i++) bell(NOTE[Math.max(5, start - i * 2)], big ? .03 : .018, i * .06, .35);
