@@ -6,6 +6,7 @@ import { $ } from "../core/util.js";
 import { applyGfx, sysReduce } from "../fx/gfx.js";
 import { action, confirmTap, panel } from "./actions.js";
 import { closeWindow } from "./windows.js";
+import { hold } from "../core/pause.js";
 
 const GUIDE = [
   ["The basics", `<p>Your glowing core floats in empty space while enemies drift in from every edge of the screen in packs, then roam freely around you and close in over time. Your orbitals fire at the nearest one while it approaches, so you can destroy it before it reaches you. Tap an enemy to focus it, shown by a cyan target marker. Tap anywhere in the arena to strike for extra damage. Taps can crit, and their power is shown as Tap damage in Stats. Tapping quickly builds a <b>combo</b>: each tap within half a second of the last adds 2% tap damage, up to +98% at 50 taps.</p>
@@ -127,7 +128,6 @@ action("wipe", (id, b) => {
 });
 let introPage = 0;
 // the game holds still while the intro or the welcome-back card is up
-export const paused = () => !$("intro").hidden || !$("away").hidden;
 function drawIntro() {
   const pg = INTRO[introPage];
   $("introStep").textContent = "Step " + (introPage + 1) + " of " + INTRO.length;
@@ -136,8 +136,8 @@ function drawIntro() {
   $("introBack").style.visibility = introPage ? "visible" : "hidden";
   $("introNext").textContent = introPage === INTRO.length - 1 ? "Start" : "Next";
 }
-export function showIntro() { introPage = 0; $("intro").hidden = false; drawIntro(); $("introNext").focus(); }
-function endIntro() { $("intro").hidden = true; S.seenIntro = true; save(); }
+export function showIntro() { introPage = 0; $("intro").hidden = false; hold("intro", true); drawIntro(); $("introNext").focus(); }
+function endIntro() { $("intro").hidden = true; hold("intro", false); S.seenIntro = true; save(); }
 
 export function initGuide() {
   $("introNext").addEventListener("click", () => { if (introPage < INTRO.length - 1) { introPage++; drawIntro(); } else endIntro(); });

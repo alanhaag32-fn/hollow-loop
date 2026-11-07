@@ -16,8 +16,8 @@ after(stop);
 test("a new game boots, fights and earns lumen", async () => {
   const page = await open(baseSave());
   for (let i = 0; i < 25; i++) { await page.mouse.click(195, 380); await page.waitForTimeout(200); }
-  const s = await game(page, ["core/save.js"], m => ({ kills: m.save.S.totalKills, gold: m.save.S.gold }));
-  assert.ok(s.kills > 0 && s.gold > 0, JSON.stringify(s));
+  const s = await game(page, ["core/save.js"], m => ({ kills: m.save.S.totalKills, gold: m.save.S.gold, index: Object.keys(m.save.S.bestiary).length }));
+  assert.ok(s.kills > 0 && s.gold > 0 && s.index > 0, JSON.stringify(s));
   assert.deepEqual(page.errors, []);
 });
 

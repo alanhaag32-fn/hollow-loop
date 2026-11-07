@@ -1,5 +1,4 @@
 // Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
-import { bump } from "../bounty/bounty.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { rnd } from "../core/util.js";
@@ -11,6 +10,7 @@ import { log } from "../ui/log.js";
 import { setZone } from "../world/scene.js";
 import { TRANS_AT } from "../progress/transcend.js";
 import { isBoss, zoneOf } from "../core/curves.js";
+import { tell } from "../core/events.js";
 
 // Momentum: stages below this cap fly by
 const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * ST.momentumAt) : 0;
@@ -66,7 +66,7 @@ export const MAIN = {
     if (S.kills < killsNeeded()) return;
     S.kills = 0; spawn.stageSpawned = 0; spawn.spawnT = .5;
     if (!S.push) return;
-    S.stage++; bump("stage", 1);
+    S.stage++; tell("stage", 1);
     if (S.stage > S.maxStage) {
       const before = S.maxStage; S.maxStage = S.stage; S.cyclePeak = Math.max(S.cyclePeak || 1, S.maxStage); markDirty("tree");
       NEW_BEST.forEach(fn => fn(before, S.maxStage, "best"));

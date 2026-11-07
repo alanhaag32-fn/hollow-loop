@@ -1,7 +1,6 @@
 // Taps on the arena, the floating joystick and keyboard steering.
 import { runAction } from "./actions.js";
 import { sfx } from "../audio/sound.js";
-import { bump } from "../bounty/bounty.js";
 import { alive, hit } from "../combat/combat.js";
 import { ST, emit } from "../core/stats.js";
 import { $ } from "../core/util.js";
@@ -11,6 +10,7 @@ import { hero } from "../hero/hero.js";
 import { floatText } from "./floats.js";
 import { tab } from "./windows.js";
 import { SC, keys, view } from "../world/scene.js";
+import { tell } from "../core/events.js";
 
 let lastTapFx = 0, tapCount = 0, combo = 0, lastTapT = 0;
 
@@ -31,7 +31,7 @@ export function initInput() {
     if (combo === 25 || combo === 50) floatText(combo + " combo", "info", "hero", "#9ff3e6");
     const base = ST.atk * ST.tap * (1 + .02 * (combo - 1));
     hit(base, 60, "tap");
-    bump("tap", 1);
+    tell("tap", 1);
     sfx("tap", 0, 90);
     tapCount++;
     emit("tap", { base, count: tapCount });

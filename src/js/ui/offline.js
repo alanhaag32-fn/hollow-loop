@@ -8,6 +8,7 @@ import { receive } from "../gear/inventory.js";
 import { RARITY, makeItem } from "../gear/items.js";
 import { updateUI } from "./hud.js";
 import { log } from "./log.js";
+import { hold } from "../core/pause.js";
 
 const offCap = () => ST.offHours * 3600;
 function offlineGains(sec) {
@@ -29,11 +30,11 @@ export function showOffline(sec) {
   $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > offCap() ? " (the most it can store is " + ST.offHours + " hours)" : "") + ".";
   $("awayList").innerHTML = '<div><span>Shapes destroyed</span><b>' + fmt(g.kills) + '</b></div><div><span>Lumen</span><b class="g">+' + fmt(g.gold) + '</b></div>' +
     (g.shards ? '<div><span>Shards</span><b class="s">+' + fmt(g.shards) + "</b></div>" : "") + (found.length ? "<div><span>Items</span><b>" + found.join(", ") + "</b></div>" : "");
-  $("away").hidden = false;
+  $("away").hidden = false; hold("away", true);
   log("Away for " + t + ": earned " + fmt(g.gold) + " lumen" + (g.shards ? " and " + g.shards + " shards" : ""), "good");
   save();
 }
 
 export function initOffline() {
-  $("awayOk").addEventListener("click", () => { $("away").hidden = true; updateUI(); });
+  $("awayOk").addEventListener("click", () => { $("away").hidden = true; hold("away", false); updateUI(); });
 }

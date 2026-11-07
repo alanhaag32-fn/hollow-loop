@@ -6,8 +6,8 @@ import { $, polyPts, starPts, svgEl } from "../core/util.js";
 import { MODS, ePts, eVerts, makeChild } from "./enemies.js";
 import { FAR_RATE, enemyAttack } from "./shots.js";
 import { ringIfRoom, shake, sparks, warnRing } from "../fx/effects.js";
-import { anim, reduce } from "../fx/gfx.js";
-import { ARENA_C } from "../gear/items.js";
+import { ARENA_C, anim, reduce } from "../fx/gfx.js";
+
 import { RING_R, arcD } from "../hero/hero.js";
 import { STATUS } from "../hero/statuses.js";
 import { fightStage, mode } from "../modes/modes.js";

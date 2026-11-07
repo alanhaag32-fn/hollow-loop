@@ -33,7 +33,6 @@ export const RARITY = [
   { name: "Epic", mult: 3.5, w: .8, aff: [15, 25], ramp: 15, cap: 4, n: 3 }, { name: "Legendary", mult: 5.5, w: .1, aff: [25, 40], ramp: 12, cap: 5, n: 3 },
   { name: "Mythic", mult: 8, w: .1, aff: [40, 60], n: 4, myth: true }
 ];
-export const ARENA_C = [0, 1, 2, 3, 4, 5].map(i => getComputedStyle(document.querySelector(".arena")).getPropertyValue("--c" + i).trim());
 // f: how a roll turns into the stat (a Legendary roll of 25-40 is 25-40% attack, but 2.5-4% life steal)
 export const AFF = {
   atk: { l: "attack", f: 1, stats: v => ({ atk: 1 + v }) }, hp: { l: "health", f: 1, stats: v => ({ maxHp: 1 + v }) }, mp: { l: "max mana", f: 1, stats: v => ({ maxMp: 1 + v }) }, gold: { l: "lumen", f: 1, stats: v => ({ gold: 1 + v }) },

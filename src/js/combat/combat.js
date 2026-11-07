@@ -1,6 +1,5 @@
 // Hits and damage both ways: the hit pipeline, hurting the hero, deaths, kills and their rewards.
 import { sfx } from "../audio/sound.js";
-import { bump } from "../bounty/bounty.js";
 import { lumenAt } from "../core/curves.js";
 import { addGold, addShards, shardAmt } from "../progress/currency.js";
 import { S } from "../core/save.js";
@@ -13,13 +12,13 @@ import { makeItem } from "../gear/items.js";
 import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy, resetCombat } from "../hero/hero.js";
 import { ORBITALS, fireOrbital, heroAttack, orbRate, wTr } from "../hero/orbitals.js";
 import { stepStatuses } from "../hero/statuses.js";
-import { recordKill } from "../index/index.js";
 import { fightStage, mode, resumeRun } from "../modes/modes.js";
 import { autoCast, stepSkills } from "../skills/skills.js";
 import { dmgFloat, floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { view } from "../world/scene.js";
 import { anim } from "../fx/gfx.js";
+import { tell } from "../core/events.js";
 
 export let heroDown = false;
 const dpsLog = [];
@@ -75,7 +74,7 @@ export function land(e, base, kind, slot) {
     const now = performance.now();
     if (hero.hp - before > ST.maxHp * .02 && now - lastHealFloat > 600) { lastHealFloat = now; floatText("+" + fmt(hero.hp - before), "heal", "hero"); }
   }
-  if (crit) bump("crit", 1);
+  if (crit) tell("crit", 1);
   const show = () => {
     if (kind === "blade" || kind === "storm") slash(crit, slot, e);
     else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
@@ -130,10 +129,10 @@ export function hurt(d, noEvade, from) {
   if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
   const c = emit("incoming", { d, evade: noEvade ? 0 : evadeChance(), block: ST.block, cancel: false });
   if (c.cancel) return false;
-  if (c.evade > 0 && Math.random() < c.evade) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); emit("evaded", c); return false; }
+  if (c.evade > 0 && Math.random() < c.evade) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); tell("evade", 1); emit("evaded", c); return false; }
   let blocked = false;
   if (c.block > 0 && Math.random() < c.block) {
-    c.d *= ST.blockLeak; blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120);
+    c.d *= ST.blockLeak; blocked = true; tell("block", 1); blockFx(dir); sfx("block", 0, 120);
     emit("blocked", c);
   }
   c.d *= ST.dmgTaken;
@@ -168,8 +167,7 @@ function killFoe(e) {
   const st = fightStage(), g = Math.ceil(lumenAt(st) * mode.lumen() * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
   addGold(g, true); S.totalKills++;
   if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
-  bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
-  recordKill(e);
+  tell("kill", 1, e); if (boss) tell("boss", 1); if (elite) tell("elite", 1);
   floatText("+" + fmt(g) + " lumen", "gold", e);
   heal(ST.maxHp * ST.killHeal);
   hero.mp = Math.min(ST.maxMp, hero.mp + ST.maxMp * ((boss ? .25 : elite ? .1 : .03) + ST.killMana));

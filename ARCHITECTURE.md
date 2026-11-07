@@ -7,7 +7,7 @@ HTML page (the published game and the GitHub Pages site); `tools/serve.mjs` serv
 
 | Folder | What's in it |
 | --- | --- |
-| `core/` | Helpers, the stat fold and effect hooks (`stats.js`), the save and its lifetimes (`save.js`), loading with every migration (`load.js`), growth curves and currencies |
+| `core/` | Helpers, the stat fold and effect hooks (`stats.js`), the save and its lifetimes (`save.js`), loading with every migration (`load.js`), growth curves, play events, pausing. Apart from `load.js` these import no features |
 | `ui/` | Windows and the action/panel registries, HUD, log, floating text, target reticle, guide and intro, offline card, input |
 | `hero/` | The core: health, mana, shield, looks, movement and dash; statuses; the three orbital slots and firing |
 | `enemies/` | Variants, modifiers, boss mechanics (`enemies.js`), enemies on the field (`foes.js`), enemy shots |
@@ -32,6 +32,14 @@ through `foeEmit`.
 
 **Actions and panels register next to their feature.** A button's `data-act` names an action; after any action the
 game recalculates, re-renders the open window, saves and refreshes the HUD, so actions never do that themselves.
+
+**Play events.** Code where something happens calls `tell(type, n, detail)` (a kill, a crit, a cast, a stage
+cleared); bounties and the Index `listen` for them, so combat doesn't know either feature exists.
+
+**Unlocks announce themselves.** Features that open at a stage register with `whenNewBest`; the main run only reports
+new bests.
+
+**Pausing.** Full-screen cards `hold` the game (`core/pause.js`); the loop asks `paused()`.
 
 **Save fields have a lifetime.** `RUN` fields reset when you ascend, `CYCLE` fields when you transcend, `KEPT` fields
 never. Old saves are upgraded in one place, `core/load.js`.

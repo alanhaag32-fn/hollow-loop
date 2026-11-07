@@ -8,6 +8,7 @@ import { sfx } from "../audio/sound.js";
 import { recalc } from "../hero/hero.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
+import { listen } from "../core/events.js";
 
 const FAMILIES = [
   { key: "triad", sides: 3, name: "Triad", lore: "Sharp, fast and simple. The first shapes you'll meet.", n: [2, "% attack", v => ({ atk: 1 + v })], e: [4, "% crit damage", v => ({ critDmg: 1 + v })], b: [3, "% damage to bosses", v => ({ bossDmg: 1 + v })] },
@@ -24,7 +25,7 @@ const IDX_TIERS = { n: [25, 150, 600], e: [5, 30, 120], b: [1, 5, 20] };
 function idxKills(key, k) { const r = S.bestiary && S.bestiary[key]; return r ? r[k] || 0 : 0; }
 function IT(key, k) { const c = idxKills(key, k); return IDX_TIERS[k].filter(t => c >= t).length; }
 // count a kill toward its shape family's Index entry
-export function recordKill(e) {
+function recordKill(e) {
   const fam = e.family; if (!fam) return;
   const kk = e.boss ? "b" : e.elite ? "e" : "n";
   const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
@@ -64,3 +65,4 @@ function renderIndex() {
   $("indexBody").innerHTML = h;
 }
 panel("index", { render: renderIndex, tabs: () => [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) });
+listen((type, n, e) => { if (type === "kill") recordKill(e); });

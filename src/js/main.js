@@ -5,7 +5,6 @@ import { ensureBoard } from "./bounty/bounty.js";
 import { heroDown, step } from "./combat/combat.js";
 import { load } from "./core/load.js";
 import { S, save } from "./core/save.js";
-import { $ } from "./core/util.js";
 import { foes, moveFoes, poseFoe, setTarget, syncTarget } from "./enemies/foes.js";
 import { stepEShots } from "./enemies/shots.js";
 import { applyGfx } from "./fx/gfx.js";
@@ -15,7 +14,7 @@ import { resumeRun } from "./modes/modes.js";
 import { autoTick } from "./progress/automation.js";
 import { buildSkillbar } from "./skills/skills.js";
 import { PANELS, markDirty, whenActionsRun } from "./ui/actions.js";
-import { initGuide, paused, showIntro } from "./ui/guide.js";
+import { initGuide, showIntro } from "./ui/guide.js";
 import { refitStage, updateUI } from "./ui/hud.js";
 import { initInput } from "./ui/input.js";
 import { log } from "./ui/log.js";
@@ -24,6 +23,7 @@ import { placeReticle, placeTags, retag } from "./ui/reticle.js";
 import { initWindows, refreshPanel } from "./ui/windows.js";
 import { initWeb } from "./web/web.js";
 import { layout } from "./world/scene.js";
+import { paused } from "./core/pause.js";
 
 // drawing: everything that moves smoothly, once per animation frame
 let lastFrame = 0;
@@ -88,6 +88,6 @@ updateUI();
 setInterval(tick, 50);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { hiddenAt = Date.now(); save(); }
-  else { prev = Date.now(); if (hiddenAt && $("away").hidden) showOffline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; }
+  else { prev = Date.now(); if (hiddenAt && !paused()) showOffline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; }
 });
 window.addEventListener("pagehide", save);

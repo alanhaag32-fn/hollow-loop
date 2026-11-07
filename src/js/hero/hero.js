@@ -6,14 +6,15 @@ import { ST, emit, onBase, refreshStats, statSource } from "../core/stats.js";
 import { $, polyPts, starPts, svgEl, vertices } from "../core/util.js";
 import { foes } from "../enemies/foes.js";
 import { dashFx } from "../fx/effects.js";
-import { reduce } from "../fx/gfx.js";
-import { ARENA_C, SET, noun } from "../gear/items.js";
+import { ARENA_C, reduce } from "../fx/gfx.js";
+import { SET, noun } from "../gear/items.js";
 import { HERO_WEAPON, MOTE, ORBITALS, weaponType } from "./orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { SK } from "../skills/skills.js";
 import { clearStatuses } from "./statuses.js";
 import { markDirty } from "../ui/actions.js";
-import { paused } from "../ui/guide.js";
+import { paused } from "../core/pause.js";
+
 import { VH, VW, applyCam, keys, placeBackdrop, view } from "../world/scene.js";
 
 export const hero = {

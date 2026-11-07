@@ -4,8 +4,8 @@ import { F, heroDown } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { $, svgEl } from "../core/util.js";
 import { enemy } from "../enemies/foes.js";
-import { anim, perf, reduce } from "./gfx.js";
-import { ARENA_C } from "../gear/items.js";
+import { ARENA_C, anim, perf, reduce } from "./gfx.js";
+
 import { heroModel } from "../hero/hero.js";
 import { enemyCY, wType } from "../hero/orbitals.js";
 import { STATUS, st } from "../hero/statuses.js";

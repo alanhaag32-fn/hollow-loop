@@ -4,8 +4,8 @@ import { ST, foeEmit } from "../core/stats.js";
 import { fmt, polyPts, starPts, svgEl } from "../core/util.js";
 import { lungeT } from "./foes.js";
 import { fx, moveFx, ringIfRoom, shake, sparks, tempFx } from "../fx/effects.js";
-import { anim, reduce } from "../fx/gfx.js";
-import { ARENA_C } from "../gear/items.js";
+import { ARENA_C, anim, reduce } from "../fx/gfx.js";
+
 import { dashIT, hero, hvx, hvy } from "../hero/hero.js";
 import { applyStatus } from "../hero/statuses.js";
 import { fightStage } from "../modes/modes.js";

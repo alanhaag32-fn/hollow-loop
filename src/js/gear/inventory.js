@@ -1,5 +1,4 @@
 // Getting, stashing, salvaging and equipping items, and the Gear and Pack windows.
-import { bump } from "../bounty/bounty.js";
 import { dps, effSpd } from "../combat/combat.js";
 import { itemPow } from "../core/curves.js";
 import { addGold, addShards } from "../progress/currency.js";
@@ -7,8 +6,8 @@ import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { $, NS, fmt, pct, svgEl } from "../core/util.js";
 import { equipFlash } from "../fx/effects.js";
-import { reduce } from "../fx/gfx.js";
-import { ARENA_C, PACK_CAP, RARITY, SET, SETS, SLOT, UNIQ, affText, implOf, noun, salvShards, salvValue, score } from "./items.js";
+import { ARENA_C, reduce } from "../fx/gfx.js";
+import { PACK_CAP, RARITY, SET, SETS, SLOT, UNIQ, affText, implOf, noun, salvShards, salvValue, score } from "./items.js";
 import { forgeUI } from "./reforge.js";
 import { coronaSvg, evadeChance, hero, lensSvg, recalc, setCounts, shellSvg } from "../hero/hero.js";
 import { HERO_WEAPON, ORBIT, ORBITALS, SLOT2_AT, WTRAIT, baseSlot, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType, weaponType } from "../hero/orbitals.js";
@@ -16,9 +15,10 @@ import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { whenNewBest } from "../modes/modes.js";
+import { tell } from "../core/events.js";
 
 const SALV_LABEL = ["Off", "Common", "Up to Magic", "Up to Rare"];
-function salvage(it) { addGold(salvValue(it), false); addShards(salvShards(it)); bump("salvage", 1); }
+function salvage(it) { addGold(salvValue(it), false); addShards(salvShards(it)); tell("salvage", 1); }
 function stash(it) {
   if (it.r < S.salv || S.inv.length >= PACK_CAP) { salvage(it); return; }
   S.inv.unshift(it); markDirty("pack");
@@ -47,7 +47,7 @@ function placeWeapon(it) {
 }
 export function receive(it, quiet) {
   const cur = S.equip[it.slot];
-  if (it.r >= 2) bump("rare", 1);
+  if (it.r >= 2) tell("rare", 1);
   if (it.slot === "weapon" && ORBIT.weapon2.open() && S.autoEquip) {
     const where = placeWeapon(it);
     if (where) {
@@ -228,7 +228,7 @@ action("autoSv", () => { S.salv = (S.salv + 1) % SALV_LABEL.length; });
 action("salvAll", () => {
   if (!S.inv.length) return false;
   let g = 0, sh = 0; S.inv.forEach(it => { g += salvValue(it); sh += salvShards(it); });
-  bump("salvage", S.inv.length); S.inv = []; addGold(g, false); addShards(sh);
+  tell("salvage", S.inv.length); S.inv = []; addGold(g, false); addShards(sh);
   log("Salvaged pack for " + fmt(g) + " lumen" + (sh ? " and " + sh + " shards" : ""), "good");
 });
 action("sv", id => {

@@ -8,6 +8,7 @@ import { receive } from "../gear/inventory.js";
 import { makeItem } from "../gear/items.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { log } from "../ui/log.js";
+import { listen } from "../core/events.js";
 
 const POST_CD = 5 * 60000, REROLL_CD = 10 * 60000;
 const POSTERS = ["Posted by the Lantern Guild", "Signed: a nervous cartographer", "From the Hollow Wardens", "Unsigned, smells of ozone", "The Prism Collective pays well", "Stamped by the Loop Authority", "Scrawled in glowing chalk", "Left by a retired core"];
@@ -119,3 +120,4 @@ panel("board", {
 });
 action("claim", id => claim(Number(id)));
 action("reroll", () => reroll());
+listen(bump);

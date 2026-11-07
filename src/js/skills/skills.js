@@ -1,6 +1,5 @@
 // Skills: each one's numbers, cast and auto-cast rule, levels, the skill bar and the Skills window.
 import { sfx } from "../audio/sound.js";
-import { bump } from "../bounty/bounty.js";
 import { alive, heroDown, hit } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { ST, emit, statSource } from "../core/stats.js";
@@ -18,6 +17,7 @@ import { view } from "../world/scene.js";
 import { log } from "../ui/log.js";
 import { whenNewBest } from "../modes/modes.js";
 import { anim } from "../fx/gfx.js";
+import { tell } from "../core/events.js";
 
 // smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
 // reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
@@ -110,7 +110,7 @@ function cast(id, manual) {
   const L = lvl(id), c = { id, cost, dmg: 0 };
   sk.cast(L, c);
   emit("cast", c);
-  bump("cast", 1);
+  tell("cast", 1);
   return true;
 }
 export function autoCast() {
