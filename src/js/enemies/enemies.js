@@ -10,18 +10,45 @@ import { FAM } from "../index/index.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 
-// all four are ranged: needler (Pale), ripper rails (Crimson), mortar (Bastion), void lance (Umbral)
-const ENEMY_WEAPON = [
-  "M-6 2 L-6 -22 L-2 -22 L-2 2 Z M2 2 L2 -22 L6 -22 L6 2 Z M-8 -3 L8 -3 L8 3 L-8 3 Z M-7 -25 L-1 -25 L-1 -22 L-7 -22 Z M1 -25 L7 -25 L7 -22 L1 -22 Z",
-  "M-8 3 L-3 3 L-3 -14 L-8 -12 Z M3 3 L8 3 L8 -12 L3 -14 Z M-8 -1 L8 -1 L8 3 L-8 3 Z",
-  "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
-  "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z"
-];
+// The four variants. All are ranged; their attacks are in shots.js (ATTACK). weapon: the gun's sprite.
+// look: how the body is drawn. edge: outline width, dash: outline dashes, inner: fill of the inner shape, innerDash,
+// innerOp: its dashes and opacity, rim: extra radius the gun sits out at, cls: a class on the model, saw: shows the
+// loaded saw, trail: has speed lines that point away from the hero, deco(e, g, cy, verts): draws the rest.
 export const VARIANTS = [
-  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, w: 0, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45 },
-  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, w: 2, from: 4, size: 1.08, move: .75, muzzle: 21, spin: .2 },
-  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, w: 1, from: 7, size: 1, move: 1, muzzle: 22, spin: .3 },
-  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, w: 3, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36 }
+  { id: "pale", name: "Pale", role: "Swift", desc: "Quick, frequent attacks but fragile", hue: 190, sat: 45, lit: 80, hp: .7, dmg: .75, spd: 1.6, from: 1, size: .92, move: 1.35, muzzle: 25, spin: .45,
+    weapon: "M-6 2 L-6 -22 L-2 -22 L-2 2 Z M2 2 L2 -22 L6 -22 L6 2 Z M-8 -3 L8 -3 L8 3 L-8 3 Z M-7 -25 L-1 -25 L-1 -22 L-7 -22 Z M1 -25 L7 -25 L7 -22 L1 -22 Z",
+    // needler; thin edges and speed lines streaming behind
+    look: { edge: 1.5, innerDash: "3 3", trail: true, deco(e, g, cy, verts) {
+      const R = e.R;
+      svgEl("polygon", { points: ePts(e, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
+      [-8, 0, 8].forEach((dy, i) => svgEl("line", { x1: R * .95, y1: cy + dy, x2: R * .95 + 10 + i * 4, y2: cy + dy, stroke: e.stroke, "stroke-width": 1.5, "stroke-linecap": "round", opacity: .55 }, e.el.trail));
+    } } },
+  { id: "bastion", name: "Bastion", role: "Warden", desc: "Tanky and slow. Carries an extra status and inflicts statuses more often", hue: 160, sat: 24, lit: 42, hp: 1.7, dmg: .8, spd: .8, stx: 1, stc: 1.5, from: 4, size: 1.08, move: .75, muzzle: 21, spin: .2,
+    weapon: "M-9 4 L9 4 L9 -5 L-9 -5 Z M-6 -5 L6 -5 L5 -16 L-5 -16 Z M-8 -16 L8 -16 L8 -21 L-8 -21 Z",
+    // mortar; heavy plated edges, rivets and an outer shell
+    look: { edge: 5, rim: 3.5, inner: v => "hsl(" + v.hue + " " + v.sat + "% " + (v.lit - 14) + "%)", innerOp: 1, deco(e, g, cy, verts) {
+      verts.forEach(([x, y]) => svgEl("circle", { cx: (x * .78).toFixed(1), cy: (cy + (y - cy) * .78).toFixed(1), r: 2.4, fill: e.stroke }, g));
+      svgEl("polygon", { points: ePts(e, e.R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + e.v.hue + " 20% 25%)", "stroke-width": 2 }, g);
+    } } },
+  { id: "crimson", name: "Crimson", role: "Brute", desc: "Slow, heavy hits with a 25% chance to crit for double damage", hue: 4, sat: 75, lit: 48, hp: 1.05, dmg: 1.45, spd: .75, crit: .25, from: 7, size: 1, move: 1, muzzle: 22, spin: .3,
+    weapon: "M-8 3 L-3 3 L-3 -14 L-8 -12 Z M3 3 L8 3 L8 -12 L3 -14 Z M-8 -1 L8 -1 L8 3 L-8 3 Z",
+    // ripper rails with a saw loaded; spikes on every edge and a scar
+    look: { saw: true, deco(e, g, cy, verts) {
+      const R = e.R;
+      verts.forEach(([x, y], i) => {
+        const [x2, y2] = verts[(i + 1) % verts.length], mx = (x + x2) / 2, my = (y + y2) / 2, a = Math.atan2(my - cy, mx), px = -Math.sin(a) * 3.5, py = Math.cos(a) * 3.5;
+        svgEl("polygon", { points: (mx + px).toFixed(1) + "," + (my + py).toFixed(1) + " " + (mx + Math.cos(a) * 9).toFixed(1) + "," + (my + Math.sin(a) * 9).toFixed(1) + " " + (mx - px).toFixed(1) + "," + (my - py).toFixed(1), fill: e.stroke }, g);
+      });
+      svgEl("path", { d: "M" + (-R * .45) + " " + (cy + R * .35) + " L" + (R * .4) + " " + (cy - R * .3), stroke: "#2a0606", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
+    } } },
+  { id: "umbral", name: "Umbral", role: "Phantom", desc: "Dodges 25% of your blades and skills (taps always land) and burns 8 mana on hit", hue: 272, sat: 55, lit: 32, hp: .9, dmg: .95, spd: 1, eva: .25, burn: .08, from: 12, size: 1, move: 1.15, muzzle: 29, spin: .36,
+    weapon: "M-1.5 2 L1.5 2 L1.5 -8 L-1.5 -8 Z M0 -7 L6 -17 L0 -29 L-6 -17 Z M-10 -12 L-5 -26 L-6 -12 Z M10 -12 L5 -26 L6 -12 Z",
+    // void lance; dashed edges, a dark eye socket and orbiting motes
+    look: { dash: "7 4", cls: "umbral", deco(e, g, cy) {
+      const R = e.R;
+      svgEl("circle", { cx: 0, cy, r: R * .32, fill: "#07050d", stroke: e.stroke, "stroke-width": 1.5 }, g);
+      [0, 1, 2].forEach(i => { const a = i * 2.09 + .5; svgEl("circle", { cx: (Math.cos(a) * (R + 9)).toFixed(1), cy: (cy + Math.sin(a) * (R + 9)).toFixed(1), r: 2, fill: e.stroke, opacity: .6 }, g); });
+    } } }
 ];
 const VAR = {};
  VARIANTS.forEach(v => VAR[v.id] = v);
@@ -190,7 +217,7 @@ export function makeFoe({ stage, boss, elite, v, zone, timer, scale = 1, hit = 1
   elite = !!elite && !boss;
   const hp = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * scale * v.hp, mods = rollMods(boss, elite), m = boss ? bossMechs(zone) : null;
   return {
-    hp, max: hp, fresh: true, dmg: stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * hit * v.dmg, boss, elite, v, weapon: ENEMY_WEAPON[v.w],
+    hp, max: hp, fresh: true, dmg: stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * hit * v.dmg, boss, elite, v, weapon: v.weapon,
     timer: boss ? timer : 0, timerMax: boss ? timer : 1, specT: 4, tele: 0, enraged: false,
     statuses: enemyStatuses(stage, boss, elite, v), mods, m, fx: foeFx(mods, m), stun: 0
   };

@@ -39,11 +39,146 @@ export function enemyAttack(e) {
   if (t > 0 && !document.hidden) setTimeout(() => land(), t); else land();
 }
 const eshots = [];
-const SHOT_SPEC = {
-  pale: { spd: 560, r: 4.5 },      // twin darts: fast, aimed ahead of you, slight homing
-  crimson: { spd: 290, r: 10 },    // saw: homes in on you and curves after you
-  bastion: { spd: 240, r: 8 },     // mortar shell: aimed where you're heading, wide burst
-  umbral: { spd: 0, r: 0 }         // lance: tracks you, locks at the last moment, instant beam
+// Each variant's attack. spd, r: its projectile's speed and size. shot(e, heavy, land, tc, sp): fired on screen as real
+// projectiles you can sidestep. far(e, heavy, k): how it looks from off screen, where it can't miss; returns the ms until
+// it lands. k holds the shooter's aim helpers (see enemyAttackFx).
+const ATTACK = {
+  // twin darts: fast, aimed ahead of you, slight homing
+  pale: { spd: 560, r: 4.5, shot(e, heavy, land, tc, sp) {
+    [0, 1].forEach(i => setTimeout(() => {
+      if (e.dead || heroDown) return;
+      kick(e, 4, 120);
+      const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
+      svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
+      svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
+      const o = addShot({ src: e, g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
+      const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
+    }, i * 110));
+  }, far(e, heavy, { tc, aim, hitPt, recoil, flash, travel }) {
+    // needler: two quick darts, one from each barrel
+    const T = travel(620, 140, 700);
+    [0, 1].forEach(i => setTimeout(() => {
+      if (e.dead) return;
+      recoil(4, 120);
+      if (reduce) return;
+      const a = aim(), sd = i ? 4 : -4, sx = a.mx - a.uy * sd, sy = a.my + a.ux * sd, [hx, hy] = hitPt(a);
+      flash(sx, sy, 3.5, "#fff");
+      const g = svgEl("g", {}), rot = "rotate(" + a.deg.toFixed(1) + ")";
+      svgEl("line", { x1: -18, y1: 0, x2: -5, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6, transform: rot }, g);
+      svgEl("polygon", { points: "-7,-1.9 7,0 -7,1.9", fill: "#fff", transform: rot }, g);
+      moveFx(g, sx, sy, hx - a.uy * sd * .5, hy + a.ux * sd * .5, T, null, 0, "linear");
+      setTimeout(() => sparks(hx, hy, 3, tc, 12), T);
+    }, i * 85));
+    return T;
+  } },
+  // saw: homes in on you and curves after you
+  crimson: { spd: 290, r: 10, shot(e, heavy, land, tc, sp) {
+    kick(e, 6, 200);
+    if (e.el && e.el.saw) anim(e.el.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
+    const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
+    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
+    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
+    addShot({ src: e, g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
+  }, far(e, heavy, { tc, E, aim, hitPt, recoil, travel }) {
+    // ripper: the loaded saw launches off the rails and a new one spins up
+    const T = travel(470, 240, 1000);
+    recoil(6, 200);
+    if (reduce) return T;
+    const a = aim(), [hx, hy] = hitPt(a);
+    anim(E.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
+    const g = svgEl("g", {}); g.style.color = tc;
+    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
+    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
+    moveFx(g, a.mx, a.my, hx, hy, T, null, 900 + T * 1.5, "linear");
+    setTimeout(() => sparks(hx, hy, heavy ? 12 : 6, "#ffb36b", heavy ? 34 : 22), T);
+    return T;
+  } },
+  // mortar shell: aimed where you're heading, wide burst
+  bastion: { spd: 240, r: 8, shot(e, heavy, land, tc, sp) {
+    // mortar: lobs a shell, marked on the ground, and bursts there
+    const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
+    const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
+    const C = 170;
+    setTimeout(() => {
+      if (e.dead || heroDown) { mark.remove(); return; }
+      kick(e, 8, 260);
+      const a = aimFrom(e), sx = a.x, sy = a.y, d = Math.hypot(tx - sx, ty - sy) || 1, T = Math.max(.35, d / sp.spd);
+      const g = svgEl("g", {}, fx); g.style.color = tc;
+      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
+      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
+      addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
+    }, C);
+  }, far(e, heavy, { tc, E, aim, hitPt, recoil, flash, travel }) {
+    // mortar: a short charge glow, a hard kick, then a slow heavy shell
+    const C = 170, T = travel(300, 380, 1500);
+    if (!reduce) { const a = aim(); const g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = tc; const c = svgEl("circle", { r: 6, fill: tc, class: "glow" }, g); tempFx(g, [{ opacity: 0 }, { opacity: 1 }], C); anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1)" }], C); }
+    setTimeout(() => {
+      if (e.dead) return;
+      recoil(8, 260);
+      anim(E.model, [{ transform: "translate(0px,0px)" }, { transform: lungeT(e, -6), offset: .25 }, { transform: "translate(0px,0px)" }], 300);
+      if (reduce) return;
+      const a = aim(), [hx, hy] = hitPt(a);
+      flash(a.mx, a.my, 8, "#fff");
+      const g = svgEl("g", {}); g.style.color = tc;
+      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
+      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
+      moveFx(g, a.mx, a.my, hx, hy, T, null, 240 + T * .3, "linear");
+      setTimeout(() => { ringIfRoom(hx, hy, tc, .5, 3, 300, 4); sparks(hx, hy, 6, tc, 24); }, T);
+    }, C);
+    return C + T;
+  } },
+  // lance: tracks you, locks at the last moment, instant beam
+  umbral: { spd: 0, r: 0, shot(e, heavy, land) {
+    // locks onto where you are, shows a thin aim line, then fires down that line
+    const C = Math.max(380, 560 - 80 * shotSkill(e)), LOCK = Math.max(120, 230 - 50 * shotSkill(e));
+    let a = aimFrom(e), len = a.d + 160, ex = a.x + a.ux * len, ey = a.y + a.uy * len;
+    const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
+    if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    // the aim line follows you, then locks (turns solid) a moment before the beam
+    const t0 = performance.now();
+    const track = () => {
+      const el = performance.now() - t0;
+      if (el >= C - LOCK || e.dead) { tel.setAttribute("stroke-dasharray", "none"); tel.setAttribute("stroke-width", 2.2); tel.setAttribute("opacity", 1); return; }
+      a = aimFrom(e); len = a.d + 160; ex = a.x + a.ux * len; ey = a.y + a.uy * len;
+      tel.setAttribute("x1", a.x.toFixed(1)); tel.setAttribute("y1", a.y.toFixed(1)); tel.setAttribute("x2", ex.toFixed(1)); tel.setAttribute("y2", ey.toFixed(1));
+      requestAnimationFrame(track);
+    };
+    requestAnimationFrame(track);
+    setTimeout(() => {
+      tel.remove();
+      if (e.dead || heroDown) return;
+      kick(e, 3, 160);
+      const g = svgEl("g", {}, fx); g.style.color = "#b48cff";
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#b48cff", "stroke-width": heavy ? 9 : 6, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
+      svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#1a0f2e", "stroke-width": 2 }, g);
+      tempFx(g, [{ opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }], 260);
+      // distance from the core to the beam's line segment
+      const vx = ex - a.x, vy = ey - a.y, t = Math.max(0, Math.min(1, ((view.HERO_X - a.x) * vx + (view.HERO_Y - a.y) * vy) / (vx * vx + vy * vy))), px = a.x + vx * t, py = a.y + vy * t;
+      if (Math.hypot(view.HERO_X - px, view.HERO_Y - py) < (heavy ? 22 : 17) + 10) { land(); ringIfRoom(view.HERO_X, view.HERO_Y, "#b48cff", 1.2, .5, 240, 3); }
+    }, C);
+  }, far(e, heavy, { E, aim, hitPt, recoil }) {
+    // gathers a void orb at the tip, then a beam
+    const C = 240;
+    anim(E.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
+    if (!reduce) {
+      const a = aim(), g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = "#b48cff";
+      const c = svgEl("circle", { r: 6, fill: "#1a0f2e", stroke: "#b48cff", "stroke-width": 2, class: "glow" }, g);
+      tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1 }], C);
+      anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1.1)" }], C);
+    }
+    setTimeout(() => {
+      if (e.dead) return;
+      recoil(3, 160);
+      if (reduce) return;
+      const a = aim(), [hx, hy] = hitPt(a), g = svgEl("g", {});
+      g.style.color = "#b48cff";
+      svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#b48cff", "stroke-width": 6, "stroke-linecap": "round", class: "glow", opacity: .8 }, g);
+      svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#1a0f2e", "stroke-width": 2 }, g);
+      tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: .5, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 0 }], 260);
+      ringIfRoom(hx, hy, "#b48cff", 1.2, .5, 240, 3);
+    }, C);
+    return C + 20;
+  } }
 };
 const shotSkill = e => Math.min(1.6, .55 + fightStage() / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
 // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
@@ -77,71 +212,8 @@ function killShot(o, burst) {
   if (burst) { anim(o.g, [{ opacity: 1 }, { opacity: 0 }], 160); setTimeout(() => o.g.remove(), 150); } else o.g.remove();
 }
 function fireShot(e, heavy, land) {
-  const id = e.v.id, tc = ARENA_C[e.tier], sp = SHOT_SPEC[id] || SHOT_SPEC.pale;
-  if (id === "pale") {
-    [0, 1].forEach(i => setTimeout(() => {
-      if (e.dead || heroDown) return;
-      kick(e, 4, 120);
-      const a = aimFrom(e), sd = i ? 4 : -4, g = svgEl("g", {}, fx);
-      svgEl("line", { x1: -16, y1: 0, x2: -4, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6 }, g);
-      svgEl("polygon", { points: "-7,-2.2 8,0 -7,2.2", fill: "#fff" }, g);
-      const o = addShot({ src: e, g, x: a.x - a.uy * sd, y: a.y + a.ux * sd, vx: a.ux * sp.spd, vy: a.uy * sp.spd, r: sp.r, deg: a.deg, life: (a.d + 220) / sp.spd, hit: () => land(.5), col: tc, home: 1.4 * shotSkill(e), homeT: .35 });
-      const [lx, ly] = leadPt(o.x, o.y, sp.spd, Math.min(1, (.4 + Math.random() * .7) * shotSkill(e))); steer(o, lx, ly); placeShot(o);
-    }, i * 110));
-    return;
-  }
-  if (id === "crimson") {
-    kick(e, 6, 200);
-    if (e.el && e.el.saw) anim(e.el.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
-    const a = aimFrom(e), g = svgEl("g", {}, fx); g.style.color = tc;
-    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
-    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-    addShot({ src: e, g, x: a.x, y: a.y, vx: a.ux * sp.spd * (.9 + .15 * shotSkill(e)), vy: a.uy * sp.spd * (.9 + .15 * shotSkill(e)), r: heavy ? 12 : sp.r, spin: 900, life: 2.6, hit: () => land(), col: "#ffb36b", home: 2.1 * shotSkill(e), homeT: 1.6 });
-    return;
-  }
-  if (id === "bastion") {
-    // mortar: lobs a shell, marked on the ground, and bursts there
-    const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
-    const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
-    const C = 170;
-    setTimeout(() => {
-      if (e.dead || heroDown) { mark.remove(); return; }
-      kick(e, 8, 260);
-      const a = aimFrom(e), sx = a.x, sy = a.y, d = Math.hypot(tx - sx, ty - sy) || 1, T = Math.max(.35, d / sp.spd);
-      const g = svgEl("g", {}, fx); g.style.color = tc;
-      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
-      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
-      addShot({ src: e, g, mark, x: sx, y: sy, vx: (tx - sx) / T, vy: (ty - sy) / T, r: 0, spin: 240, life: T, lob: { tx, ty, R }, hit: () => land(), col: tc });
-    }, C);
-    return;
-  }
-  // umbral lance: locks onto where you are, shows a thin aim line, then fires down that line
-  const C = Math.max(380, 560 - 80 * shotSkill(e)), LOCK = Math.max(120, 230 - 50 * shotSkill(e));
-  let a = aimFrom(e), len = a.d + 160, ex = a.x + a.ux * len, ey = a.y + a.uy * len;
-  const tel = svgEl("line", { x1: a.x.toFixed(1), y1: a.y.toFixed(1), x2: ex.toFixed(1), y2: ey.toFixed(1), stroke: "#b48cff", "stroke-width": 1.4, "stroke-dasharray": "6 6", opacity: .75 }, fx);
-  if (e.el) anim(e.el.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
-  // the aim line follows you, then locks (turns solid) a moment before the beam
-  const t0 = performance.now();
-  const track = () => {
-    const el = performance.now() - t0;
-    if (el >= C - LOCK || e.dead) { tel.setAttribute("stroke-dasharray", "none"); tel.setAttribute("stroke-width", 2.2); tel.setAttribute("opacity", 1); return; }
-    a = aimFrom(e); len = a.d + 160; ex = a.x + a.ux * len; ey = a.y + a.uy * len;
-    tel.setAttribute("x1", a.x.toFixed(1)); tel.setAttribute("y1", a.y.toFixed(1)); tel.setAttribute("x2", ex.toFixed(1)); tel.setAttribute("y2", ey.toFixed(1));
-    requestAnimationFrame(track);
-  };
-  requestAnimationFrame(track);
-  setTimeout(() => {
-    tel.remove();
-    if (e.dead || heroDown) return;
-    kick(e, 3, 160);
-    const g = svgEl("g", {}, fx); g.style.color = "#b48cff";
-    svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#b48cff", "stroke-width": heavy ? 9 : 6, "stroke-linecap": "round", class: "glow", opacity: .85 }, g);
-    svgEl("line", { x1: a.x, y1: a.y, x2: ex, y2: ey, stroke: "#1a0f2e", "stroke-width": 2 }, g);
-    tempFx(g, [{ opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }], 260);
-    // distance from the core to the beam's line segment
-    const vx = ex - a.x, vy = ey - a.y, t = Math.max(0, Math.min(1, ((view.HERO_X - a.x) * vx + (view.HERO_Y - a.y) * vy) / (vx * vx + vy * vy))), px = a.x + vx * t, py = a.y + vy * t;
-    if (Math.hypot(view.HERO_X - px, view.HERO_Y - py) < (heavy ? 22 : 17) + 10) { land(); ringIfRoom(view.HERO_X, view.HERO_Y, "#b48cff", 1.2, .5, 240, 3); }
-  }, C);
+  const A = ATTACK[e.v.id] || ATTACK.umbral;
+  A.shot(e, heavy, land, ARENA_C[e.tier], A);
 }
 const HERO_HIT = 15;
 export function stepEShots(dt) {
@@ -172,7 +244,7 @@ export function stepEShots(dt) {
   }
 }
 function enemyAttackFx(e, heavy) {
-  const id = e.v.id, tc = ARENA_C[e.tier], E = e.el, L = e.v.muzzle;
+  const tc = ARENA_C[e.tier], E = e.el, L = e.v.muzzle;
   // aim is re-read at fire time because the shooter keeps moving
   const aim = () => {
     const ax = e.wx != null ? e.wx : e.px, ay = e.wy != null ? e.wy : e.py, dx = view.HERO_X - ax, dy = view.HERO_Y - ay, l = Math.hypot(dx, dy) || 1;
@@ -186,75 +258,5 @@ function enemyAttackFx(e, heavy) {
   const flash = (x, y, r, col) => tempFx(svgEl("circle", { cx: x, cy: y, r, fill: col }), [{ opacity: 1 }, { opacity: 0 }], 130);
   const travel = (spd, lo, hi) => { const a = aim(), [hx, hy] = hitPt(a); return Math.round(Math.max(lo, Math.min(hi, Math.hypot(hx - a.mx, hy - a.my) / spd * 1000))); };
   if (E.ind && e.offShown) anim(E.indP, [{ filter: "brightness(2.6)" }, { filter: "brightness(1)" }], 300);
-  if (id === "pale") {
-    // needler: two quick darts, one from each barrel
-    const T = travel(620, 140, 700);
-    [0, 1].forEach(i => setTimeout(() => {
-      if (e.dead) return;
-      recoil(4, 120);
-      if (reduce) return;
-      const a = aim(), sd = i ? 4 : -4, sx = a.mx - a.uy * sd, sy = a.my + a.ux * sd, [hx, hy] = hitPt(a);
-      flash(sx, sy, 3.5, "#fff");
-      const g = svgEl("g", {}), rot = "rotate(" + a.deg.toFixed(1) + ")";
-      svgEl("line", { x1: -18, y1: 0, x2: -5, y2: 0, stroke: tc, "stroke-width": 1.6, "stroke-linecap": "round", opacity: .6, transform: rot }, g);
-      svgEl("polygon", { points: "-7,-1.9 7,0 -7,1.9", fill: "#fff", transform: rot }, g);
-      moveFx(g, sx, sy, hx - a.uy * sd * .5, hy + a.ux * sd * .5, T, null, 0, "linear");
-      setTimeout(() => sparks(hx, hy, 3, tc, 12), T);
-    }, i * 85));
-    return T;
-  }
-  if (id === "bastion") {
-    // mortar: a short charge glow, a hard kick, then a slow heavy shell
-    const C = 170, T = travel(300, 380, 1500);
-    if (!reduce) { const a = aim(); const g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = tc; const c = svgEl("circle", { r: 6, fill: tc, class: "glow" }, g); tempFx(g, [{ opacity: 0 }, { opacity: 1 }], C); anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1)" }], C); }
-    setTimeout(() => {
-      if (e.dead) return;
-      recoil(8, 260);
-      anim(E.model, [{ transform: "translate(0px,0px)" }, { transform: lungeT(e, -6), offset: .25 }, { transform: "translate(0px,0px)" }], 300);
-      if (reduce) return;
-      const a = aim(), [hx, hy] = hitPt(a);
-      flash(a.mx, a.my, 8, "#fff");
-      const g = svgEl("g", {}); g.style.color = tc;
-      svgEl("polygon", { points: polyPts(6, heavy ? 8 : 6.5, 0, 0, 0), fill: tc, stroke: "#fff", "stroke-width": 1.2, class: "glow" }, g);
-      svgEl("circle", { r: 2.2, fill: "#fff" }, g);
-      moveFx(g, a.mx, a.my, hx, hy, T, null, 240 + T * .3, "linear");
-      setTimeout(() => { ringIfRoom(hx, hy, tc, .5, 3, 300, 4); sparks(hx, hy, 6, tc, 24); }, T);
-    }, C);
-    return C + T;
-  }
-  if (id === "crimson") {
-    // ripper: the loaded saw launches off the rails and a new one spins up
-    const T = travel(470, 240, 1000);
-    recoil(6, 200);
-    if (reduce) return T;
-    const a = aim(), [hx, hy] = hitPt(a);
-    anim(E.saw, [{ opacity: 0, transform: "scale(.2)" }, { opacity: 0, transform: "scale(.2)", offset: .3 }, { opacity: 1, transform: "scale(1)" }], 650);
-    const g = svgEl("g", {}); g.style.color = tc;
-    svgEl("polygon", { points: starPts(10, heavy ? 13 : 11, heavy ? 9 : 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35, class: heavy ? "glow" : "" }, g);
-    svgEl("circle", { r: 3, fill: "#120f1c" }, g);
-    moveFx(g, a.mx, a.my, hx, hy, T, null, 900 + T * 1.5, "linear");
-    setTimeout(() => sparks(hx, hy, heavy ? 12 : 6, "#ffb36b", heavy ? 34 : 22), T);
-    return T;
-  }
-  // umbral lance: gathers a void orb at the tip, then a beam
-  const C = 240;
-  anim(E.weapon, [{ filter: "brightness(1)" }, { filter: "brightness(2.6)", offset: .8 }, { filter: "brightness(1)" }], C + 120);
-  if (!reduce) {
-    const a = aim(), g = svgEl("g", { transform: "translate(" + a.mx.toFixed(1) + " " + a.my.toFixed(1) + ")" }); g.style.color = "#b48cff";
-    const c = svgEl("circle", { r: 6, fill: "#1a0f2e", stroke: "#b48cff", "stroke-width": 2, class: "glow" }, g);
-    tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1 }], C);
-    anim(c, [{ transform: "scale(.2)" }, { transform: "scale(1.1)" }], C);
-  }
-  setTimeout(() => {
-    if (e.dead) return;
-    recoil(3, 160);
-    if (reduce) return;
-    const a = aim(), [hx, hy] = hitPt(a), g = svgEl("g", {});
-    g.style.color = "#b48cff";
-    svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#b48cff", "stroke-width": 6, "stroke-linecap": "round", class: "glow", opacity: .8 }, g);
-    svgEl("line", { x1: a.mx, y1: a.my, x2: hx, y2: hy, stroke: "#1a0f2e", "stroke-width": 2 }, g);
-    tempFx(g, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: .5, offset: .4 }, { opacity: 1, offset: .6 }, { opacity: 0 }], 260);
-    ringIfRoom(hx, hy, "#b48cff", 1.2, .5, 240, 3);
-  }, C);
-  return C + 20;
+  return (ATTACK[e.v.id] || ATTACK.umbral).far(e, heavy, { tc, E, aim, hitPt, recoil, flash, travel });
 }

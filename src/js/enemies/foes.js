@@ -59,7 +59,7 @@ export function poseFoe(e, dt) {
   const wa = e.wAng;
   let rel = wa - (e.rot - Math.PI / 2 + seg / 2);
   rel = ((rel % seg) + seg) % seg; if (rel > seg / 2) rel -= seg;
-  const Rb = e.R + (e.tier >= 1 ? 5 : e.v.id === "bastion" ? 3.5 : 0) + 1.5;
+  const Rb = e.R + (e.tier >= 1 ? 5 : e.v.look.rim || 0) + 1.5;
   const dist = Rb * Math.cos(Math.PI / n) / Math.cos(rel);
   const mx = Math.cos(wa) * dist, my = cy + Math.sin(wa) * dist;
   const hx = view.HERO_X - e.px, hy = view.HERO_Y - e.py, hd = Math.hypot(hx, hy) || 1, ux = hx / hd, uy = hy / hd;
@@ -76,7 +76,7 @@ export function poseFoe(e, dt) {
     const ix = Math.max(view.VX0 + 12, Math.min(VX1() - 12, e.px)), iy = Math.max(top, Math.min(bot, e.py));
     E.ind.setAttribute("transform", "translate(" + ix.toFixed(1) + " " + iy.toFixed(1) + ") rotate(" + (Math.atan2(e.py - iy, e.px - ix) * 57.2958).toFixed(0) + ")");
   }
-  if (e.v.id === "pale") E.trail.setAttribute("transform", "rotate(" + (Math.atan2(-uy, -ux) * 57.2958).toFixed(1) + " 0 " + cy.toFixed(1) + ")");
+  if (e.v.look.trail) E.trail.setAttribute("transform", "rotate(" + (Math.atan2(-uy, -ux) * 57.2958).toFixed(1) + " 0 " + cy.toFixed(1) + ")");
 }
 function spinInit(e) {
   e.rot = Math.random() * 6.28;
@@ -313,7 +313,7 @@ function drawFoe(e) {
   const ew = E.weapon;
   ew.setAttribute("d", e.weapon); ew.setAttribute("fill", tc); ew.style.color = tc; ew.classList.toggle("glow", e.tier >= 3);
   const saw = E.saw; saw.innerHTML = "";
-  if (e.v.id === "crimson") { svgEl("polygon", { points: starPts(10, 11, 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35 }, saw); svgEl("circle", { r: 3, fill: "#120f1c" }, saw); }
+  if (e.v.look.saw) { svgEl("polygon", { points: starPts(10, 11, 7.5), fill: tc, stroke: "#000", "stroke-opacity": .35 }, saw); svgEl("circle", { r: 3, fill: "#120f1c" }, saw); }
   E.facetWrap.setAttribute("transform", "translate(0 " + cy + ")");
   E.moteWrap.setAttribute("transform", "translate(0 " + cy + ")");
   // targeted: a segmented ring; everyone else: a short arc underneath
@@ -326,31 +326,15 @@ function drawFoe(e) {
   e.mods.forEach((k, i) => { const x = (i - (e.mods.length - 1) / 2) * 11; svgEl("polygon", { points: x + ",0 " + (x + 4) + ",5 " + x + ",10 " + (x - 4) + ",5", fill: "#ff8463" }, mm); });
 }
 function drawVariant(e, cy) {
-  const v = e.v, g = e.el.deco, poly = e.el.poly, inner = e.el.inner, R = e.R;
-  g.innerHTML = ""; e.el.trail.innerHTML = "";
-  poly.setAttribute("stroke-width", v.id === "bastion" ? 5 : v.id === "pale" ? 1.5 : 2.5);
-  poly.setAttribute("stroke-dasharray", v.id === "umbral" ? "7 4" : "none");
-  inner.setAttribute("fill", v.id === "bastion" ? "hsl(" + v.hue + " " + v.sat + "% " + (v.lit - 14) + "%)" : "none");
-  inner.setAttribute("stroke-dasharray", v.id === "pale" ? "3 3" : "none");
-  inner.setAttribute("opacity", v.id === "bastion" ? 1 : .7);
-  e.el.model.classList.toggle("umbral", v.id === "umbral");
-  const verts = eVerts(e, R, 0, 0, cy);
-  if (v.id === "pale") {
-    svgEl("polygon", { points: ePts(e, R, 0, 9, cy), fill: "none", stroke: e.stroke, "stroke-width": 1, opacity: .3 }, g);
-    [-8, 0, 8].forEach((dy, i) => svgEl("line", { x1: R * .95, y1: cy + dy, x2: R * .95 + 10 + i * 4, y2: cy + dy, stroke: e.stroke, "stroke-width": 1.5, "stroke-linecap": "round", opacity: .55 }, e.el.trail));
-  } else if (v.id === "bastion") {
-    verts.forEach(([x, y]) => svgEl("circle", { cx: (x * .78).toFixed(1), cy: (cy + (y - cy) * .78).toFixed(1), r: 2.4, fill: e.stroke }, g));
-    svgEl("polygon", { points: ePts(e, R + 3.5, 0, 0, cy), fill: "none", stroke: "hsl(" + v.hue + " 20% 25%)", "stroke-width": 2 }, g);
-  } else if (v.id === "crimson") {
-    verts.forEach(([x, y], i) => {
-      const [x2, y2] = verts[(i + 1) % verts.length], mx = (x + x2) / 2, my = (y + y2) / 2, a = Math.atan2(my - cy, mx), px = -Math.sin(a) * 3.5, py = Math.cos(a) * 3.5;
-      svgEl("polygon", { points: (mx + px).toFixed(1) + "," + (my + py).toFixed(1) + " " + (mx + Math.cos(a) * 9).toFixed(1) + "," + (my + Math.sin(a) * 9).toFixed(1) + " " + (mx - px).toFixed(1) + "," + (my - py).toFixed(1), fill: e.stroke }, g);
-    });
-    svgEl("path", { d: "M" + (-R * .45) + " " + (cy + R * .35) + " L" + (R * .4) + " " + (cy - R * .3), stroke: "#2a0606", "stroke-width": 2.5, "stroke-linecap": "round" }, g);
-  } else {
-    svgEl("circle", { cx: 0, cy, r: R * .32, fill: "#07050d", stroke: e.stroke, "stroke-width": 1.5 }, g);
-    [0, 1, 2].forEach(i => { const a = i * 2.09 + .5; svgEl("circle", { cx: (Math.cos(a) * (R + 9)).toFixed(1), cy: (cy + Math.sin(a) * (R + 9)).toFixed(1), r: 2, fill: e.stroke, opacity: .6 }, g); });
-  }
+  const v = e.v, k = v.look, E = e.el;
+  E.deco.innerHTML = ""; E.trail.innerHTML = "";
+  E.poly.setAttribute("stroke-width", k.edge || 2.5);
+  E.poly.setAttribute("stroke-dasharray", k.dash || "none");
+  E.inner.setAttribute("fill", k.inner ? k.inner(v) : "none");
+  E.inner.setAttribute("stroke-dasharray", k.innerDash || "none");
+  E.inner.setAttribute("opacity", k.innerOp || .7);
+  E.model.classList.toggle("umbral", k.cls === "umbral");
+  k.deco(e, E.deco, cy, eVerts(e, e.R, 0, 0, cy));
 }
 export function stepFoe(e, dt) {
   if (e.dead || !foes.includes(e)) return;
