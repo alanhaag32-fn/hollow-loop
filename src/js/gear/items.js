@@ -31,10 +31,8 @@ export const LEGACY = {
 export const RARITY = [
   { name: "Common", mult: 1, w: 70, n: 0 }, { name: "Magic", mult: 1.5, w: 24, aff: [4, 8], n: 1 }, { name: "Rare", mult: 2.3, w: 5, aff: [8, 15], ramp: 20, cap: 3, n: 2 },
   { name: "Epic", mult: 3.5, w: .8, aff: [15, 25], ramp: 15, cap: 4, n: 3 }, { name: "Legendary", mult: 5.5, w: .1, aff: [25, 40], ramp: 12, cap: 5, n: 3 },
-  // Mythic: only after your first Transcend, only from bosses at stage 150+. Always a set item, always has a unique effect
   { name: "Mythic", mult: 8, w: .1, aff: [40, 60], n: 4, myth: true }
 ];
-// rarity colours inside the arena (as SVG fills), from the stylesheet's .arena --c0..--c5
 export const ARENA_C = [0, 1, 2, 3, 4, 5].map(i => getComputedStyle(document.querySelector(".arena")).getPropertyValue("--c" + i).trim());
 // f: how a roll turns into the stat (a Legendary roll of 25-40 is 25-40% attack, but 2.5-4% life steal)
 export const AFF = {
@@ -45,7 +43,6 @@ export const AFF = {
   dr: { l: "damage reduction", f: .15, stats: v => ({ dmgTaken: cutBy("affix", v) }) }, mcost: { l: "lower mana costs", f: .2, stats: v => ({ costMult: cutBy("affix", v) }) }, move: { l: "move speed", f: .3, stats: v => ({ move: 1 + v }) },
   crit: { l: "crit chance", f: .1, stats: v => ({ crit: plus(v) }) }, skill: { l: "skill power", f: .75, stats: v => ({ skillPow: 1 + v }) }, shrug: { l: "chance to ignore a new status", f: .2, stats: v => ({ shrug: plus(v) }) }, shard: { l: "shard find", f: .5, stats: v => ({ shardF: plus(v) }) }
 };
-// which affixes can roll where: a shared pool plus each gear type's own
 const AFF_SHARED = ["atk", "hp", "mp", "gold", "spd", "cdmg", "tap", "regen", "leech"];
 const AFF_SLOT = { weapon: ["boss", "elite", "orb", "redp"], armor: ["block", "dr"], boots: ["eva", "mcost", "move"], charm: ["crit", "skill", "shrug", "shard"] };
 export const affPool = slot => AFF_SHARED.concat(AFF_SLOT[slot] || []);
@@ -157,7 +154,7 @@ export const SETS = [
 ];
 export const SET = {};
  SETS.forEach(s => SET[s.id] = s);
-// every Shell, Corona and Lens shape has a built-in bonus that grows with rarity (Rare value shown; Legendary x2, Mythic x3)
+// each shape's v is its Rare value; IMPL_M scales it for the other rarities
 const IMPL_M = [.4, .7, 1, 1.5, 2, 3];
 const IMPL = {
   Ring: { v: .005, txt: v => "+" + (v * 100).toFixed(2).replace(/\.?0+$/, "") + "% health regen per second", stats: v => ({ hpRegen: plus(v) }) },
@@ -180,7 +177,6 @@ const IMPL = {
   Cube: { v: .1, txt: v => "+" + pctS(v) + " lumen", stats: v => ({ gold: 1 + v }) }
 };
 export const implOf = it => { const d = it && IMPL[noun(it)]; return d ? { d, v: d.v * IMPL_M[it.r], txt: d.txt(d.v * IMPL_M[it.r]) } : null; };
-// unique effects: Legendary and Mythic items roll one from their gear type's list
 export const UNIQ = {
   split: { s: "weapon", name: "Splitshot", desc: "25% chance a volley also splits into 2 shards that hit other enemies for 40% each", fx: { fire(c) { if (Math.random() < .25) setTimeout(() => splitShot(enemy, slotAtk(c.slot) * .4, c.slot), c.delay + 10); } } },
   heat: { s: "weapon", name: "Overheat", desc: "Each orbital hit on the same target adds +3% damage, up to +90%", fx: { e: null, n: 0, deal(h) { if (h.kind !== "blade") return; if (this.e === h.e) this.n = Math.min(30, this.n + 1); else { this.e = h.e; this.n = 0; } h.dmg *= 1 + .03 * this.n; } } },
@@ -235,7 +231,6 @@ export const UNIQ = {
   lucky: { s: "charm", name: "Lucky Star", desc: "5% of kills drop a bonus item", stats: () => ({ bonusDrop: plus(.05) }) }
 };
 const uniqFor = slot => Object.keys(UNIQ).filter(k => UNIQ[k].s === slot);
-// gear: each slot's base stats, affixes summed over everything equipped, shape bonuses, set bonuses and uniques
 statSource(give => {
   const eq = Object.values(S.equip).filter(Boolean), sum = {};
   SLOTS.forEach(sl => { const it = S.equip[sl.id]; if (it) give(sl, it.power, it.power / itemPow(it.stage || 1)); });
@@ -251,7 +246,6 @@ const affSum = it => (it.affs || []).reduce((a, x) => a + x[1], 0);
 export const score = it => it.power * (1 + affSum(it) / 100) * (it.set ? 1.1 : 1);
 export const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
 function rollRarity(boss, minR, stage) {
-  // higher tiers get more common the deeper you go, up to a cap
   const mythic = boss && mode.mythic(stage);
   const w = RARITY.map((r, i) => i < minR || (r.myth && !mythic) ? 0 : (r.myth ? ST.mythChance : 1) * r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
   let t = w.reduce((a, b) => a + b, 0) * Math.random();

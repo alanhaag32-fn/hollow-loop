@@ -156,7 +156,7 @@ function placeFoe(e, fadeMs) {
 }
 function arrive(e) { e.arrived = true; setFoePos(e); }
 // free roaming: each foe wanders between waypoints around the core. The roaming area starts wide
-// (most of the screen) and tightens over about 12 seconds, so foes drift around while honing in on you
+// and tightens, so foes drift around while honing in on you
 function roamR(e) {
   const far = Math.max(e.stopR + 60, Math.hypot(VW, VH) * .36), near = e.stopR + (e.boss ? 20 : 35);
   const f = Math.min(1, (e.age || 0) / (e.boss ? 8 : 12));
@@ -179,7 +179,6 @@ export function newWaypoint(e, first) {
 }
 // smooth floating: each foe steers toward a target velocity with inertia, curving in, easing to a stop,
 // then drifting slowly around the core while keeping its distance from other foes
-// stage pacing: enemies get a bit quicker and more erratic the deeper you go
 const pace = () => 1 + Math.min(.55, (fightStage() - 1) * .008);
 const sporadic = () => Math.min(1.05, .45 + fightStage() * .01);
 let bumpFxT = 0;
@@ -360,7 +359,6 @@ export function stepFoe(e, dt) {
   if (e.slowT > performance.now()) dt *= .8;
   foeEmit(e, "tick", { dt });
   if (e.stun > 0) { e.stun -= dt; if (e.stun <= 0) e.el.model.classList.remove("stun"); }
-  // ranged: they shoot while closing in (a little slower) and keep shooting once in position
   if (e.boss && e.arrived) {
     e.timer -= dt;
     if (e.timer <= 0) { bossEscape(); return; }

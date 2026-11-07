@@ -4,7 +4,7 @@ import { enemy } from "../enemies/foes.js";
 import { arena } from "../fx/effects.js";
 import { SC, view } from "../world/scene.js";
 
-// hits landing within 150ms on the same enemy are added up into one number, so fast attacks don't flood the screen
+// hits landing close together on the same enemy are added up into one number, so fast attacks don't flood the screen
 export function dmgFloat(e, d, crit, tap, red) {
   const now = performance.now();
   if (!e.fl) e.fl = { sum: 0, crit: false, red: false, tap: true, t: 0, pend: false };

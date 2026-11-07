@@ -37,7 +37,7 @@ export const MODS = {
   vampiric: { name: "Vampiric", desc: "Heals 4% of its health each time it hits you", fx: { landed(c, e) { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow())); } } },
   armored: { name: "Armored", desc: "Takes 30% less damage from blades and skills, but taps ignore it", fx: { take(h) { if (h.kind !== "tap" && !h.pierce) h.dmg *= .7; } } },
   volatile: { name: "Volatile", desc: "Explodes for 25% of your max health when destroyed", fx: {
-    // blasts hit for 25% of your health (more after many ascensions, up to 35%), and several at once can't add up past 50% in 1.5s
+    // several blasts at once can't add up past 50% in 1.5s
     winT: 0, sum: 0,
     death(c, e) {
       setTimeout(() => {
@@ -48,7 +48,6 @@ export const MODS = {
       }, 150);
     }
   } },
-  // Regenerating heals only after 2.5s without being hit, so steady damage keeps it shut off
   regen: { name: "Regenerating", desc: "Heals 2% of its health every second", fx: { tick(c, e) { if (performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * c.dt); } } },
   splitting: { name: "Splitting", desc: "Splits into a smaller copy when destroyed", fx: { death(c, e) { if (!e.child) c.split = true; } } },
   draining: { name: "Draining", desc: "Every hit that lands inflicts a random status", fx: { landed(c, e) { applyStatus(pick(ZONE_STATUS), 5, false, e); } } }
@@ -83,8 +82,7 @@ const MECHS = {
   mirror: {
     init: () => ({ t: 7, tele: 0, on: 0 }),
     fx: {
-      // reflects a slice of each hit, scaled to your health so huge damage can't one-shot you:
-      // at most 2% of your max health per hit and 30% per Mirror phase
+      // reflects a slice of each hit, scaled to your health so huge damage can't one-shot you
       struck(h, e) {
         const R = e.m.mirror; if (!(R.on > 0)) return;
         const room = ST.maxHp * .3 - (R.dealt || 0);
@@ -150,7 +148,6 @@ const MECH_IDS = Object.keys(MECHS);
 export const foeFx = (mods, m, extra) => mods.map(k => MODS[k].fx).concat(m ? Object.keys(m).map(k => MECHS[k].fx) : [], extra || []);
 const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
 export function enemyStatuses(stage, boss, elite, v) {
-  // random statuses; deeper stages stack more of them on each enemy
   if (stage < 6 && !boss && !v.stx) return { list: [], chance: 0 };
   const n = Math.min(5, (stage < 20 ? 1 : stage < 40 ? 2 : stage < 60 ? 3 : 4) + (boss || elite ? 1 : 0) + (v.stx && stage >= 6 ? v.stx : 0));
   const pool = ZONE_STATUS.slice(), list = [];
@@ -176,7 +173,6 @@ export function makeEnemy(stage, elite) {
   const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * (momentum() ? .02 : 1);
   const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * (momentum() ? .25 : 1);
   const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
-  // bosses deep in get more time: +0.75s per stage past 40, up to +45s
   const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + ST.bossTime;
   const mods = rollMods(boss, elite && !boss), m = boss ? bossMechs(zone) : null;
   return {

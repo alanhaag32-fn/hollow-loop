@@ -31,11 +31,9 @@ export function setCounts() {
   Object.values(S.equip).forEach(it => { if (it && it.set) c[it.set] = (c[it.set] || 0) + 1; });
   return c;
 }
-// echo power: every echo you've ever earned adds +1% attack and health, permanently. It never caps,
-// so each ascension pushes you further even once the web is full
+// echo power never caps, so each ascension pushes you further even once the web is full
 statSource(give => give(() => ({ echoBonus: onBase(.01 * (S.echoesTotal || 0)) })));
 export const evadeChance = () => Math.min(.5, ST.evaR / (ST.evaR + 6 * itemPow(fightStage())));
-// recompute stats, keeping health and mana at the same share of their new maximums
 export function recalc() {
   const old = refreshStats();
   hero.hp = old ? Math.min(ST.maxHp, hero.hp * (ST.maxHp / old.maxHp)) : ST.maxHp;
@@ -44,7 +42,6 @@ export function recalc() {
   markDirty("stats");
 }
 export const heroModel = $("heroModel");
-// health and mana as two thin segmented arcs around the core
 export const RING_R = 50, HP_ARC = [128, 232], MP_ARC = [52, -52];
 export function arcD(r, a0, a1) {
   const P = a => (Math.cos(a * Math.PI / 180) * r).toFixed(2) + " " + (Math.sin(a * Math.PI / 180) * r).toFixed(2);
@@ -163,14 +160,12 @@ export function stepHero(dt) {
     hvx = dashVX * .25; hvy = dashVY * .25;
     for (const f of foes) if (!f.dead && !dashHit.has(f) && Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y) < f.R + 34) { dashHit.add(f); land(f, dashD, "storm"); }
   }
-  // smooth acceleration toward the stick direction
   const k = 1 - Math.exp(-dt * 18);
   const spd = HERO_SPD * (ST ? ST.move : 1);
   hvx += (ix * spd - hvx) * k; hvy += (iy * spd - hvy) * k;
   if (dashT > 0) {} else if (Math.abs(hvx) + Math.abs(hvy) > .5) {
     view.HERO_X += hvx * dt; view.HERO_Y += hvy * dt;
   } else { hvx = 0; hvy = 0; }
-  // the camera glides after the core
   const tx = view.HERO_X - VW / 2, ty = view.HERO_Y - VH * .49, c = 1 - Math.exp(-dt * 11);
   view.CAMX += (tx - view.CAMX) * c; view.CAMY += (ty - view.CAMY) * c;
   if (Math.abs(tx - view.CAMX) < .05 && Math.abs(ty - view.CAMY) < .05) { view.CAMX = tx; view.CAMY = ty; }

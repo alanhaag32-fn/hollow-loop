@@ -79,7 +79,6 @@ export function ripple(x, y) {
   el.className = "ripple"; el.style.left = (x - r.left) + "px"; el.style.top = (y - r.top) + "px";
   arena.appendChild(el); setTimeout(() => el.remove(), 360);
 }
-// force: skill visuals always show, even when the particle budget is full
 // an expanding ring: ring() always draws (skills), ringIfRoom() skips when the effect budget is used up
 export function ringIfRoom(x, y, col, from, to, ms, width) { if (!fxBusy()) ring(x, y, col, from, to, ms, width); }
 export function ring(x, y, col, from, to, ms, width) {

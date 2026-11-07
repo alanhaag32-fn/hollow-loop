@@ -29,7 +29,6 @@ import { layout } from "./world/scene.js";
 // drawing: everything that moves smoothly, once per animation frame
 let lastFrame = 0;
 function frame(now) {
-  // battery saver draws every other frame (about 30 fps)
   if (S.saver && lastFrame && now - lastFrame < 30) { requestAnimationFrame(frame); return; }
   const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
   stepHero(dt);

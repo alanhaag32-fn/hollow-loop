@@ -13,11 +13,10 @@ import { fightStage } from "../modes/modes.js";
 import { floatText } from "../ui/floats.js";
 import { VX1, VY1, view } from "../world/scene.js";
 
-// every enemy attack is a projectile or beam now; the damage lands when it reaches the core
+// every enemy attack is a projectile or beam; the damage lands when it reaches the core
 export const FAR_DMG = .4, FAR_RATE = 1.5;
 let lastBurnFloat = 0;
 export function enemyAttack(e) {
-  // shots fired while still closing in are long-range and hit softer
   const heavy = !!(e.v.crit && Math.random() < e.v.crit), dmg = e.dmg * (e.enraged ? 2 : 1) * (heavy ? 2 : 1) * (.9 + Math.random() * .2) * (e.arrived ? 1 : FAR_DMG);
   let statusDone = false;
   const land = (mult) => {
@@ -46,10 +45,8 @@ const SHOT_SPEC = {
   bastion: { spd: 240, r: 8 },     // mortar shell: aimed where you're heading, wide burst
   umbral: { spd: 0, r: 0 }         // lance: tracks you, locks at the last moment, instant beam
 };
-// tougher the deeper you go, and from elites and bosses
 const shotSkill = e => Math.min(1.6, .55 + fightStage() / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
 // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
-// where enemies aim: the core, or the Phantom Veil decoy while it lasts
 const tgtX = () => field.decoy ? field.decoy.x : view.HERO_X, tgtY = () => field.decoy ? field.decoy.y : view.HERO_Y;
 function leadPt(fromX, fromY, spd, f) {
   if (field.decoy) return [field.decoy.x, field.decoy.y];
@@ -103,7 +100,7 @@ function fireShot(e, heavy, land) {
     return;
   }
   if (id === "bastion") {
-    // mortar: lobs a shell at the spot you're standing on, marked on the ground, and bursts there
+    // mortar: lobs a shell, marked on the ground, and bursts there
     const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
     const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
     const C = 170;

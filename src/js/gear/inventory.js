@@ -22,7 +22,6 @@ function stash(it) {
   if (it.r < S.salv || S.inv.length >= PACK_CAP) { salvage(it); return; }
   S.inv.unshift(it); markDirty("pack");
 }
-// put a pack item in slot k; whatever was there takes its place in the pack
 function equipFromPack(k, id) {
   const idx = S.inv.findIndex(i => i.id === id);
   if (idx < 0 || !slotOpen(k) || S.inv[idx].slot !== baseSlot(k)) return false;
@@ -31,7 +30,6 @@ function equipFromPack(k, id) {
   equipFlash(it.r);
   return true;
 }
-// a newly opened orbital slot takes your best spare orbital
 export function fillOrbital(o) {
   const best = S.inv.filter(i => i.slot === "weapon").sort((a, b) => score(b) - score(a))[0];
   if (!best || S.equip[o.key]) return null;
@@ -112,17 +110,15 @@ function renderStats() {
 }
 panel("stats", { render: renderStats, refresh: renderStats });
 let gearSel = "weapon", gearPick = null;
-// a copy of your core as it looks in combat, with orbitals placed evenly around it
+// a copy of your core as it looks in combat
 function coreSnap() {
   const src = $("heroModel"); if (!src) return "";
   const cl = src.cloneNode(true);
   ["hGrav", "hCrack", "hStatic", "hEclipse", "hEclipseRing", "hBarrier"].forEach(id => { const e = cl.querySelector("#" + id); if (e) e.remove(); });
-  // orbitals spaced evenly and slowly circling the core, like in combat
   const pos = { hWpn1: [0, -38], hWpn2: [32.9, 19], hWpn3: [-32.9, 19] }, ring = document.createElementNS(NS, "g");
   ring.setAttribute("class", "spinSlow");
   for (const id in pos) { const e = cl.querySelector("#" + id); if (e) { e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); const o = e.parentNode; if (o.style.display !== "none") ring.appendChild(o); else o.remove(); } }
   const bob = cl.querySelector(".bob") || cl; bob.appendChild(ring);
-  // a Glaive keeps spinning on its own
   ring.querySelectorAll("path").forEach(pth => { if (pth.getAttribute("d") === HERO_WEAPON.Glaive) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
   cl.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); cl.removeAttribute("id"); cl.removeAttribute("class"); cl.removeAttribute("style");
   return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
@@ -167,7 +163,6 @@ action("uneq", id => {
   delete S.equip[id]; S.inv.unshift(it);
 });
 action("eqTo", (id, b) => { if (!equipFromPack(b.dataset.slot, Number(id))) return false; gearPick = null; });
-// the item's in-combat sprite, drawn into a small standalone svg
 const spriteCache = new Map();
 function spriteSvg(it) {
   const key = it.slot + noun(it) + it.r;
@@ -185,15 +180,13 @@ function tileIcon(it, slotId) {
   if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
   return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
 }
-// how much better an item is than what it would replace (orbitals compare to your weakest orbital slot)
 function upPct(it) {
   const cands = it.slot === "weapon" ? openOrbitals().map(o => S.equip[o.key]) : [S.equip[it.slot]];
   if (cands.some(c => !c)) return 999;
   const worst = cands.reduce((a, b) => score(a) < score(b) ? a : b);
   return Math.round((score(it) / score(worst) - 1) * 100);
 }
-// a tile: white icon of the item's shape, rarity as the border and tint, the shape's name underneath.
-// badge: an optional +/-% in the corner (gear picks); in the pack a green arrow marks an upgrade
+// badge: an optional +/-% in the corner (gear picks)
 function tile(it, act, id, label, sel, extraCls, badge) {
   if (!it) return '<button class="tile empty' + (sel ? " sel" : "") + (extraCls ? " " + extraCls : "") + '" data-act="' + act + '" data-id="' + id + '" type="button">' + tileIcon(null, id) + '<span class="tl">' + (label || "") + "</span></button>";
   const up = act === "pkSel" && upPct(it) > 0, lbl = label || noun(it);
@@ -201,7 +194,6 @@ function tile(it, act, id, label, sel, extraCls, badge) {
     (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (badge != null ? '<b class="bd ' + (badge > 0 ? "up" : "dn") + '">' + (badge > 0 ? "+" : "") + badge + "%</b>" : up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq">✦</span>' : "") + '<span class="tl">' + lbl + "</span></button>";
 }
 let pkSel = null;
-// bring the selected item's card into view
 const scrollToDetail = () => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };
 const PK_SORT = [["up", "Best for you"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Grouped by set"]];
 const PK_SLOT = [["all", "All"], ["weapon", "Orbital"], ["armor", "Shell"], ["boots", "Corona"], ["charm", "Lens"]];

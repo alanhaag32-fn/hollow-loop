@@ -26,7 +26,7 @@ function migrateEco() {
   if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
   if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
   if ((S.eco || 0) >= 6) return;
-  // v6 retune: training caps changed, so trim anything above the new maximums
+  // v6 retune: training caps changed
   if (S.eco === 5) { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); S.eco = 7; return; }
   const fix = it => {
     if (!it) return; const r = RARITY[it.r] || RARITY[0];
@@ -39,7 +39,6 @@ function migrateEco() {
   S.bounties.forEach(b => { if (!b.empty && !b.eff) { b.eff = b.type === "gold" ? b.n / lumenAt(S.maxStage) : EFFORT[b.type] ? EFFORT[b.type](b.n) : b.n; delete b.gold; } });
   S.eco = 7;
 }
-// read the save into S and bring it up to date
 export function load() {
   const d = readSave();
   if (!d) return;
@@ -54,7 +53,7 @@ export function load() {
   S.oc = d.oc || {};
   S.forge = d.forge || {};
   S.abyss = Object.assign(KEPT().abyss, d.abyss || {}); S.abyss.altar = S.abyss.altar || {};
-  // saved by an older version inside the Abyss, which borrowed the main stage: put the main run back
+  // saved by an older version inside the Abyss, which borrowed the main stage
   if (S.abyss.ret) { S.stage = S.abyss.ret.stage; S.kills = S.abyss.ret.kills; S.push = S.abyss.ret.push; delete S.abyss.ret; }
   S.autoCfg = Object.assign(KEPT().autoCfg, d.autoCfg || {});
   if (!d.cyclePeak) S.cyclePeak = Math.max(S.peak || 1, S.maxStage || 1);

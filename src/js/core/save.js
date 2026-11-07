@@ -17,7 +17,6 @@ export const KEPT = () => ({
 });
 export const fresh = () => Object.assign(KEPT(), CYCLE(), RUN());
 export let S = fresh();
-// the stored save, parsed; one that can't be read is kept aside under KEY + ".broken" and reported
 export function readSave() {
   const raw = localStorage.getItem(KEY);
   if (!raw) return null;

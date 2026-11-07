@@ -1,4 +1,4 @@
-// Windows and their tabs, the menu, and the panel and action registries every feature uses.
+// Windows and their tabs, and the menu.
 import { abyssOpen } from "../abyss/abyss.js";
 import { S } from "../core/save.js";
 import { $, polyPts } from "../core/util.js";
@@ -67,7 +67,7 @@ function applySub(win) {
 }
 export let tab = null;
 const CURRENCY = { echo: () => S.echoes, shard: () => S.shards, dust: () => S.stardust || 0, gold: () => S.gold };
-// cheap refresh of the open panel: which buttons you can afford, plus the panel's own refresh
+// cheap refresh of the open panel
 export function refreshPanel() {
   if (!tab) return;
   $("p-" + tab).querySelectorAll("[data-cost]").forEach(b => b.classList.toggle("afford", !b.disabled && CURRENCY[b.dataset.cur || "gold"]() >= Number(b.dataset.cost)));

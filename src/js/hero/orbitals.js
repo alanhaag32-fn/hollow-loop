@@ -33,7 +33,6 @@ export const WTRAIT = {
 export const SLOT2_AT = 25, SLOT2_DMG = .6;
 const WDELAY = { Glaive: 170, Drone: 120, Laser: 60, Swarm: 190, Hammer: 230, Coil: 60 };
 export const MOTE = "M0 -3.5 A3.5 3.5 0 1 1 0.01 -3.5 Z";
-// orbital traits get stronger at Legendary and Mythic; Coil chains further with every tier
 const COIL = [[.3, 1], [.3, 1], [.3, 2], [.35, 3], [.4, 4], [.5, 5]];
 export function wTr(slot) {
   const t = wType(slot), b = WTRAIT[t], it = S.equip[slot], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
@@ -136,7 +135,6 @@ export function poseOrbitals(dt) {
     if (!act[i]) continue;
     k++;
     const o = ORBITALS[i].pose, type = wType(ORBITALS[i].key);
-    // fan the active orbitals out around the line to the target
     const spread = n === 1 ? 0 : n === 2 ? (k ? .55 : -.55) : [-.8, 0, .8][k];
     if (t) {
       const goal = Math.atan2(t.py - view.HERO_Y, t.px - view.HERO_X) + spread + (reduce ? 0 : Math.sin(orbT * [1.2, .9, 1.05][i] + i * 2.1) * (n > 1 ? .3 : .55));
@@ -217,7 +215,6 @@ export function fireOrbital(slot) {
   if (tr.chain && Math.random() < tr.chain[0]) setTimeout(() => chainZap(enemy, tr.chain[1], slotAtk(slot) * .6, slot), T + 20);
   emit("fire", { slot, delay: T });
 }
-// nearest living foes to a point, skipping some
 function nearFoes(x, y, n, skip, maxD) {
   return foes.filter(f => !f.dead && !skip.has(f) && Math.hypot(f.px - x, f.py - y) < (maxD || 1e9)).sort((a, b) => Math.hypot(a.px - x, a.py - y) - Math.hypot(b.px - x, b.py - y)).slice(0, n);
 }

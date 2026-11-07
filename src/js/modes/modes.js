@@ -17,7 +17,7 @@ import { updateUI } from "../ui/hud.js";
 import { log } from "../ui/log.js";
 import { setZone } from "../world/scene.js";
 
-// Momentum: once you've transcended, stages below half your best ever fly by
+// Momentum: stages below this cap fly by
 const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * ST.momentumAt) : 0;
 export const momentum = () => mode === MAIN && S.stage < momentumCap();
 
@@ -101,7 +101,6 @@ export const fightStage = () => mode.stage();
 export function returnToMain() { if (mode !== MAIN) { mode.leave(); mode = MAIN; } }
 // pick the main run up where the save left it
 export function resumeRun() { spawn.stageSpawned = S.kills; }
-// leave the current mode for m, starting m's fight fresh
 export function switchMode(m) {
   mode.leave(); mode = m;
   clearFoes(false); m.enter(); setZone(true); recalc();

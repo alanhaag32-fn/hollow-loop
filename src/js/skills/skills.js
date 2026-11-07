@@ -16,7 +16,6 @@ import { floatText } from "../ui/floats.js";
 import { T, TREE } from "../web/web.js";
 import { view } from "../world/scene.js";
 
-// Skills: everything about each one lives in its entry. Levels add 6% power and take 1% off its cooldown.
 // smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
 // reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
 // auto(c): the skill's own auto-cast rule instead of the usual mana-reserve one.
@@ -55,8 +54,6 @@ export const SKILLS = [
     cast(L) { const n = this.blades(L), d = this.dmg(L); for (let i = 0; i < n; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(d, wDelay(), "storm"); } }, i * 170); }
   },
   {
-    // a quick burst in the direction you're moving (or away from danger), untouchable while it lasts,
-    // slicing every foe it passes through and shaking off statuses
     id: "dash", name: "Dash", unlock: 30, cd: 6, cost: .08, foe: false, icon: "M9 4 L20 12 L9 20 L12 12 Z M2 8 H8 V9.6 H2 Z M1 11.2 H9 V12.8 H1 Z M2 14.4 H8 V16 H2 Z",
     dist: L => 150 + 3 * (L - 1), guard: L => .4 + .01 * (L - 1), dmg: L => ST.atk * 1.5 * skMult(L) * ST.skillPow,
     desc: L => "Dash " + Math.round(SK.dash.dist(L)) + " units, untouchable for " + SK.dash.guard(L).toFixed(2) + "s, slicing foes in your path for " + fmt(SK.dash.dmg(L)) + " and clearing statuses",
@@ -74,13 +71,11 @@ export const SKILLS = [
 export const SK = {};
  SKILLS.forEach(s => SK[s.id] = s);
 statSource(give => SKILLS.forEach(s => give(s)));
-// web attunement: for a skill that isn't open from stage 1, the first rank unlocks it; every other rank adds 3 starting levels
 const attRank = id => { const n = TREE.find(x => x.att === id); return n ? T(n.id) : 0; };
 const baseLvl = id => Math.min(skillMaxAll(), 1 + 3 * Math.max(0, attRank(id) - (SK[id].unlock > 1 ? 1 : 0)));
 export const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
 const unlocked = id => S.maxStage >= SK[id].unlock || attRank(id) > 0;
 const skillCost = sk => emit("skillCost", { v: sk.cost * 100 * ST.costMult }).v;
-// skill levels go to 40, but the level you can buy is capped by your best stage this run (+1 per 3 stages)
 const SKILL_MAX = 40;
 const skillMaxAll = () => SKILL_MAX + 5 * ST.skillMastery;
 const skillCap = () => Math.min(skillMaxAll(), 4 + 2 * ST.skillMastery + Math.floor(S.maxStage / 3));
@@ -119,7 +114,7 @@ export function autoCast() {
     if (go) cast(sk.id, false);
   }
 }
-// shard cost per skill level: cut to offset the earlier shard nerf (40% cheaper base, +17% per level instead of +20%)
+// cut to offset the earlier shard nerf (40% cheaper base, +17% per level instead of +20%)
 const skillUpCost = sk => Math.ceil(.6 * (2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
 const skEls = {};
 export function buildSkillbar() {

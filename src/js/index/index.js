@@ -23,7 +23,6 @@ function renderIndex() {
   const active = [];
   FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t = IT(f.key, k); if (t) active.push("+" + +(f[k][0] * t).toFixed(1) + f[k][1]); }));
   let h = '<div class="wsub" data-sub="bonus"><p class="note">Every enemy type you defeat is recorded here. Each type has three milestones, and every milestone gives a permanent bonus that survives ascension. Pick a shape below to see its page.</p><div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div></div>";
-  // one compact page per shape family: header, a 2x2 grid of variants, then the three milestones
   FAMILIES.forEach(f => {
     const hue = (f.idx * 53 + 200) % 360, found = ["n", "e", "b"].some(k => idxKills(f.key, k) > 0);
     h += '<div class="wsub idxPage" data-sub="f' + f.sides + '"><div class="idxHd2"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div class="idxT"><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="lore">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";

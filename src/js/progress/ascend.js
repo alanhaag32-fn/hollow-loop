@@ -21,12 +21,11 @@ import { view } from "../world/scene.js";
 function starterKit(st) {
   ["weapon", "armor", "boots", "charm"].forEach(sl => { const it = makeItem(st, false, 2, sl); S.equip[sl] = it; });
 }
-// the hero's temporary combat state goes back to rest: buffs, shield and statuses
 export function resetCombat() {
   hero.shield = 0; hero.odT = 0; hero.markT = 0; heroModel.classList.remove("od");
   for (const k in stT) stT[k] = 0;
 }
-// shared by ascend and transcend: place the core at the run's start stage and rebuild everything
+// shared by ascend and transcend
 export function startRun() {
   recalc();
   const st0 = startStage();
@@ -54,6 +53,5 @@ export function doAscend() {
 export const startStage = () => ST.startStage;
 // echoes only count the stages you climbed this run, so stages skipped by Head Start give nothing
 export const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
-// you must climb at least 10 stages past where the run began (and reach stage 20) before you can ascend
 export const ascMin = () => Math.max(20, runStart() + 10);
 export const ascGain = () => Math.floor(ECHO_K * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .05 * (S.ascensions || 0)) * ST.echoGain);

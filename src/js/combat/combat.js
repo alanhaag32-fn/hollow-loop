@@ -45,7 +45,6 @@ export function land(e, base, kind, slot) {
   const h = { e, kind, slot, dmg: 0, crit: false, red: false, note: "", lethal: false, first: !!e.fresh, pierce: !!(tr && tr.pierce), seeking: !!(tr && tr.seeking) };
   e.fresh = false;
   const forced = hero.markT > 0;
-  // crit chance past 100% rolls red crits; while Shatter forces crits, your crit chance becomes red crit chance
   const cc = emit("critChance", { v: ST.crit }).v;
   h.crit = forced || Math.random() < cc;
   h.red = h.crit && Math.random() < (forced ? cc : cc - 1) + ST.redBonus;
@@ -72,7 +71,6 @@ export function land(e, base, kind, slot) {
   }
   if (dmg > 0) foeEmit(e, "struck", h);
   if (ST.leech > 0 && dmg > 0 && leechPool > 0) {
-    // life steal heals from a pool that refills at twice your life steal % of max health per second
     const got = Math.min(dmg * ST.leech, leechPool); leechPool -= got;
     const before = hero.hp; heal(got);
     const now = performance.now();
@@ -108,7 +106,6 @@ export function dotDmg(e, d) {
   e.hp -= d; e.lastHitT = performance.now(); dpsLog.push([performance.now(), d]);
   if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
 }
-// damage over time on enemies, then every effect's tick
 function stepEffects(dt) {
   for (const e of foes) {
     if (e.dead) continue;
@@ -164,7 +161,7 @@ export function crush(e) {
   e.el.model.classList.remove("tele");
   anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
   shake(9, 450); sfx("crush");
-  // the Crush lands where the warning ring was: move out of it to dodge
+  // the Crush lands where the warning ring was
   if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
   log("Crush!", "bad");
   hurt(ST.maxHp * .45 * ST.crushTaken, true, e);

@@ -8,9 +8,8 @@ import { recalc } from "../hero/hero.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 
-// training: cost = base x g^level. Big stats compound and double at milestone levels (25, 50, 100, 150...)
-// oc (Overcharge): once a capped upgrade is maxed it keeps going with no level limit. Cost starts at 3x the last
-// normal level and grows ST.ocGrowth per level. Stats already at a hard ceiling get a related bonus instead.
+// oc (Overcharge): once a capped upgrade is maxed it keeps going with no level limit.
+// Stats already at a hard ceiling get a related bonus instead.
 export const TRAIN = [
   { unlock: 1, id: "might", name: "Might", cat: "off", base: 10, g: 1.18, mode: "mult", stat: "attack", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ atk: v }) },
   { unlock: 1, id: "vigor", name: "Vigor", cat: "def", base: 10, g: 1.18, mode: "mult", stat: "health", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ maxHp: v }) },
@@ -41,7 +40,6 @@ const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, tmax(t) - 1
 const tm = id => TRN[id].eff(trainLvl(id));
 let buyN = 1;
 const trainCostN = (t, n) => { let c = 0; const L = trainLvl(t.id); for (let i = 0; i < n; i++) c += t.base * Math.pow(t.g, L + i); return Math.ceil(c); };
-// what the next n levels of t cost (Overcharge levels once it's maxed), or Infinity when they can't be bought
 function trainPrice(t, n) {
   if (S.maxStage < t.unlock) return Infinity;
   if (isOC(t)) return t.oc.cap && ocV(t.id) >= t.oc.cap ? Infinity : ocCostN(t, n);
@@ -93,7 +91,6 @@ function renderTrain() {
 }
 panel("train", {
   render: renderTrain,
-  // with "max" picked, keep each buy button's count and price in step with your lumen
   refresh() {
     if (buyN !== "max") return;
     $("p-train").querySelectorAll('[data-act="train"]').forEach(b => {
@@ -113,7 +110,6 @@ action("train", id => {
   sfx("buy", 0, 0);
   if (t.mile && milesAt(trainLvl(id)) > before) { floatText(t.name + " x" + t.mile + "!", "info", "hero", "#ffd04d"); sfx("chord", 0, 0); }
 });
-// Auto-Train: keep buying the cheapest single level among the upgrades you've left on
 export function autoTrain() {
   let bought = 0;
   for (let g = 0; g < 80; g++) {

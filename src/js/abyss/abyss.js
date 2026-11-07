@@ -76,7 +76,6 @@ const AB_MILES = [
   [100, "Endless", "Double Voidstone", { stats: () => ({ stoneGain: 2 }) }]
 ];
 statSource(give => AB_MILES.forEach(([d, , , def]) => { if (def && abMile(d)) give(def); }));
-// irregular shapes for the Void enemies
 export const VOID_SHAPES = [
   { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
   { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
@@ -100,7 +99,6 @@ export function jitterShape(pts) {
   const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
   return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
 }
-// shape-aware outline: irregular Void shapes, or the usual regular polygon
 export function eVerts(e, r, rot, cx, cy) {
   if (!e.shape) return vertices(e.sides, r, rot, cx, cy);
   const c = Math.cos(rot), sn = Math.sin(rot);
@@ -123,7 +121,6 @@ function exitAbyss() {
   switchMode(MAIN);
   log("You left the Abyss. Back to stage " + S.stage, "r0");
 }
-// Guardian down: Voidstone, a new best, and one depth deeper
 function abyssCleared(e) {
   const A = S.abyss, d = A.depth, first = d > A.best;
   const g = Math.ceil((2 + Math.floor(d / 2)) * (first ? 3 : 1) * ST.stoneGain);
@@ -172,7 +169,6 @@ const ABYSS = {
     if (ab.phase < 3) { ab.phase++; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = 1.2; floatText("Wave " + ab.phase + "/3", "info", "hero", "#c08bff"); }
     else { ab.phase = 4; ab.need = 1; ab.spawned = 0; ab.pause = 1.6; floatText("Guardian", "info", "hero", "#ff5fa8"); sfx("warn"); }
   },
-  // poison pools (Corrosion) hurt you while you stand in them
   step(dt) {
     const n = ruleN("pools"); poolT += dt;
     for (let i = pools.length - 1; i >= 0; i--) {
@@ -214,7 +210,6 @@ function makeVoid(kind) {
     statuses: enemyStatuses(st, boss, elite && !boss, v), mods, m, fx: foeFx(mods, m, plated ? [plated] : []), stun: 0, aHaste: 1 + .25 * ruleN("hasted"), blinkT: 3 + Math.random() * 4
   };
 }
-// Void enemies blink: every few seconds they vanish and reappear somewhere else around you
 export function voidBlink(e) {
   ringIfRoom(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
   const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;

@@ -6,7 +6,6 @@ import { RING_R, arcD } from "../hero/hero.js";
 import { enemyCY } from "../hero/orbitals.js";
 import { SC, SH, SW, VX1, VY1, view } from "../world/scene.js";
 
-// the target's ring: health (segmented), boss timer and mechanic progress, plus slowly turning marker ticks
 const FR_A = [-45, 225];
 export let rEls = null, rV = [-1, -1, -1];
 export const mech = {
@@ -52,7 +51,6 @@ export function placeTags(dt) {
   const hx = (view.HERO_X - view.VX0) * SC, hy = (view.HERO_Y + RING_R - 8 - view.VY0) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
   if (hk !== tagCache) { tagCache = hk; ht.style.left = hx + "px"; ht.style.top = hy + "px"; }
   const e = enemy, m = e ? e.R * .35 : 0;
-  // only show the name once the enemy is actually (mostly) on screen
   const vis = !!e && !e.dead && e.px > view.VX0 - m && e.px < VX1() + m && e.py > view.VY0 - m && e.py < VY1() + m;
   if (tagHold > 0) tagHold -= dt || .016;
   if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }

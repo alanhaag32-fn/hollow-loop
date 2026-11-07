@@ -33,10 +33,8 @@ const headStart = r => 10 * r;
 const OFF_H = [8, 12, 16, 20, 24, 24];
 const FG = {};
 statSource(give => FORGE.forEach(f => give(f, FR(f.id))));
-// Star Power: every Stardust ever earned adds attack, health and echo gain
 statSource(give => give(() => ({ atk: starPow(), maxHp: starPow(), echoGain: starEcho() })));
  FORGE.forEach(f => FG[f.id] = f);
-// Star Power: every Stardust ever earned gives +3% attack and health and +2% echo gain; past 50 each counts half
 const starEff = () => { const t = S.stardustTotal || 0; return Math.min(t, 50) + Math.max(0, t - 50) * .5; };
 const starPow = () => 1 + .03 * starEff();
 const starEcho = () => 1 + .02 * starEff();

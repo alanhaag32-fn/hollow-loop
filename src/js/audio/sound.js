@@ -32,7 +32,7 @@ function env(g, t, dur, peak, atk) {
   g.gain.exponentialRampToValueAtTime(peak, t + a);
   g.gain.exponentialRampToValueAtTime(.0001, t + Math.max(dur, a + .02));
 }
-// soft sine/triangle voices only, routed through the echo bus
+// soft sine/triangle voices only
 function tone(type, f0, f1, dur, peak, delay, atk) {
   const t = actx.currentTime + (delay || 0), o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.setValueAtTime(f0, t);

@@ -24,7 +24,7 @@ import { view } from "../world/scene.js";
 
 const BR_COL = { core: "var(--ink)", edge: "var(--c3)", ward: "var(--c1)", drive: "var(--c2)", fortune: "var(--c4)", bridge: "var(--hero)" };
 const BR_NAME = { core: "Core", edge: "Edge", ward: "Ward", drive: "Drive", fortune: "Fortune", bridge: "Bridge" };
-// Second Wind and Undying are one revive on one cooldown; Undying makes it stronger. It goes before other revives.
+// Second Wind and Undying are one revive on one cooldown; Undying makes it stronger.
 const SECOND_WIND = {
   order: -1, cd: 0,
   tick(c) { if (this.cd > 0) this.cd -= c.dt; },
@@ -157,16 +157,14 @@ function renderTree() {
     if (n.cap) h += '<circle r="' + (r - 6) + '" style="fill:none;stroke:' + (own ? "var(--panel)" : c) + ';stroke-width:1.5;opacity:' + (own || av ? 1 : .5) + '"/>';
     if (n.key) h += '<polygon points="' + starPts(4, 8, 3) + '" style="fill:' + (own ? "var(--panel)" : c) + ';opacity:' + (own || av ? 1 : .5) + '"/>';
     if (n.max > 1 && (own || av)) {
-      // segmented ring: one notch per rank on a dark band, so it reads against any branch color.
-      // filled notches are white, and turn gold when the node is fully learned
+      // the dark band under the notches lets them read against any branch color
       const R = r + 5, C = 2 * Math.PI * R, seg = C / n.max, gap = Math.min(2.4, seg * .32), done = rank >= n.max;
       h += '<circle r="' + R + '" style="fill:none;stroke:#0d0b16;stroke-width:5.5"/>';
       h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:#ffffff;stroke-opacity:.2;stroke-width:3;stroke-dasharray:' + (seg - gap).toFixed(2) + " " + gap.toFixed(2) + '"/>';
       if (rank > 0) h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:' + (done ? "#ffd04d" : "#ffffff") + ';stroke-width:3;stroke-dasharray:' + Array.from({ length: rank }, () => (seg - gap).toFixed(2) + " " + gap.toFixed(2)).join(" ") + " 0 " + C.toFixed(1) + '"/>';
     }
-    // rank number: dark disc with light text, readable on every branch color
+    // dark disc so the rank number reads on every branch color
     if (own && n.max > 1) h += '<circle r="' + Math.min(9, r * .62).toFixed(1) + '" style="fill:#0d0b16;fill-opacity:.82"/><text class="rkt" y="3.6" style="fill:' + (rank >= n.max ? "#ffd04d" : "#ffffff") + '">' + rank + "</text>";
-    // "+" badge: this node can take another rank right now
     if (n.id !== "core" && av && rank < n.max && S.echoes >= nodeCost(n)) h += '<g class="upB" transform="translate(' + (r * .78).toFixed(1) + " " + (-r * .78).toFixed(1) + ')"><circle r="6.5" style="fill:#ffd04d;stroke:var(--panel);stroke-width:1.5"/><path d="M-3 0 H3 M0 -3 V3" style="stroke:#1a1430;stroke-width:1.8;stroke-linecap:round"/></g>';
     else if (own && rank < n.max && n.max > 1) h += '<circle r="2.6" cx="' + (r * .78).toFixed(1) + '" cy="' + (-r * .78).toFixed(1) + '" style="fill:' + c + ';stroke:var(--panel);stroke-width:1"/>';
     h += '<text class="lbl" y="' + (r + (n.max > 1 && (own || av) ? 18 : 12)) + '">' + n.s + "</text></g>";
@@ -276,7 +274,6 @@ export function initWeb() {
     });
     addEventListener("resize", () => { if (tab === "tree") webApply(); });
   })();
-  // tap a node to pop up its details; tap empty space or the x to put them away
   $("web").addEventListener("click", e => {
     const g = e.target.closest("[data-node]");
     if (!g) { if (treeSel) { treeSel = null; renderTree(); refreshPanel(); } return; }

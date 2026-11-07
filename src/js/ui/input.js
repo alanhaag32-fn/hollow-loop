@@ -28,7 +28,6 @@ export function initInput() {
     if (near && near !== targeting.focus) { targeting.focus = near; pickTarget(); }
     if (!alive()) return;
     e.preventDefault();
-    // rapid taps build a combo: +2% tap damage per chained tap, up to +98%
     const tnow = performance.now();
     combo = tnow - lastTapT < 450 ? Math.min(50, combo + 1) : 1; lastTapT = tnow;
     if (combo === 25 || combo === 50) floatText(combo + " combo", "info", "hero", "#9ff3e6");

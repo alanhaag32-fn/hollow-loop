@@ -7,7 +7,6 @@ import { autoTrain } from "../train/train.js";
 import { updateUI } from "../ui/hud.js";
 import { log } from "../ui/log.js";
 
-// automation is free for good once you have transcended
 export const autoOn = () => (S.transcends || 0) >= 1;
 export const AUTO_REFUND = { aTrain: 12, aPush: 8, aAsc: 15, smart: 10 };
 let autoT = 0, farmT = 0, stallT = 0, stallMax = 0;
