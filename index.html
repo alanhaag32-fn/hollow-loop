@@ -730,27 +730,6 @@ body.perf .pulse { animation: none; }
 <script>
 (() => {
 "use strict";
-// ---- js/core/curves.js
-// How enemy health and damage, gear power and lumen grow with the stage.
-
-// enemy health and lumen grow 33% per stage, gear power 15% per stage, training compounds with milestone doublings
-const HPG = 1.35;
-// past stage 80 the curves ease off a little (health and lumen +30%/stage, damage +24%/stage)
-const LATE = 80;
-const curve = (st, g1, g2) => Math.pow(g1, Math.min(st, LATE) - 1) * Math.pow(g2, Math.max(0, st - LATE));
-// enemy health growth per stage: 30% from 80, 28% from 100, 23% from 120 to 150 (the climb to your first Transcend), then 30% again
-const span = (st, a, b) => Math.max(0, Math.min(st, b) - a);
-const stageHp = st => 20 * curve(st, HPG, 1.3) * Math.pow(1.28 / 1.3, span(st, 100, 120)) * Math.pow(1.23 / 1.3, span(st, 120, 150));
-const stageDmg = st => .9 * curve(st, 1.27, 1.24);
-const itemPow = st => 6 * Math.pow(1.13, st - 1);
-const MILES = [25, 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
-const milesAt = L => MILES.filter(m => L >= m).length;
-const nextMile = L => MILES.find(m => m > L);
-// lumen per normal kill at a stage: 15% of that stage's enemy health
-// past stage 80 kills pay more lumen, ramping up to double at stage 120
-const lumenBase = st => 3 * curve(st, HPG, 1.3);
-const lumenAt = st => lumenBase(st) * (1 + Math.min(1, Math.max(0, st - 80) / 40));
-
 // ---- js/core/save.js
 // The save (S): its fields by lifetime, loading with every migration, and saving.
 
@@ -767,11 +746,11 @@ const KEPT = () => ({
   abyss: { best: 0, depth: 1, stone: 0, total: 0, altar: {}, seed: 0 },
   autoCfg: { trainOn: true, train: {}, push: 60, ascAt: 0, ascStall: false, smart: true }, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
   anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false,
-  bestiary: {}, peak: 1, totalKills: 0, bountyDone: 0, nextId: 1, salv: 1, autoEquip: true
+  bestiary: {}, peak: 1, totalKills: 0, bountyDone: 0, nextId: 1, salv: 1, autoEquip: true,
+  saver: false, manaRes: .3, packView: { slot: "all", set: "any", sort: "up" }
 });
 const fresh = () => Object.assign(KEPT(), CYCLE(), RUN());
 let S = fresh();
-// the stored save, parsed; one that can't be read is kept aside under KEY + ".broken" and reported
 function readSave() {
   const raw = localStorage.getItem(KEY);
   if (!raw) return null;
@@ -795,6 +774,128 @@ function save() {
   S.last = Date.now();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
 }
+
+// ---- js/audio/sound.js
+// Synthesized sound effects (no audio files).
+
+let actx = null, master = null, bus = null, noiseBuf = null, voices = 0;
+const SND_VOL = { low: .35, med: .65, high: 1 };
+const sndVol = () => S.sound === false ? 0 : SND_VOL[S.vol || "med"];
+// start (or wake) the audio; resolves once it can play
+function audioInit() {
+  if (actx) return actx.state === "suspended" ? actx.resume() : Promise.resolve();
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = sndVol();
+    const comp = actx.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.ratio.value = 4;
+    const soften = actx.createBiquadFilter(); soften.type = "lowpass"; soften.frequency.value = 5200;
+    master.connect(soften); soften.connect(comp); comp.connect(actx.destination);
+    musicInit(comp);
+    // light echo for a glassy, spacious feel
+    bus = actx.createGain(); bus.connect(master);
+    const dl = actx.createDelay(1), fb = actx.createGain(), wet = actx.createGain(), dlf = actx.createBiquadFilter();
+    dl.delayTime.value = .19; fb.gain.value = .3; wet.gain.value = .32; dlf.type = "lowpass"; dlf.frequency.value = 2600;
+    bus.connect(dl); dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(wet); wet.connect(master);
+    noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  } catch (err) { actx = null; return Promise.resolve(); } // no Web Audio here: the game plays silently
+  return Promise.resolve();
+}
+function setVolume() { if (master) master.gain.setTargetAtTime(sndVol(), actx.currentTime, .05); }
+function env(g, t, dur, peak, atk) {
+  const a = atk || .008;
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.exponentialRampToValueAtTime(.0001, t + Math.max(dur, a + .02));
+}
+// soft sine/triangle voices only
+function tone(type, f0, f1, dur, peak, delay, atk) {
+  const t = actx.currentTime + (delay || 0), o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t);
+  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  env(g, t, dur, peak, atk); o.connect(g); g.connect(bus);
+  o.start(t); o.stop(t + dur + .05); voices++; o.onended = () => voices--;
+}
+function air(f0, f1, dur, peak, delay) {
+  const t = actx.currentTime + (delay || 0), src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+  src.buffer = noiseBuf; f.type = "bandpass"; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, dur, peak, dur * .35); src.connect(f); f.connect(g); g.connect(bus);
+  src.start(t, Math.random() * .5); src.stop(t + dur + .05); voices++; src.onended = () => voices--;
+}
+// everything is tuned to one pentatonic scale so overlapping sounds stay in harmony
+const NOTE = [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3, 659.3, 784, 880, 1046.5, 1174.7, 1318.5, 1568, 1760];
+const pickN = (lo, hi) => NOTE[lo + Math.floor(Math.random() * (hi - lo + 1))];
+const bell = (f, peak, delay, len) => { tone("sine", f, f, len || .45, peak, delay); tone("sine", f * 2, f * 2, (len || .45) * .6, peak * .3, delay); };
+const SFX = {
+  Drone: () => { const f = pickN(10, 12); tone("sine", f, f, .07, .02); tone("sine", f, f, .07, .016, .06); },
+  Glaive: () => air(700, 1500, .22, .03),
+  Laser: () => tone("sine", 1568, 1046.5, .14, .022),
+  Swarm: () => [9, 10, 11].forEach((n, i) => tone("triangle", NOTE[n], NOTE[n], .07, .014, i * .04)),
+  Hammer: () => { tone("sine", 165, 82, .28, .07, .21); tone("triangle", 330, 165, .18, .018, .21); },
+  Coil: () => { tone("sine", 1318.5, 1318.5, .12, .012); tone("sine", 1330, 1330, .12, .012); },
+  Mote: () => tone("sine", 1046.5, 1046.5, .07, .014),
+  hit: () => {},
+  crit: () => bell(pickN(10, 13), .045),
+  tap: () => tone("sine", pickN(8, 12), 0, .05, .012),
+  miss: () => {},
+  shatter: big => {
+    const n = big ? 5 : 2, start = big ? 12 : 13;
+    for (let i = 0; i < n; i++) bell(NOTE[Math.max(5, start - i * 2)], big ? .03 : .018, i * .06, .35);
+    if (big) tone("sine", 130.8, 98, .7, .06, 0, .02);
+  },
+  hurt: () => tone("sine", 220, 165, .14, .04),
+  block: () => tone("triangle", 880, 880, .1, .022),
+  evade: () => air(900, 1800, .18, .018),
+  bossIn: () => { tone("sine", 98, 98, 1.4, .07, 0, .5); tone("sine", 146.8, 146.8, 1.4, .05, .1, .5); tone("sine", 196, 196, 1.2, .03, .2, .4); },
+  eliteIn: () => { tone("sine", 196, 196, .5, .045, 0, .08); tone("sine", 293.7, 293.7, .45, .025, .05, .08); },
+  warn: () => { tone("sine", 440, 440, .12, .03); tone("sine", 440, 440, .12, .03, .25); tone("sine", 523.3, 523.3, .16, .035, .5); },
+  crush: () => { tone("sine", 110, 55, .55, .12, 0, .01); air(300, 120, .45, .03); },
+  status: () => { tone("sine", 622.3, 622.3, .3, .018, 0, .03); tone("sine", 587.3, 587.3, .3, .018, 0, .03); },
+  loot: r => [5, 7, 8, 10, 12].slice(0, 2 + r).forEach((n, i) => bell(NOTE[n], .03, i * .08, .4)),
+  death: () => [10, 8, 6, 5].forEach((n, i) => tone("sine", NOTE[n], NOTE[n], .45, .035, i * .14, .02)),
+  chord: () => [5, 7, 8, 10].forEach((n, i) => tone("sine", NOTE[n], NOTE[n], .9, .025, i * .05, .06)),
+  ascend: () => [0, 2, 3, 5, 7, 8, 10, 12].forEach((n, i) => bell(NOTE[n], .03, i * .09, .9)),
+  buy: () => { bell(1046.5, .022, 0, .2); bell(1318.5, .022, .07, .3); },
+  shard: () => bell(1568, .014, 0, .25),
+  nova: () => { tone("sine", 261.6, 523.3, .35, .05, 0, .05); bell(784, .025, .12, .5); },
+  barrier: () => { tone("sine", 523.3, 523.3, .8, .025, 0, .15); tone("sine", 784, 784, .8, .02, .05, .15); },
+  overdrive: () => [7, 8, 10, 12].forEach((n, i) => tone("triangle", NOTE[n], NOTE[n], .12, .018, i * .045)),
+  storm: () => air(500, 2200, .5, .028),
+  dash: () => [7, 9, 12].forEach((n, i) => bell(NOTE[n], .018, i * .035, .2)),
+  shatterSkill: () => [13, 12, 14].forEach((n, i) => bell(NOTE[n], .022, i * .05, .5))
+};
+const lastSnd = {};
+function sfx(key, arg, gap) {
+  if (!actx || actx.state !== "running" || S.sound === false || voices > 22) return;
+  const now = performance.now();
+  if (now - (lastSnd[key] || 0) < (gap === undefined ? 50 : gap)) return;
+  lastSnd[key] = now;
+  SFX[key](arg);
+}
+
+function initSound() {
+  ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, audioInit, { passive: true }));
+}
+
+// ---- js/core/curves.js
+// How enemy health and damage, gear power and lumen grow with the stage.
+
+const HPG = 1.35;
+const LATE = 80;
+const curve = (st, g1, g2) => Math.pow(g1, Math.min(st, LATE) - 1) * Math.pow(g2, Math.max(0, st - LATE));
+// stages 120 to 150 are the climb to your first Transcend
+const span = (st, a, b) => Math.max(0, Math.min(st, b) - a);
+const stageHp = st => 20 * curve(st, HPG, 1.3) * Math.pow(1.28 / 1.3, span(st, 100, 120)) * Math.pow(1.23 / 1.3, span(st, 120, 150));
+const stageDmg = st => .9 * curve(st, 1.27, 1.24);
+const itemPow = st => 6 * Math.pow(1.13, st - 1);
+const MILES = [25, 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+const milesAt = L => MILES.filter(m => L >= m).length;
+const nextMile = L => MILES.find(m => m > L);
+const lumenBase = st => 3 * curve(st, HPG, 1.3);
+const lumenAt = st => lumenBase(st) * (1 + Math.min(1, Math.max(0, st - 80) / 40));
 
 // ---- js/core/stats.js
 // The stat fold and effect hooks: bonus sources register here, computeStats folds them, emit runs the active effects.
@@ -875,6 +976,37 @@ function computeStats() {
   return out;
 }
 
+// ---- js/ui/actions.js
+// The panel and action registries: windows register panels, features register the actions their buttons name.
+
+// Each window registers its panel next to its render code, and every button's data-act names an action registered
+// next to the feature it changes. After an action, stats are recalculated, every panel is marked stale (the open
+// one re-renders), the game saves and the HUD refreshes; main wires this with whenActionsRun. An action returns
+// false when nothing changed (or the page is about to reload), or a function to run once the open panel re-rendered.
+const PANELS = {}, ACTIONS = {};
+// def: { render(), refresh() for cheap updates while open (optional) }
+const panel = (id, def) => { PANELS[id] = Object.assign({ stale: true }, def); };
+const action = (name, fn) => { ACTIONS[name] = fn; };
+function markDirty(...k) { k.forEach(x => { PANELS[x].stale = true; }); }
+let afterAction = () => {};
+// set once at boot: what follows every action that changed something
+const whenActionsRun = fn => { afterAction = fn; };
+function runAction(name, id, el) {
+  const fn = ACTIONS[name];
+  if (!fn) return;
+  const r = fn(id, el);
+  if (r === false) return;
+  afterAction();
+  if (typeof r === "function") r();
+}
+// tap-twice buttons: the first tap shows `prompt` on the button; a second tap within 3s confirms
+function confirmTap(b, prompt) {
+  if (b.dataset.armed) return true;
+  const was = b.innerHTML; b.dataset.armed = "1"; b.innerHTML = prompt;
+  setTimeout(() => { delete b.dataset.armed; b.innerHTML = was; }, 3000);
+  return false;
+}
+
 // ---- js/fx/gfx.js
 // Graphics settings: reduced motion and the low-power mode.
 
@@ -930,37 +1062,6 @@ function starPts(n, r1, r2) {
 }
 const mmss = ms => Math.floor(ms / 60000) + ":" + String(Math.floor(ms / 1000) % 60).padStart(2, "0");
 
-// ---- js/ui/actions.js
-// The panel and action registries: windows register panels, features register the actions their buttons name.
-
-// Each window registers its panel next to its render code, and every button's data-act names an action registered
-// next to the feature it changes. After an action, stats are recalculated, every panel is marked stale (the open
-// one re-renders), the game saves and the HUD refreshes; main wires this with whenActionsRun. An action returns
-// false when nothing changed (or the page is about to reload), or a function to run once the open panel re-rendered.
-const PANELS = {}, ACTIONS = {};
-// def: { render(), refresh() for cheap updates while open (optional) }
-const panel = (id, def) => { PANELS[id] = Object.assign({ stale: true }, def); };
-const action = (name, fn) => { ACTIONS[name] = fn; };
-function markDirty(...k) { k.forEach(x => { PANELS[x].stale = true; }); }
-let afterAction = () => {};
-// set once at boot: what follows every action that changed something
-const whenActionsRun = fn => { afterAction = fn; };
-function runAction(name, id, el) {
-  const fn = ACTIONS[name];
-  if (!fn) return;
-  const r = fn(id, el);
-  if (r === false) return;
-  afterAction();
-  if (typeof r === "function") r();
-}
-// tap-twice buttons: the first tap shows `prompt` on the button; a second tap within 3s confirms
-function confirmTap(b, prompt) {
-  if (b.dataset.armed) return true;
-  const was = b.innerHTML; b.dataset.armed = "1"; b.innerHTML = prompt;
-  setTimeout(() => { delete b.dataset.armed; b.innerHTML = was; }, 3000);
-  return false;
-}
-
 // ---- js/gear/reforge.js
 // Honing and reforging affixes after a Transcend.
 
@@ -1005,30 +1106,6 @@ function forgeAct(act, id, i) {
 }
 ["rfOpen", "rfHone", "rfRe", "rfKeep", "rfOld"].forEach(a => action(a, (id, b) => forgeAct(a, Number(id), Number(b.dataset.i))));
 
-// ---- js/hero/statuses.js
-// Statuses enemies put on the hero (Dim, Fracture, Static, Gravity, Eclipse).
-
-const STATUS = {
-  dim: { name: "Dim", col: "#c9c4dc", desc: "Your light fades: healing reduced by 60%", fx: { heal: c => { c.v *= .4; } } },
-  fracture: { name: "Fracture", col: "#ff8463", desc: "Cracked shell: no block and 20% more damage taken", fx: { incoming: c => { c.block = 0; }, taken: c => { c.d *= 1.2; } } },
-  static: { name: "Static", col: "#4fd3e4", desc: "Interference: no mana regen and skills cost 50% more", fx: { manaRegen: c => { c.v *= .5; }, skillCost: c => { c.v *= 1.25; } } },
-  gravity: { name: "Gravity", col: "#b48cff", desc: "Weighed down: 30% slower attacks and no evasion", fx: { attackSpeed: c => { c.v *= .7; }, incoming: c => { c.evade = 0; } } },
-  eclipse: { name: "Eclipse", col: "#ffd04d", desc: "Your light is covered: your attacks can't crit", fx: { critChance: c => { c.v *= .5; } } }
-};
-const ZONE_STATUS = ["dim", "fracture", "static", "gravity", "eclipse"];
-const stT = {};
-const st = id => stT[id] > 0;
-effectSource(() => ZONE_STATUS.filter(st).map(id => STATUS[id].fx));
-function applyStatus(id, sec, force, from) {
-  if (heroDown || (hero.shield > 0 && !force)) return;
-  if (!force && emit("status", { id, block: false }).block) return;
-  if (!force && !(stT[id] > 0) && Math.random() < Math.min(.6, ST.shrug)) return;
-  const isNew = !(stT[id] > 0);
-  stT[id] = Math.max(stT[id] || 0, sec * ST.statusDur);
-  if (isNew) { floatText(STATUS[id].name, "status", "hero", STATUS[id].col); sfx("status", 0, 150); }
-  statusHitFx(id, isNew, from);
-}
-
 // ---- js/index/index.js
 // The Index: kill records per shape family and the bonuses their tiers give.
 
@@ -1046,11 +1123,26 @@ statSource(give => FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t 
 const IDX_TIERS = { n: [25, 150, 600], e: [5, 30, 120], b: [1, 5, 20] };
 function idxKills(key, k) { const r = S.bestiary && S.bestiary[key]; return r ? r[k] || 0 : 0; }
 function IT(key, k) { const c = idxKills(key, k); return IDX_TIERS[k].filter(t => c >= t).length; }
+// count a kill toward its shape family's Index entry
+function recordKill(e) {
+  const fam = e.family; if (!fam) return;
+  const kk = e.boss ? "b" : e.elite ? "e" : "n";
+  const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
+  const before = IT(fam.key, kk);
+  rec[kk]++;
+  if (e.v) { rec.v = rec.v || {}; rec.v[e.v.id] = (rec.v[e.v.id] || 0) + 1; }
+  const tt = IT(fam.key, kk);
+  if (tt > before) {
+    log("Index: " + (kk === "e" ? "Elite " : kk === "b" ? "Grand " : "") + fam.name + " tier " + ["", "I", "II", "III"][tt] + " reached. Now +" + +(fam[kk][0] * tt).toFixed(1) + fam[kk][1], "r4");
+    floatText("Index up", "info", "hero", "#ffd04d"); sfx("chord", 0, 300);
+    recalc();
+  }
+  markDirty("index");
+}
 function renderIndex() {
   const active = [];
   FAMILIES.forEach(f => ["n", "e", "b"].forEach(k => { const t = IT(f.key, k); if (t) active.push("+" + +(f[k][0] * t).toFixed(1) + f[k][1]); }));
   let h = '<div class="wsub" data-sub="bonus"><p class="note">Every enemy type you defeat is recorded here. Each type has three milestones, and every milestone gives a permanent bonus that survives ascension. Pick a shape below to see its page.</p><div class="sgroup"><h3>Active index bonuses</h3>' + (active.length ? '<div class="idxSum">' + active.map(x => "<span>" + x + "</span>").join("") + "</div>" : '<p class="note">None yet. Your first milestone is 25 Triads.</p>') + "</div></div>";
-  // one compact page per shape family: header, a 2x2 grid of variants, then the three milestones
   FAMILIES.forEach(f => {
     const hue = (f.idx * 53 + 200) % 360, found = ["n", "e", "b"].some(k => idxKills(f.key, k) > 0);
     h += '<div class="wsub idxPage" data-sub="f' + f.sides + '"><div class="idxHd2"><svg class="idxPic" viewBox="-21 -21 42 42" aria-hidden="true"><polygon points="' + polyPts(f.sides, 17, 0, 0, 0) + '" style="fill:' + (found ? "hsl(" + hue + " 55% 42%)" : "var(--line)") + ";stroke:" + (found ? "hsl(" + hue + " 75% 68%)" : "var(--muted)") + ';stroke-width:2.5;stroke-linejoin:round"/></svg><div class="idxT"><div class="n">' + (found ? f.name : "Undiscovered") + '</div><div class="lore">' + (found ? f.lore : f.sides + "-sided shapes, first seen around stage " + (10 * f.idx + 1)) + "</div></div></div>";
@@ -1073,12 +1165,715 @@ function renderIndex() {
 }
 panel("index", { render: renderIndex });
 
+// ---- js/hero/statuses.js
+// Statuses enemies put on the hero (Dim, Fracture, Static, Gravity, Eclipse).
+
+const STATUS = {
+  dim: { name: "Dim", col: "#c9c4dc", desc: "Your light fades: healing reduced by 60%", fx: { heal: c => { c.v *= .4; } } },
+  fracture: { name: "Fracture", col: "#ff8463", desc: "Cracked shell: no block and 20% more damage taken", fx: { incoming: c => { c.block = 0; }, taken: c => { c.d *= 1.2; } } },
+  static: { name: "Static", col: "#4fd3e4", desc: "Interference: half mana regen and skills cost 25% more", fx: { manaRegen: c => { c.v *= .5; }, skillCost: c => { c.v *= 1.25; } } },
+  gravity: { name: "Gravity", col: "#b48cff", desc: "Weighed down: 30% slower attacks and no evasion", fx: { attackSpeed: c => { c.v *= .7; }, incoming: c => { c.evade = 0; } } },
+  eclipse: { name: "Eclipse", col: "#ffd04d", desc: "Your light is covered: half crit chance", fx: { critChance: c => { c.v *= .5; } } }
+};
+const ZONE_STATUS = ["dim", "fracture", "static", "gravity", "eclipse"];
+const stT = {};
+const st = id => stT[id] > 0;
+function stepStatuses(dt) { for (const k in stT) if (stT[k] > 0) stT[k] -= dt; }
+function clearStatuses() { for (const k in stT) stT[k] = 0; }
+effectSource(() => ZONE_STATUS.filter(st).map(id => STATUS[id].fx));
+function applyStatus(id, sec, force, from) {
+  if (heroDown || (hero.shield > 0 && !force)) return;
+  if (!force && emit("status", { id, block: false }).block) return;
+  if (!force && !(stT[id] > 0) && Math.random() < Math.min(.6, ST.shrug)) return;
+  const isNew = !(stT[id] > 0);
+  stT[id] = Math.max(stT[id] || 0, sec * ST.statusDur);
+  if (isNew) { floatText(STATUS[id].name, "status", "hero", STATUS[id].col); sfx("status", 0, 150); }
+  statusHitFx(id, isNew, from);
+}
+
+// ---- js/train/train.js
+// Training: lumen upgrades, their Overcharge, buying them (by hand or Auto-Train) and the Train window.
+
+// oc (Overcharge): once a capped upgrade is maxed it keeps going with no level limit.
+// Stats already at a hard ceiling get a related bonus instead.
+const TRAIN = [
+  { unlock: 1, id: "might", name: "Might", cat: "off", base: 10, g: 1.18, mode: "mult", stat: "attack", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ atk: v }) },
+  { unlock: 1, id: "vigor", name: "Vigor", cat: "def", base: 10, g: 1.18, mode: "mult", stat: "health", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ maxHp: v }) },
+  { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.5, max: 100, mode: "pct", stat: "tap damage", eff: L => 1 + .015 * L, stats: v => ({ tap: v }), oc: { per: .01, stat: "tap damage", stats: v => ({ tap: 1 + v }) } },
+  { unlock: 2, id: "greed", name: "Greed", cat: "fort", base: 40, g: 1.25, mode: "mult", stat: "lumen", mile: 1.25, eff: L => (1 + .05 * L) * Math.pow(1.25, milesAt(L)), stats: v => ({ gold: v }) },
+  { unlock: 3, id: "haste", name: "Haste", cat: "off", base: 50, g: 1.42, max: 120, mode: "pct", stat: "attack speed", eff: L => 1 + .01 * L, stats: v => ({ spd: v }), oc: { per: .005, stat: "attack speed", stats: v => ({ spd: 1 + v }) } },
+  { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.6, max: 75, mode: "pct", stat: "max mana", eff: L => 1 + .04 * L, stats: v => ({ maxMp: v }), oc: { per: .02, stat: "max mana", stats: v => ({ maxMp: 1 + v }) } },
+  { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.6, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L, stats: v => ({ cdr: v }), oc: { per: .003, stat: "cooldowns", less: true, stats: v => ({ cdr: 1 - v, cdrFloor: plus(-Math.min(.1, v / 3)) }) } },
+  { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.5, max: 100, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L, stats: v => ({ mpRegen: v }), oc: { per: .02, stat: "mana regen", stats: v => ({ mpRegen: 1 + v }) } },
+  { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.5, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .01 * L, stats: v => ({ critDmg: v }), oc: { per: .02, stat: "red crit power", stats: v => ({ redPow: 1 + v }) } },
+  { unlock: 12, id: "agility", name: "Agility", cat: "def", base: 60, g: 1.22, mode: "pct", stat: "evasion rating", eff: L => 1 + .05 * L, stats: v => ({ evaR: v }) },
+  { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.6, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L, stats: v => ({ statusDur: v }), oc: { per: .01, stat: "chance to ignore a new status effect", cap: .5, stats: v => ({ shrug: plus(v) }) } },
+  { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.6, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L, stats: v => ({ block: plus(v) }), oc: { per: .005, stat: "damage blocked", cap: .2, stats: v => ({ blockLeak: plus(-v) }) } },
+  { unlock: 18, id: "precision", name: "Precision", cat: "off", base: 150, g: 1.55, max: 80, mode: "add", stat: "crit chance", eff: L => .0025 * L, stats: v => ({ crit: plus(v) }), oc: { per: .01, stat: "crit chance", stats: v => ({ crit: plus(v) }) } },
+  { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.45, max: 100, mode: "pct", stat: "skill power", eff: L => 1 + .01 * L, stats: v => ({ skillPow: v }), oc: { per: .01, stat: "skill power", stats: v => ({ skillPow: 1 + v }) } },
+  { unlock: 25, id: "leech", name: "Leech", cat: "def", base: 150, g: 1.45, max: 40, mode: "add", stat: "life steal", eff: L => .0015 * L, stats: v => ({ leech: plus(v) }), oc: { per: .03, stat: "life steal heal limit", stats: v => ({ leechCap: plus(v) }) } },
+  { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.6, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L, stats: v => ({ drop: v }), oc: { per: .01, stat: "rare luck", stats: v => ({ luck: plus(v) }) } }
+];
+const TRN = {};
+statSource(give => TRAIN.forEach(t => { give(t, tm(t.id)); if (t.oc && ocL(t.id)) give(t.oc, ocV(t.id)); }));
+ TRAIN.forEach(t => TRN[t.id] = t);
+const tmax = t => t.max ? t.max + ST.trainCap : 0;
+const ocL = id => (S.oc && S.oc[id]) || 0;
+const ocV = id => { const o = TRN[id].oc, v = o.per * ocL(id); return o.cap ? Math.min(o.cap, v) : v; };
+const trainLvl = id => S.train[id] || 0;
+const isOC = t => !!(t.max && t.oc && trainLvl(t.id) >= tmax(t));
+const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, tmax(t) - 1); let c = 0; const L = ocL(t.id); for (let i = 0; i < n; i++) c += first * Math.pow(ST.ocGrowth, L + i); return Math.ceil(c); };
+const tm = id => TRN[id].eff(trainLvl(id));
+let buyN = 1;
+const trainCostN = (t, n) => { let c = 0; const L = trainLvl(t.id); for (let i = 0; i < n; i++) c += t.base * Math.pow(t.g, L + i); return Math.ceil(c); };
+function trainPrice(t, n) {
+  if (S.maxStage < t.unlock) return Infinity;
+  if (isOC(t)) return t.oc.cap && ocV(t.id) >= t.oc.cap ? Infinity : ocCostN(t, n);
+  if (t.max && trainLvl(t.id) + n > tmax(t)) return Infinity;
+  return trainCostN(t, n);
+}
+function buyTraining(t, n) {
+  const oc = isOC(t), c = trainPrice(t, n);
+  if (!(S.gold >= c)) return false;
+  S.gold -= c;
+  if (oc) { S.oc = S.oc || {}; S.oc[t.id] = ocL(t.id) + n; } else S.train[t.id] = trainLvl(t.id) + n;
+  return true;
+}
+function buyCount(t) {
+  if (isOC(t)) {
+    if (buyN !== "max") return buyN;
+    let n = 0; while (n < 500 && ocCostN(t, n + 1) <= S.gold) n++;
+    return Math.max(1, n);
+  }
+  const L = trainLvl(t.id), room = t.max ? tmax(t) - L : 1e9;
+  if (buyN !== "max") return Math.max(1, Math.min(buyN, room));
+  let n = 0, c = 0;
+  while (n < room && n < 2000) { const nc = t.base * Math.pow(t.g, L + n); if (c + nc > S.gold) break; c += nc; n++; }
+  return Math.max(1, n);
+}
+function effText(t, L) {
+  const v = t.eff(L);
+  const pc = x => String(Number((x * 100).toFixed(2)));
+  if (t.mode === "mult") return "x" + (v < 100 ? v.toFixed(2) : fmt(v)) + " " + t.stat;
+  if (t.mode === "pct") return "+" + pc(v - 1) + "% " + t.stat;
+  if (t.mode === "less") return "-" + pc(1 - v) + "% " + t.stat;
+  return "+" + pc(v) + "% " + t.stat;
+}
+function renderTrain() {
+  const bar = '<div class="buyBar"><span>Buy</span>' + [1, 10, "max"].map(n => '<button class="btn' + (buyN === n ? " go" : "") + '" data-act="buyN" data-id="' + n + '">' + (n === "max" ? "Max" : "x" + n) + "</button>").join("") + "</div>";
+  $("trainBody").innerHTML = bar + ["off", "def", "mana", "fort"].map(cat => '<div class="wsub list" data-sub="' + cat + '">' + TRAIN.filter(t => t.cat === cat).map(t => {
+    if (S.maxStage < t.unlock) return '<div class="row lock"><span class="n">' + t.name + '</span><span class="d">' + t.stat + ". Unlocks at stage " + t.unlock + "</span></div>";
+    if (isOC(t)) {
+      const o = t.oc, n = buyCount(t), c = ocCostN(t, n), v0 = ocV(t.id), v1 = o.cap ? Math.min(o.cap, o.per * (ocL(t.id) + n)) : o.per * (ocL(t.id) + n);
+      const pc = v => (o.less ? "-" : "+") + String(Number((v * 100).toFixed(1))) + "%";
+      return '<div class="row oc"><span class="n">' + t.name + ' <span class="ocTag">OC</span> Lv ' + ocL(t.id) + '</span><span class="d">' + effText(t, tmax(t)) + '</span><span class="d ocd">Overcharge: ' + pc(v0) + " " + o.stat + '<span class="nx"> →\u00a0' + pc(v1) + "</span></span>" +
+        '<div class="side">' + (o.cap && v0 >= o.cap ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-n="' + n + '" data-cost="' + c + '">' + (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen</button>") + "</div></div>";
+    }
+    const L = trainLvl(t.id), maxed = t.max && L >= tmax(t), n = buyCount(t), c = trainCostN(t, n), nm = t.mile && nextMile(L);
+    return '<div class="row"><span class="n">' + t.name + " Lv " + L + (t.max ? " / " + tmax(t) : "") + '</span><span class="d">' + effText(t, L) + (maxed ? "" : '<span class="nx"> →\u00a0' + effText(t, L + n).replace(/ .*/, "") + "</span>") + "</span>" +
+      (nm ? '<span class="d mile">x' + t.mile + " bonus at Lv " + nm + "</span>" : "") + '<div class="side">' +
+      (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-n="' + n + '" data-cost="' + c + '">' + (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen</button>") + "</div></div>";
+  }).join("") + "</div>").join("");
+}
+panel("train", {
+  render: renderTrain,
+  refresh() {
+    if (buyN !== "max") return;
+    $("p-train").querySelectorAll('[data-act="train"]').forEach(b => {
+      const t = TRN[b.dataset.id], n = buyCount(t), c = isOC(t) ? ocCostN(t, n) : trainCostN(t, n);
+      if (Number(b.dataset.n) === n) return;
+      if (isOC(t)) { markDirty("train"); return; }
+      b.dataset.n = n; b.dataset.cost = c; b.textContent = (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen";
+      b.classList.toggle("afford", S.gold >= c);
+      const nx = b.closest(".row").querySelector(".nx"); if (nx) nx.textContent = " → " + effText(t, trainLvl(t.id) + n).replace(/ .*/, "");
+    });
+  }
+});
+action("buyN", id => { buyN = id === "max" ? "max" : Number(id); });
+action("train", id => {
+  const t = TRN[id], before = milesAt(trainLvl(id));
+  if (!buyTraining(t, buyCount(t))) return false;
+  sfx("buy", 0, 0);
+  if (t.mile && milesAt(trainLvl(id)) > before) { floatText(t.name + " x" + t.mile + "!", "info", "hero", "#ffd04d"); sfx("chord", 0, 0); }
+});
+function autoTrain() {
+  let bought = 0;
+  for (let g = 0; g < 80; g++) {
+    let best = null, bc = Infinity;
+    TRAIN.forEach(t => { if (S.autoCfg.train[t.id] === false) return; const c = trainPrice(t, 1); if (c < bc) { bc = c; best = t; } });
+    if (!best || !buyTraining(best, 1)) break;
+    bought++;
+  }
+  if (bought) { recalc(); markDirty("train", "skills"); }
+}
+
+// ---- js/world/scene.js
+// The arena: layout, camera, starfield backdrop and zone.
+
+// stars and faint zone shapes are painted once into a tile image; it repeats under the scene and slides
+// with the camera (with a little parallax), so the endless plane costs almost nothing per frame
+const PARA = .75;
+let bgTW = 1, bgTH = 1, bgOX = NaN, bgOY = NaN;
+function drawBackdrop() {
+  const ab = lastZone === 999, zone = ab ? 0 : Math.max(0, lastZone), h = ab ? 285 : (zone * 53 + 200) % 360;
+  $("bgSky").style.background = ab ? "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)" : "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
+  const dpr = Math.min(2, window.devicePixelRatio || 1), tw = Math.max(200, Math.round(MAP_W * SC)), th = Math.max(200, Math.round(MAP_H * SC));
+  const c = document.createElement("canvas"); c.width = Math.round(tw * dpr); c.height = Math.round(th * dpr);
+  const x = c.getContext("2d"); x.scale(dpr, dpr);
+  // draw anything near an edge on the opposite side too, so the tile repeats without seams
+  const wrap = (cx, cy, r, fn) => { for (const ox of [0, -tw, tw]) for (const oy of [0, -th, th]) { if (cx + ox < -r || cx + ox > tw + r || cy + oy < -r || cy + oy > th + r) continue; fn(cx + ox, cy + oy); } };
+  const nS = Math.round(MAP_W * MAP_H / 5200);
+  x.fillStyle = "#fff";
+  for (let i = 0; i < nS; i++) {
+    const cx = Math.random() * tw, cy = Math.random() * th, r = (.4 + Math.random() * 1.1) * SC;
+    x.globalAlpha = .15 + Math.random() * .55;
+    wrap(cx, cy, r, (px, py) => { x.beginPath(); x.arc(px, py, r, 0, 6.2832); x.fill(); });
+  }
+  const nF = Math.max(6, Math.round(MAP_W * MAP_H / 42000)), sides = 3 + zone % 6;
+  for (let i = 0; i < nF; i++) {
+    const cx = Math.random() * tw, cy = Math.random() * th, r = (10 + Math.random() * 40) * SC, rot = Math.random() * 6, outline = Math.random() < .45;
+    x.globalAlpha = outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1;
+    wrap(cx, cy, r, (px, py) => {
+      x.beginPath();
+      const pts = ab ? jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p).map(([u, v]) => [px + u * r, py + v * r]) : null;
+      if (pts) pts.forEach(([u, v], k) => k ? x.lineTo(u, v) : x.moveTo(u, v));
+      else for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
+      x.closePath();
+      if (outline) { x.strokeStyle = "hsl(" + h + " 70% 70%)"; x.lineWidth = 1.2 * SC; x.stroke(); } else { x.fillStyle = "hsl(" + h + " 60% 60%)"; x.fill(); x.fillStyle = "#fff"; }
+    });
+  }
+  const bp = $("bgPlane");
+  bp.style.backgroundImage = "url(" + c.toDataURL("image/png") + ")";
+  bp.style.backgroundSize = tw + "px " + th + "px";
+  bp.style.width = (SW + tw + 2) + "px"; bp.style.height = (SH + th + 2) + "px";
+  bgTW = tw; bgTH = th; bgOX = NaN; placeBackdrop();
+}
+function placeBackdrop() {
+  const md = (n, m) => ((n % m) + m) % m;
+  const ox = -md(view.CAMX * PARA * SC, bgTW), oy = -md(view.CAMY * PARA * SC, bgTH);
+  if (Math.abs(ox - bgOX) < .25 && Math.abs(oy - bgOY) < .25) return;
+  bgOX = ox; bgOY = oy;
+  $("bgPlane").style.transform = "translate3d(" + ox.toFixed(1) + "px," + oy.toFixed(1) + "px,0)";
+}
+let lastZone = -1;
+function setZone(force) {
+  const zone = mode.zone();
+  if (zone === lastZone && !force) return;
+  lastZone = zone;
+  if (SW > 0) drawBackdrop();
+}
+let ARENA_T = 60, ARENA_B = 700;
+// the map is bigger than the screen; the camera follows your core. VX0/VY0 is the top-left of the view in map units
+// the plane is endless: MAP_W x MAP_H is just the size of the repeating backdrop tile
+let MAP_W = 1400, MAP_H = 1800, mapReady = false;
+const view = {
+  CAMX: 0,
+  CAMY: 0,
+  VX0: 0,
+  VY0: 0,
+  HERO_X: 180,
+  HERO_Y: 340,
+  ENEMY_X: 290,
+  ENEMY_Y: 382
+};
+const VX1 = () => view.VX0 + VW, VY1 = () => view.VY0 + VH;
+function layout() {
+  const ohx = view.HERO_X, ohy = view.HERO_Y;
+  SW = arena.clientWidth || innerWidth; SH = arena.clientHeight || innerHeight;
+  SC = Math.max(.5, Math.min(SW / 470, SH / 760, 1.4));
+  VW = SW / SC; VH = SH / SC;
+  $("scene").setAttribute("viewBox", "0 0 " + VW.toFixed(1) + " " + VH.toFixed(1));
+  MAP_W = Math.max(900, Math.round(VW * 1.6)); MAP_H = Math.max(1200, Math.round(VH * 1.6));
+  if (!mapReady) { mapReady = true; view.HERO_X = MAP_W / 2; view.HERO_Y = MAP_H / 2; }
+  view.CAMX = view.HERO_X - VW / 2; view.CAMY = view.HERO_Y - VH * .49; view.VX0 = view.CAMX; view.VY0 = view.CAMY; applyCam();
+  ENGAGE = Math.min(145, Math.max(104, Math.min(VW, VH) * .25));
+  // the open play area between the top HUD and the skill bar, in scene units
+  const ar = arena.getBoundingClientRect(), hb = document.querySelector(".hudStage"), sb = $("skillbar");
+  const hr = hb && hb.getBoundingClientRect(), br = sb && sb.getBoundingClientRect();
+  ARENA_T = hr && hr.height ? Math.max(20, (hr.bottom - ar.top) / SC) : 60;
+  ARENA_B = br && br.height ? Math.min(VH - 10, (br.top - ar.top) / SC - 6) : VH - 70;
+  if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
+
+  $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
+  syncTarget();
+  setZone(true);
+}
+const keys = {};
+function applyCam() {
+  $("cam").setAttribute("transform", "translate(" + (-view.CAMX).toFixed(2) + " " + (-view.CAMY).toFixed(2) + ")");
+  $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
+}
+// logical arena coordinates, recomputed to fill the screen
+let VW = 360, VH = 780, SC = 1, ENGAGE = 105, SW = 390, SH = 844;
+
+// ---- js/modes/modes.js
+// Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
+
+// Momentum: stages below this cap fly by
+const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * ST.momentumAt) : 0;
+const momentum = () => mode === MAIN && S.stage < momentumCap();
+
+const spawn = {
+  stageSpawned: 0,
+  spawnT: .3
+};
+// Combat runs inside a mode: the main run (stages you push or farm, with Momentum after a Transcend) or the Abyss.
+// The mode says what stage the fight is at and owns spawning, kills, deaths, boss escapes and the stage readout.
+// S.stage is only ever the main run's stage.
+const MAIN = {
+  stage: () => S.stage,
+  zone: () => Math.floor((S.stage - 1) / 10),
+  mythic: st => (S.transcends || 0) >= 1 && st >= TRANS_AT,
+  lumen: () => momentum() ? 8 / 3 : 1,
+  auto: true,
+  enter() { spawn.stageSpawned = S.kills; spawn.spawnT = .6; },
+  leave() {},
+  step() {},
+  stepSpawns(dt) {
+    const need = killsNeeded();
+    if (spawn.stageSpawned >= need) return;
+    const st = S.stage, boss = st % 10 === 0;
+    const live = foes.filter(f => !f.dead).length, cap = boss ? 1 : st < 10 ? 3 : st < 25 ? 4 : st < 50 ? 5 : 6;
+    spawn.spawnT -= dt;
+    if (spawn.spawnT > 0 || live >= cap) return;
+    const packMax = boss ? 1 : st < 3 ? 1 : st < 8 ? 2 : 3;
+    let n = Math.min(1 + rnd(packMax), cap - live, need - spawn.stageSpawned);
+    // the elite always arrives on its own, as the last spawn of the stage
+    if (st > 10 && !boss && spawn.stageSpawned + n >= need && n > 1) n = Math.max(1, need - 1 - spawn.stageSpawned);
+    const base = pickSpawnAngle();
+    for (let i = 0; i < n; i++) {
+      const elite = st > 10 && !boss && spawn.stageSpawned === need - 1;
+      spawnFoe(makeEnemy(st, elite), base + (i - (n - 1) / 2) * .32, i * 22); spawn.stageSpawned++;
+    }
+    spawn.spawnT = (.9 + Math.random() * .8) * (momentum() ? .35 : 1);
+  },
+  kill(e, c) {
+    if (c.split) return;
+    S.kills++;
+    if (S.kills < killsNeeded()) return;
+    S.kills = 0; spawn.stageSpawned = 0; spawn.spawnT = .5;
+    if (!S.push) return;
+    S.stage++; bump("stage", 1);
+    if (S.stage > S.maxStage) {
+      const before = S.maxStage; S.maxStage = S.stage; markDirty("tree");
+      SKILLS.forEach(sk => { if (before < sk.unlock && S.maxStage >= sk.unlock) { log("Skill unlocked: " + sk.name, "r4"); sfx("chord", 0, 300); buildSkillbar(); markDirty("skills"); } });
+      TRAIN.forEach(t => { if (before < t.unlock && S.maxStage >= t.unlock) { log("Training unlocked: " + t.name, "r3"); markDirty("train"); } });
+    }
+    if (S.stage > S.peak) {
+      if (S.peak < SLOT2_AT && S.stage >= SLOT2_AT) {
+        log("Second orbital slot unlocked", "r4");
+        const best = S.autoEquip && fillOrbital(ORBIT.weapon2);
+        if (best) log("Equipped " + best.name + " as your second orbital", "r" + best.r);
+        S.peak = S.stage; recalc(); markDirty("gear", "pack");
+      }
+      S.peak = S.stage;
+    }
+  },
+  death() {
+    log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");
+    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
+  },
+  escape() {
+    log("The boss escaped. Back to stage " + Math.max(1, S.stage - 1) + ", now farming", "bad");
+    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
+    clearFoes(true); spawn.spawnT = 1;
+  },
+  hud() {
+    const need = killsNeeded();
+    return {
+      title: "Stage " + S.stage, button: S.push ? "Pushing" : "Farming", prog: S.kills / need,
+      sub: (momentum() ? "Momentum: " : "") + (S.stage % 10 === 0 ? "Boss fight" : S.kills + "/" + need + " kills" + (foes.some(f => f.elite && !f.dead) ? ", elite here" : "")) + ", best " + S.maxStage
+    };
+  },
+  button() { S.push = !S.push; }
+};
+let mode = MAIN;
+const fightStage = () => mode.stage();
+// a reset (ascend, transcend) always lands in the main run, without the "you left" fanfare
+function returnToMain() { if (mode !== MAIN) { mode.leave(); mode = MAIN; } }
+// pick the main run up where the save left it
+function resumeRun() { spawn.stageSpawned = S.kills; }
+function switchMode(m) {
+  mode.leave(); mode = m;
+  clearFoes(false); m.enter(); setZone(true); recalc();
+}
+
+const killsNeeded = () => (S.stage % 10 === 0 ? 1 : momentum() ? 3 : 8);
+
+// the button beside the stage title: push/farm in the main run, leave in the Abyss
+action("modeButton", () => mode.button());
+
+// ---- js/ui/reticle.js
+// The target's ring (health, boss timer, mechanic progress) and the name tag above it.
+
+const FR_A = [-45, 225];
+let rEls = null, rV = [-1, -1, -1];
+const mech = {
+  mechFrac: 0
+};
+function buildReticle(t) {
+  const r = $("reticle"); r.innerHTML = ""; rEls = null; rV = [-1, -1, -1];
+  if (!t) return;
+  const R = t.ringR, L = R * 270 * Math.PI / 180, n = Math.max(12, Math.round(L / 11)), dash = (L / n - 1.8).toFixed(2) + " 1.8";
+  const g = svgEl("g", { fill: "none" }, r);
+  svgEl("path", { d: arcD(R, FR_A[0], FR_A[1]), stroke: "rgba(255,255,255,.13)", "stroke-width": 3, "stroke-dasharray": dash }, g);
+  rEls = { hp: svgEl("path", { stroke: "#ff6b6b", "stroke-width": 3, "stroke-dasharray": dash }, g) };
+  if (t.boss) { svgEl("path", { d: arcD(R + 5, FR_A[0], FR_A[1]), stroke: "rgba(255,208,77,.15)", "stroke-width": 1.4 }, g); rEls.tm = svgEl("path", { stroke: "#ffd04d", "stroke-width": 1.4 }, g); }
+  rEls.mech = svgEl("path", { stroke: "#b48cff", "stroke-width": 1.4 }, g);
+  FR_A.forEach(a => { const c = Math.cos(a * Math.PI / 180), sn = Math.sin(a * Math.PI / 180); svgEl("line", { x1: (c * (R - 4)).toFixed(1), y1: (sn * (R - 4)).toFixed(1), x2: (c * (R + 4)).toFixed(1), y2: (sn * (R + 4)).toFixed(1), stroke: "rgba(255,255,255,.35)", "stroke-width": 1 }, g); });
+  const tk = svgEl("g", { class: "spinSlow" }, r), tr = R + (t.boss ? 12 : 8);
+  [0, 1, 2].forEach(i => { const a = i * 2.094; svgEl("polygon", { points: polyPts(3, 3.4, a + Math.PI, Math.cos(a - Math.PI / 2) * tr, Math.sin(a - Math.PI / 2) * tr) }, tk); });
+  rEls.ticks = tk;
+}
+function placeReticle(dt) {
+  const r = $("reticle");
+  if (!enemy || enemy.dead || !rEls) { r.style.display = "none"; return; }
+  r.style.display = "";
+  r.setAttribute("transform", "translate(" + view.ENEMY_X.toFixed(1) + " " + enemyCY().toFixed(1) + ")");
+  rEls.ticks.setAttribute("fill", targeting.focus === enemy ? "#4fd3e4" : "rgba(255,255,255,.6)");
+  const e = enemy, t = [Math.max(0, e.hp / e.max), e.boss ? Math.max(0, e.timer / e.timerMax) : 0, mech.mechFrac];
+  const k = reduce ? 1 : Math.min(1, (dt || .016) * 12), els = [rEls.hp, rEls.tm, rEls.mech], rad = [e.ringR, e.ringR + 5, e.ringR + (e.boss ? 10 : 5)];
+  for (let i = 0; i < 3; i++) {
+    if (!els[i]) continue;
+    const v = rV[i] < 0 || Math.abs(t[i] - rV[i]) < .001 ? t[i] : rV[i] + (t[i] - rV[i]) * k;
+    if (v === rV[i]) continue;
+    rV[i] = v;
+    els[i].setAttribute("d", v < .004 ? "" : arcD(rad[i], FR_A[0], FR_A[0] + 270 * v));
+  }
+}
+let tagCache = "", tagSide = null, tagFor = null;
+let tagX = 0, tagY = 0, tagVis = false, tagHold = 0, tagMeasT = 0, tagW = 150, tagH = 40, htH = 30;
+// keep the old target's tag up a moment while the new one takes over
+function holdTag() { if (tagVis) tagHold = .12; }
+function retag() { tagCache = ""; }
+function placeTags(dt) {
+  const ht = $("heroTag"), ft = $("foeTag");
+  const hx = (view.HERO_X - view.VX0) * SC, hy = (view.HERO_Y + RING_R - 8 - view.VY0) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
+  if (hk !== tagCache) { tagCache = hk; ht.style.left = hx + "px"; ht.style.top = hy + "px"; }
+  const e = enemy, m = e ? e.R * .35 : 0;
+  const vis = !!e && !e.dead && e.px > view.VX0 - m && e.px < VX1() + m && e.py > view.VY0 - m && e.py < VY1() + m;
+  if (tagHold > 0) tagHold -= dt || .016;
+  if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }
+  const tn = performance.now();
+  if (tn - tagMeasT > 300 || tagFor !== e) { tagMeasT = tn; tagW = ft.offsetWidth || 150; tagH = ft.offsetHeight || 40; htH = ht.offsetHeight || 30; }
+  const w = tagW, h = tagH, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
+  const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, (e.px - view.VX0) * SC));
+  const up = (e.py - out - view.VY0) * SC - h, dn = (e.py + out - view.VY0) * SC, topLim = 112;
+  // above or below: whichever covers less of the core's ring and readout and stays clear of the top bar
+  const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + htH + 4 }, cr = (RING_R + 8) * SC, ccx = (view.HERO_X - view.VX0) * SC, ccy = (view.HERO_Y - view.VY0) * SC;
+  const ovl = top => {
+    const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
+    return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
+      + Math.max(0, Math.min(r, ccx + cr) - Math.max(l, ccx - cr)) * Math.max(0, Math.min(b, ccy + cr) - Math.max(top, ccy - cr));
+  };
+  const sUp = ovl(up) + (up < topLim ? 5e5 : 0), sDn = dn + h < SH - 100 ? ovl(dn) : 1e9;
+  if (tagSide === null || tagFor !== e) { tagFor = e; tagSide = e.py > view.HERO_Y + 10 ? sDn <= sUp : sDn < sUp; }
+  else if (tagSide && sUp + 60 < sDn) tagSide = false;
+  else if (!tagSide && sDn + 60 < sUp) tagSide = true;
+  const ty = Math.max(topLim, tagSide ? dn : up);
+  if (!tagVis) { tagX = fx2; tagY = ty; }
+  else { const k = 1 - Math.exp(-(dt || .016) * 16); tagX += (fx2 - tagX) * k; tagY += (ty - tagY) * k; }
+  ft.style.transform = "translate3d(" + (tagX - w / 2).toFixed(1) + "px," + tagY.toFixed(1) + "px,0)";
+  if (!tagVis) { tagVis = true; ft.style.opacity = 1; }
+}
+
+// ---- js/ui/hud.js
+// The heads-up display: stage title, currencies, health and mana text, statuses and boss mechanic readout.
+
+// shrink the stage title to fit beside the currency box instead of cutting it off
+let stageKey = "";
+function refitStage() { stageKey = ""; }
+function fitStage(txt) {
+  const el = $("stageLbl"), cur = document.querySelector(".hudCur"), key = txt + "|" + (cur ? cur.offsetWidth : 0);
+  if (key === stageKey) return;
+  stageKey = key; el.textContent = txt; el.style.fontSize = "";
+  let fs = parseFloat(getComputedStyle(el).fontSize);
+  while (el.scrollWidth > el.clientWidth && fs > 11) { fs -= 1; el.style.fontSize = fs + "px"; }
+}
+function updateUI() {
+  $("gold").textContent = fmt(S.gold);
+  $("echoTop").textContent = S.echoes ? S.echoes + " echoes" : "";
+  $("dustTop").textContent = (S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "") + (S.abyss && S.abyss.total ? (S.stardustTotal ? " · " : "") + fmt(S.abyss.stone) + " voidstone" : "");
+  $("wGold").textContent = fmt(S.gold); $("wEcho").textContent = S.echoes;
+  $("shardTop").textContent = fmt(S.shards) + " shards"; $("wShard").textContent = fmt(S.shards);
+  const hd = mode.hud();
+  fitStage(hd.title);
+  $("stageSub").textContent = hd.sub;
+  $("prog").style.width = Math.max(0, Math.min(100, hd.prog * 100)) + "%";
+  $("mode").textContent = hd.button;
+  $("hpTxt").textContent = fmt(Math.max(0, hero.hp));
+  $("mpTxt").textContent = fmt(Math.max(0, hero.mp));
+  const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
+  $("menuDot").className = claim ? "dot" : "";
+  $("dpsVal").textContent = fmt(dps());
+  const hb = $("hBarrier");
+  hb.style.display = hero.shield > 0 ? "" : "none";
+  if (hero.shield > 0) hb.setAttribute("opacity", (.35 + .65 * hero.shield / hero.shieldMax).toFixed(2));
+  $("eTxt").innerHTML = enemy ? (enemy.boss ? fmt(Math.max(0, enemy.hp)) + ' <b class="tmT">' + Math.ceil(Math.max(0, enemy.timer)) + "s</b>" : fmt(Math.max(0, enemy.hp))) : "";
+  $("packN").textContent = S.inv.length ? S.inv.length : "";
+  foes.forEach(f => {
+    if (f === enemy || !f.el) return;
+    const v = Math.max(0, f.hp / f.max);
+    if (Math.abs(v - f.mFrac) < .005) return;
+    f.mFrac = v; f.el.mFg.setAttribute("d", v < .01 ? "" : arcD(f.mr, 40, 40 + 100 * v));
+  });
+  $("boardDot").className = S.bounties.some(b => !b.empty && b.prog >= b.n) ? "dot" : "";
+  let chips = "";
+  for (const k in STATUS) {
+    const on = st(k); heroModel.classList.toggle("st-" + k, on);
+    if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
+  }
+  if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
+  let mt = "", mb = -1;
+  if (enemy && !enemy.dead) {
+    const M = enemy.m;
+    if (enemy.stun > 0) mt = "Stunned";
+    else if (M && M.well && M.well.ch > 0) { mt = "Gravity Well: deal " + fmt(Math.max(0, M.well.need - M.well.dealt)) + " more to break it"; mb = Math.min(1, M.well.dealt / M.well.need); }
+    else if (M && M.facets && M.facets.n > 0) mt = "Facet shield: " + M.facets.n + " left, tap to break it";
+    else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: your hits reflect back";
+    else if (M && M.mirror && M.mirror.tele > 0) mt = "Mirror forming";
+    else if (M && M.motes && M.motes.n > 0) mt = M.motes.n + " motes healing the boss, tap them";
+  }
+  $("mechTxt").textContent = mt;
+  mech.mechFrac = mb >= 0 ? mb : 0;
+  $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
+  updateSkillbar();
+  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
+}
+
+// ---- js/progress/ascend.js
+// Ascending: echoes, echo power, starting a run, and the Ascend tab.
+
+function starterKit(st) {
+  ["weapon", "armor", "boots", "charm"].forEach(sl => { const it = makeItem(st, false, 2, sl); S.equip[sl] = it; });
+}
+// shared by ascend and transcend
+function startRun() {
+  recalc();
+  const st0 = startStage();
+  S.stage = S.maxStage = st0; S.runStart = st0; S.cyclePeak = Math.max(S.cyclePeak || 1, st0);
+  if (ST.starterKit) starterKit(st0);
+  returnToMain();
+  clearFoes(false); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
+  resetCombat();
+  recalc(); hero.hp = ST.maxHp; hero.mp = ST.maxMp;
+  S.bounties.forEach(b => { b.shards = (3 + 3 * b.tier) * shardAmt(S.maxStage); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
+  burst(view.HERO_X, view.HERO_Y, "#ffd04d", 14); equipFlash(4);
+}
+function doAscend() {
+  const g = ascGain();
+  if (S.maxStage < ascMin() || g < 1) return false;
+  const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
+  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB, seenIntro: true });
+  startRun();
+  log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
+  log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");
+  save(); updateUI();
+  return true;
+}
+// where a run begins (Head Start and the web's head start node move it forward)
+const startStage = () => ST.startStage;
+// echoes only count the stages you climbed this run, so stages skipped by Head Start give nothing
+const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
+const ascMin = () => Math.max(20, runStart() + 10);
+const ascGain = () => Math.floor(ECHO_K * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .05 * (S.ascensions || 0)) * ST.echoGain);
+
+// ---- js/progress/automation.js
+// Automation (free after a Transcend): Auto-Train, Auto-Push, Auto-Ascend.
+
+const autoOn = () => (S.transcends || 0) >= 1;
+const AUTO_REFUND = { aTrain: 12, aPush: 8, aAsc: 15, smart: 10 };
+let autoT = 0, farmT = 0, stallT = 0, stallMax = 0;
+function autoTick(dt) {
+  if (!mode.auto) return;
+  if (heroDown) return;
+  autoT += dt;
+  if (!autoOn()) return;
+  if (S.autoCfg.trainOn !== false && autoT >= 2) { autoT = 0; autoTrain(); }
+  if ((S.autoCfg.push ?? 60) > 0 && !S.push) { farmT += dt; if (farmT >= (S.autoCfg.push ?? 60)) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
+  {
+    if (S.maxStage > stallMax) { stallMax = S.maxStage; stallT = 0; } else stallT += dt;
+    const at = S.autoCfg.ascAt || 0;
+    // never ascend right where a run starts (Head Start), or it would loop forever
+    const floor = ascMin();
+    if (((at > 0 && S.maxStage >= Math.max(at, floor)) || (S.autoCfg.ascStall && stallT > 300 && S.maxStage >= Math.max(20, floor)))) {
+      stallT = 0; stallMax = 0;
+      if (ascGain() >= 1 && S.maxStage >= ascMin()) { log("Auto-Ascend at stage " + S.maxStage, "r4"); doAscend(); }
+    }
+  }
+}
+
+// ---- js/skills/skills.js
+// Skills: each one's numbers, cast and auto-cast rule, levels, the skill bar and the Skills window.
+
+// smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
+// reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
+// auto(c): the skill's own auto-cast rule instead of the usual mana-reserve one.
+const skMult = L => 1 + .06 * (L - 1);
+const SKILLS = [
+  {
+    id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, smart: 3, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z",
+    dmg: L => ST.atk * 2.5 * skMult(L) * ST.skillPow * ST.novaPow,
+    desc: L => "Burst for " + fmt(SK.nova.dmg(L)) + " damage",
+    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, 220, "nova"); }
+  },
+  {
+    id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, reserve: true, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z",
+    amt: L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * ST.aegis,
+    time: L => 8 + .1 * (L - 1),
+    desc: L => "Shield absorbs " + fmt(SK.barrier.amt(L)) + " damage for " + SK.barrier.time(L).toFixed(1) + "s",
+    auto: c => c.foe && (enemy.tele > 0 || c.hpPct < .6),
+    cast(L) {
+      hero.shield = hero.shieldMax = this.amt(L); hero.shieldT = this.time(L);
+      anim($("hBarrier"), [{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: .7 }, { transform: "scale(1)", opacity: 1 }], 300);
+    },
+    tick(dt) { if (hero.shieldT > 0) { hero.shieldT -= dt; if (hero.shieldT <= 0) hero.shield = 0; } }
+  },
+  {
+    id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .2, foe: true, smart: 3, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z",
+    pct: L => 50 + 2.5 * (L - 1),
+    time: L => 6 + .1 * (L - 1) + ST.surgeTime,
+    desc: L => "+" + SK.overdrive.pct(L) + "% attack speed for " + SK.overdrive.time(L).toFixed(1) + "s",
+    cast(L) { hero.odT = this.time(L); heroModel.classList.add("od"); burst(view.HERO_X, view.HERO_Y, "#ffd04d", 8); },
+    tick(dt) { if (hero.odT > 0) { hero.odT -= dt; if (hero.odT <= 0) heroModel.classList.remove("od"); } },
+    fx: { attackSpeed: c => { if (hero.odT > 0) c.v *= 1 + SK.overdrive.pct(lvl("overdrive")) / 100; } }
+  },
+  {
+    id: "storm", name: "Storm", unlock: 20, cd: 10, cost: .22, foe: true, smart: 2, icon: "M12 1 L14.5 10 L12 12.5 L9.5 10 Z M2.5 18.5 L10 12.8 L12 15 L10.5 17.5 Z M21.5 18.5 L13.5 17.5 L12 15 L14 12.8 Z",
+    blades: L => 6 + Math.floor(L / 10) + ST.stormBlades,
+    dmg: L => ST.atk * .45 * skMult(L) * ST.skillPow,
+    desc: L => SK.storm.blades(L) + " blades for " + fmt(SK.storm.dmg(L)) + " each",
+    cast(L) { const n = this.blades(L), d = this.dmg(L); for (let i = 0; i < n; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(d, wDelay(), "storm"); } }, i * 170); }
+  },
+  {
+    id: "dash", name: "Dash", unlock: 30, cd: 6, cost: .08, foe: false, icon: "M9 4 L20 12 L9 20 L12 12 Z M2 8 H8 V9.6 H2 Z M1 11.2 H9 V12.8 H1 Z M2 14.4 H8 V16 H2 Z",
+    dist: L => 150 + 3 * (L - 1), guard: L => .4 + .01 * (L - 1), dmg: L => ST.atk * 1.5 * skMult(L) * ST.skillPow,
+    desc: L => "Dash " + Math.round(SK.dash.dist(L)) + " units, untouchable for " + SK.dash.guard(L).toFixed(2) + "s, slicing foes in your path for " + fmt(SK.dash.dmg(L)) + " and clearing statuses",
+    // auto-dash only to escape: out of a boss Crush, or away when health is low
+    auto: c => !!foes.find(f => !f.dead && f.tele > 0 && f.tele < .7) || (c.hpPct < .35 && c.foe),
+    cast(L) { startDash(L); clearStatuses(); }
+  },
+  {
+    id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .25, foe: true, smart: 3, sound: "shatterSkill", icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z",
+    time: L => 5 + .15 * (L - 1), critBonus: L => .05 * L,
+    desc: L => "Every hit crits for " + SK.shatter.time(L).toFixed(1) + "s with +" + Math.round(SK.shatter.critBonus(L) * 100) + "% crit damage",
+    cast(L) { hero.markT = this.time(L); crackFx(); },
+    tick(dt) { if (hero.markT > 0) { hero.markT -= dt; if (hero.markT <= 0) foes.forEach(f => f.el.cracks.style.display = "none"); } },
+    fx: {
+      critChance: c => { if (hero.markT > 0) c.sure = true; },
+      deal: h => { if (hero.markT > 0 && h.crit) h.dmg *= 1 + SK.shatter.critBonus(lvl("shatter")); }
+    }
+  }
+];
+// skill cooldowns left, by id
+const cds = {};
+function stepSkills(dt) {
+  for (const k in cds) if (cds[k] > 0) cds[k] -= dt;
+  SKILLS.forEach(sk => { if (sk.tick) sk.tick(dt); });
+}
+const SK = {};
+ SKILLS.forEach(s => SK[s.id] = s);
+statSource(give => SKILLS.forEach(s => give(s)));
+const attRank = id => { const n = TREE.find(x => x.att === id); return n ? T(n.id) : 0; };
+const baseLvl = id => Math.min(skillMaxAll(), 1 + 3 * Math.max(0, attRank(id) - (SK[id].unlock > 1 ? 1 : 0)));
+const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
+const unlocked = id => S.maxStage >= SK[id].unlock || attRank(id) > 0;
+const skillCost = sk => emit("skillCost", { v: sk.cost * 100 * ST.costMult }).v;
+const SKILL_MAX = 40;
+const skillMaxAll = () => SKILL_MAX + 5 * ST.skillMastery;
+const skillCap = () => Math.min(skillMaxAll(), 4 + 2 * ST.skillMastery + Math.floor(S.maxStage / 3));
+const capStage = L => Math.max(1, 3 * (L - 4 - 2 * ST.skillMastery));
+const skillCd = sk => sk.cd * ST.cdr * (1 - .01 * (lvl(sk.id) - 1));
+const canCast = sk => unlocked(sk.id) && !(cds[sk.id] > 0) && !heroDown && hero.mp >= skillCost(sk) && (!sk.foe || alive());
+function cast(id, manual) {
+  const sk = SK[id];
+  if (!canCast(sk)) {
+    if (manual && unlocked(id) && !(cds[id] > 0)) floatText(sk.foe && !alive() ? "No target" : "Need mana", "info", "hero");
+    return false;
+  }
+  const cost = skillCost(sk);
+  hero.mp -= cost; cds[id] = skillCd(sk);
+  sfx(sk.sound || id, 0, 0);
+  const L = lvl(id), c = { id, cost, dmg: 0 };
+  sk.cast(L, c);
+  emit("cast", c);
+  bump("cast", 1);
+  return true;
+}
+function autoCast() {
+  if (heroDown || !ST) return;
+  const c = { foe: alive(), hpPct: hero.hp / ST.maxHp };
+  const big = c.foe && (enemy.boss || enemy.elite);
+  const keep = big ? SKILLS.filter(s => s.reserve && unlocked(s.id) && S.auto[s.id] && !(cds[s.id] > 0)).reduce((a, s) => Math.max(a, skillCost(s)), 0) : 0;
+  for (const sk of SKILLS) {
+    if (!S.auto[sk.id] || !canCast(sk)) continue;
+    let go;
+    if (sk.auto) go = sk.auto(c);
+    else {
+      go = c.foe && hero.mp - skillCost(sk) >= ST.maxMp * S.manaRes;
+      if (go && sk.smart && autoOn() && S.autoCfg.smart !== false) go = big || foes.filter(f => !f.dead && inView(f)).length >= sk.smart;
+      if (keep && !sk.reserve && hero.mp - skillCost(sk) < keep) go = false;
+    }
+    if (go) cast(sk.id, false);
+  }
+}
+// cut to offset the earlier shard nerf (40% cheaper base, +17% per level instead of +20%)
+const skillUpCost = sk => Math.ceil(.6 * (2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
+const skEls = {};
+function buildSkillbar() {
+  const bar = $("skillbar"); bar.innerHTML = "";
+  SKILLS.forEach(sk => {
+    const b = document.createElement("button"), open = unlocked(sk.id);
+    b.type = "button"; b.className = "sk chf";
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + sk.icon + '" fill="currentColor" fill-rule="evenodd"/></svg><span class="lb">' + (open ? sk.name : "Stage " + sk.unlock) + '</span><span class="au"></span><span class="cd"></span><span class="ct"></span>';
+    b.setAttribute("aria-label", open ? "Cast " + sk.name : sk.name + " unlocks at stage " + sk.unlock);
+    if (!open) { b.classList.add("locked"); b.querySelector(".au").style.display = "none"; }
+    // fire on press: iOS won't send a click while another finger is down (the joystick)
+    b.addEventListener("pointerdown", e => { e.preventDefault(); if (unlocked(sk.id)) cast(sk.id, true); });
+    b.addEventListener("click", e => { if (e.detail === 0 && unlocked(sk.id)) cast(sk.id, true); });
+    bar.appendChild(b);
+    skEls[sk.id] = { b, cd: b.querySelector(".cd"), ct: b.querySelector(".ct"), au: b.querySelector(".au") };
+  });
+}
+function updateSkillbar() {
+  SKILLS.forEach(sk => {
+    const el = skEls[sk.id];
+    if (!el || !unlocked(sk.id)) return;
+    const left = cds[sk.id] > 0 ? cds[sk.id] : 0;
+    el.cd.style.height = left > 0 ? Math.min(100, left / skillCd(sk) * 100) + "%" : "0";
+    el.ct.textContent = left > 0 ? Math.ceil(left) : "";
+    el.b.classList.toggle("ready", left <= 0 && hero.mp >= skillCost(sk));
+    el.b.classList.toggle("poor", hero.mp < skillCost(sk));
+    el.au.style.display = S.auto[sk.id] ? "" : "none";
+  });
+}
+function renderSkills() {
+  const r = S.manaRes;
+  $("resBar").innerHTML = '<span>Auto-cast keeps</span>' + [0, .3, .5].map(v => '<button class="btn' + (Math.abs(r - v) < .01 ? " go" : "") + '" data-act="manaRes" data-id="' + v + '">' + Math.round(v * 100) + "%</button>").join("") + "<span>mana in reserve</span>";
+  $("skillsBody").innerHTML = SKILLS.map(sk => {
+    if (!unlocked(sk.id)) return '<div class="row lock"><span class="n">' + sk.name + '</span><span class="d">Unlocks at stage ' + sk.unlock + " each run</span></div>";
+    const L = lvl(sk.id), c = skillUpCost(sk);
+    const cap = skillCap();
+    return '<div class="row"><span class="n">' + sk.name + " Lv " + L + (L < cap ? " / " + cap : "") + '</span><span class="d">' + sk.desc(L) + '</span><span class="d">' + (sk.cost ? fmt(skillCost(sk)) + " mana, " : "Free, ") + skillCd(sk).toFixed(1) + 's cooldown</span><div class="side">' +
+      (L >= skillMaxAll() ? '<button class="btn" disabled>Maxed</button>' : L >= cap ? '<button class="btn" disabled>Next level at stage ' + capStage(L + 1) + "</button>" : '<button class="btn shardc" data-act="skup" data-id="' + sk.id + '" data-cost="' + c + '" data-cur="shard">Upgrade ' + fmt(c) + " shards</button>") +
+      '<button class="btn" data-act="skauto" data-id="' + sk.id + '">Auto: ' + (S.auto[sk.id] ? "On" : "Off") + "</button></div></div>";
+  }).join("");
+}
+panel("skills", { render: renderSkills });
+action("skup", id => {
+  const c = skillUpCost(SK[id]);
+  if (S.shards < c || lvl(id) >= skillCap()) return false;
+  sfx("buy", 0, 0); S.shards -= c; S.skill[id] = lvl(id) + 1;
+});
+action("skauto", id => { S.auto[id] = !S.auto[id]; });
+action("manaRes", id => { S.manaRes = Number(id); });
+
 // ---- js/web/web.js
 // The ascension web: nodes and what they do, buying and refunding, and the web window with its gestures.
 
 const BR_COL = { core: "var(--ink)", edge: "var(--c3)", ward: "var(--c1)", drive: "var(--c2)", fortune: "var(--c4)", bridge: "var(--hero)" };
 const BR_NAME = { core: "Core", edge: "Edge", ward: "Ward", drive: "Drive", fortune: "Fortune", bridge: "Bridge" };
-// Second Wind and Undying are one revive on one cooldown; Undying makes it stronger. It goes before other revives.
+// Second Wind and Undying are one revive on one cooldown; Undying makes it stronger.
 const SECOND_WIND = {
   order: -1, cd: 0,
   tick(c) { if (this.cd > 0) this.cd -= c.dt; },
@@ -1211,16 +2006,14 @@ function renderTree() {
     if (n.cap) h += '<circle r="' + (r - 6) + '" style="fill:none;stroke:' + (own ? "var(--panel)" : c) + ';stroke-width:1.5;opacity:' + (own || av ? 1 : .5) + '"/>';
     if (n.key) h += '<polygon points="' + starPts(4, 8, 3) + '" style="fill:' + (own ? "var(--panel)" : c) + ';opacity:' + (own || av ? 1 : .5) + '"/>';
     if (n.max > 1 && (own || av)) {
-      // segmented ring: one notch per rank on a dark band, so it reads against any branch color.
-      // filled notches are white, and turn gold when the node is fully learned
+      // the dark band under the notches lets them read against any branch color
       const R = r + 5, C = 2 * Math.PI * R, seg = C / n.max, gap = Math.min(2.4, seg * .32), done = rank >= n.max;
       h += '<circle r="' + R + '" style="fill:none;stroke:#0d0b16;stroke-width:5.5"/>';
       h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:#ffffff;stroke-opacity:.2;stroke-width:3;stroke-dasharray:' + (seg - gap).toFixed(2) + " " + gap.toFixed(2) + '"/>';
       if (rank > 0) h += '<circle r="' + R + '" transform="rotate(-90)" style="fill:none;stroke:' + (done ? "#ffd04d" : "#ffffff") + ';stroke-width:3;stroke-dasharray:' + Array.from({ length: rank }, () => (seg - gap).toFixed(2) + " " + gap.toFixed(2)).join(" ") + " 0 " + C.toFixed(1) + '"/>';
     }
-    // rank number: dark disc with light text, readable on every branch color
+    // dark disc so the rank number reads on every branch color
     if (own && n.max > 1) h += '<circle r="' + Math.min(9, r * .62).toFixed(1) + '" style="fill:#0d0b16;fill-opacity:.82"/><text class="rkt" y="3.6" style="fill:' + (rank >= n.max ? "#ffd04d" : "#ffffff") + '">' + rank + "</text>";
-    // "+" badge: this node can take another rank right now
     if (n.id !== "core" && av && rank < n.max && S.echoes >= nodeCost(n)) h += '<g class="upB" transform="translate(' + (r * .78).toFixed(1) + " " + (-r * .78).toFixed(1) + ')"><circle r="6.5" style="fill:#ffd04d;stroke:var(--panel);stroke-width:1.5"/><path d="M-3 0 H3 M0 -3 V3" style="stroke:#1a1430;stroke-width:1.8;stroke-linecap:round"/></g>';
     else if (own && rank < n.max && n.max > 1) h += '<circle r="2.6" cx="' + (r * .78).toFixed(1) + '" cy="' + (-r * .78).toFixed(1) + '" style="fill:' + c + ';stroke:var(--panel);stroke-width:1"/>';
     h += '<text class="lbl" y="' + (r + (n.max > 1 && (own || av) ? 18 : 12)) + '">' + n.s + "</text></g>";
@@ -1239,13 +2032,13 @@ panel("tree", { render: renderTree });
 action("node", id => {
   const n = NODE[id], c = nodeCost(n);
   if (!avail(n) || (S.tree[id] || 0) >= n.max || S.echoes < c) return false;
-  sfx("chord", 0, 0); S.echoes -= c; S.tree[id] = (S.tree[id] || 0) + 1; recalc(); buildSkillbar(); ensureBoard();
+  sfx("chord", 0, 0); S.echoes -= c; S.tree[id] = (S.tree[id] || 0) + 1; buildSkillbar();
 });
 action("refund", () => {
   let back = 0;
   TREE.forEach(n => { const r = S.tree[n.id] || 0; back += n.c * r * (r + 1) / 2; });
   if (!back) return false;
-  S.echoes += back; S.tree = {}; treeSel = null; recalc(); buildSkillbar(); ensureBoard();
+  S.echoes += back; S.tree = {}; treeSel = null; buildSkillbar();
   log("Refunded " + back + " echoes", "good");
 });
 action("ascend", (id, b) => {
@@ -1330,7 +2123,6 @@ function initWeb() {
     });
     addEventListener("resize", () => { if (tab === "tree") webApply(); });
   })();
-  // tap a node to pop up its details; tap empty space or the x to put them away
   $("web").addEventListener("click", e => {
     const g = e.target.closest("[data-node]");
     if (!g) { if (treeSel) { treeSel = null; renderTree(); refreshPanel(); } return; }
@@ -1346,7 +2138,7 @@ function initWeb() {
 }
 
 // ---- js/ui/windows.js
-// Windows and their tabs, the menu, and the panel and action registries every feature uses.
+// Windows and their tabs, and the menu.
 
 const WINDOWS = [
   { id: "log", name: "Log", d: "Everything that happened", icon: "M5 4 L19 4 L19 20 L5 20 Z M8 8 L16 8 L16 9.5 L8 9.5 Z M8 11.5 L16 11.5 L16 13 L8 13 Z M8 15 L13 15 L13 16.5 L8 16.5 Z" },
@@ -1408,7 +2200,7 @@ function applySub(win) {
 }
 let tab = null;
 const CURRENCY = { echo: () => S.echoes, shard: () => S.shards, dust: () => S.stardust || 0, gold: () => S.gold };
-// cheap refresh of the open panel: which buttons you can afford, plus the panel's own refresh
+// cheap refresh of the open panel
 function refreshPanel() {
   if (!tab) return;
   $("p-" + tab).querySelectorAll("[data-cost]").forEach(b => b.classList.toggle("afford", !b.disabled && CURRENCY[b.dataset.cur || "gold"]() >= Number(b.dataset.cost)));
@@ -1482,721 +2274,6 @@ function renderLog() {
 }
 panel("log", { render: renderLog });
 
-// ---- js/ui/reticle.js
-// The target's ring (health, boss timer, mechanic progress) and the name tag above it.
-
-// the target's ring: health (segmented), boss timer and mechanic progress, plus slowly turning marker ticks
-const FR_A = [-45, 225];
-let rEls = null, rV = [-1, -1, -1];
-const mech = {
-  mechFrac: 0
-};
-function buildReticle(t) {
-  const r = $("reticle"); r.innerHTML = ""; rEls = null; rV = [-1, -1, -1];
-  if (!t) return;
-  const R = t.ringR, L = R * 270 * Math.PI / 180, n = Math.max(12, Math.round(L / 11)), dash = (L / n - 1.8).toFixed(2) + " 1.8";
-  const g = svgEl("g", { fill: "none" }, r);
-  svgEl("path", { d: arcD(R, FR_A[0], FR_A[1]), stroke: "rgba(255,255,255,.13)", "stroke-width": 3, "stroke-dasharray": dash }, g);
-  rEls = { hp: svgEl("path", { stroke: "#ff6b6b", "stroke-width": 3, "stroke-dasharray": dash }, g) };
-  if (t.boss) { svgEl("path", { d: arcD(R + 5, FR_A[0], FR_A[1]), stroke: "rgba(255,208,77,.15)", "stroke-width": 1.4 }, g); rEls.tm = svgEl("path", { stroke: "#ffd04d", "stroke-width": 1.4 }, g); }
-  rEls.mech = svgEl("path", { stroke: "#b48cff", "stroke-width": 1.4 }, g);
-  FR_A.forEach(a => { const c = Math.cos(a * Math.PI / 180), sn = Math.sin(a * Math.PI / 180); svgEl("line", { x1: (c * (R - 4)).toFixed(1), y1: (sn * (R - 4)).toFixed(1), x2: (c * (R + 4)).toFixed(1), y2: (sn * (R + 4)).toFixed(1), stroke: "rgba(255,255,255,.35)", "stroke-width": 1 }, g); });
-  const tk = svgEl("g", { class: "spinSlow" }, r), tr = R + (t.boss ? 12 : 8);
-  [0, 1, 2].forEach(i => { const a = i * 2.094; svgEl("polygon", { points: polyPts(3, 3.4, a + Math.PI, Math.cos(a - Math.PI / 2) * tr, Math.sin(a - Math.PI / 2) * tr) }, tk); });
-  rEls.ticks = tk;
-}
-function placeReticle(dt) {
-  const r = $("reticle");
-  if (!enemy || enemy.dead || !rEls) { r.style.display = "none"; return; }
-  r.style.display = "";
-  r.setAttribute("transform", "translate(" + view.ENEMY_X.toFixed(1) + " " + enemyCY().toFixed(1) + ")");
-  rEls.ticks.setAttribute("fill", targeting.focus === enemy ? "#4fd3e4" : "rgba(255,255,255,.6)");
-  const e = enemy, t = [Math.max(0, e.hp / e.max), e.boss ? Math.max(0, e.timer / e.timerMax) : 0, mech.mechFrac];
-  const k = reduce ? 1 : Math.min(1, (dt || .016) * 12), els = [rEls.hp, rEls.tm, rEls.mech], rad = [e.ringR, e.ringR + 5, e.ringR + (e.boss ? 10 : 5)];
-  for (let i = 0; i < 3; i++) {
-    if (!els[i]) continue;
-    const v = rV[i] < 0 || Math.abs(t[i] - rV[i]) < .001 ? t[i] : rV[i] + (t[i] - rV[i]) * k;
-    if (v === rV[i]) continue;
-    rV[i] = v;
-    els[i].setAttribute("d", v < .004 ? "" : arcD(rad[i], FR_A[0], FR_A[0] + 270 * v));
-  }
-}
-let tagCache = "", tagSide = null, tagFor = null;
-let tagX = 0, tagY = 0, tagVis = false, tagHold = 0, tagMeasT = 0, tagW = 150, tagH = 40, htH = 30;
-// keep the old target's tag up a moment while the new one takes over
-function holdTag() { if (tagVis) tagHold = .12; }
-function retag() { tagCache = ""; }
-function placeTags(dt) {
-  const ht = $("heroTag"), ft = $("foeTag");
-  const hx = (view.HERO_X - view.VX0) * SC, hy = (view.HERO_Y + RING_R - 8 - view.VY0) * SC, hk = hx.toFixed(0) + "," + hy.toFixed(0);
-  if (hk !== tagCache) { tagCache = hk; ht.style.left = hx + "px"; ht.style.top = hy + "px"; }
-  const e = enemy, m = e ? e.R * .35 : 0;
-  // only show the name once the enemy is actually (mostly) on screen
-  const vis = !!e && !e.dead && e.px > view.VX0 - m && e.px < VX1() + m && e.py > view.VY0 - m && e.py < VY1() + m;
-  if (tagHold > 0) tagHold -= dt || .016;
-  if (!vis || tagHold > 0) { if (tagVis) { tagVis = false; ft.style.opacity = 0; } return; }
-  const tn = performance.now();
-  if (tn - tagMeasT > 300 || tagFor !== e) { tagMeasT = tn; tagW = ft.offsetWidth || 150; tagH = ft.offsetHeight || 40; htH = ht.offsetHeight || 30; }
-  const w = tagW, h = tagH, out = (e.ringR || e.R + 15) + (e.boss ? 16 : 12);
-  const fx2 = Math.max(w / 2 + 6, Math.min(SW - w / 2 - 6, (e.px - view.VX0) * SC));
-  const up = (e.py - out - view.VY0) * SC - h, dn = (e.py + out - view.VY0) * SC, topLim = 112;
-  // above or below: whichever covers less of the core's ring and readout and stays clear of the top bar
-  const hb = { l: hx - 80, r: hx + 80, t: hy - 4, b: hy + htH + 4 }, cr = (RING_R + 8) * SC, ccx = (view.HERO_X - view.VX0) * SC, ccy = (view.HERO_Y - view.VY0) * SC;
-  const ovl = top => {
-    const l = fx2 - w / 2, r = fx2 + w / 2, b = top + h;
-    return Math.max(0, Math.min(r, hb.r) - Math.max(l, hb.l)) * Math.max(0, Math.min(b, hb.b) - Math.max(top, hb.t))
-      + Math.max(0, Math.min(r, ccx + cr) - Math.max(l, ccx - cr)) * Math.max(0, Math.min(b, ccy + cr) - Math.max(top, ccy - cr));
-  };
-  const sUp = ovl(up) + (up < topLim ? 5e5 : 0), sDn = dn + h < SH - 100 ? ovl(dn) : 1e9;
-  if (tagSide === null || tagFor !== e) { tagFor = e; tagSide = e.py > view.HERO_Y + 10 ? sDn <= sUp : sDn < sUp; }
-  else if (tagSide && sUp + 60 < sDn) tagSide = false;
-  else if (!tagSide && sDn + 60 < sUp) tagSide = true;
-  const ty = Math.max(topLim, tagSide ? dn : up);
-  if (!tagVis) { tagX = fx2; tagY = ty; }
-  else { const k = 1 - Math.exp(-(dt || .016) * 16); tagX += (fx2 - tagX) * k; tagY += (ty - tagY) * k; }
-  ft.style.transform = "translate3d(" + (tagX - w / 2).toFixed(1) + "px," + tagY.toFixed(1) + "px,0)";
-  if (!tagVis) { tagVis = true; ft.style.opacity = 1; }
-}
-
-// ---- js/ui/hud.js
-// The heads-up display: stage title, currencies, health and mana text, statuses and boss mechanic readout.
-
-// shrink the stage title to fit beside the currency box instead of cutting it off
-let stageKey = "";
-function refitStage() { stageKey = ""; }
-function fitStage(txt) {
-  const el = $("stageLbl"), cur = document.querySelector(".hudCur"), key = txt + "|" + (cur ? cur.offsetWidth : 0);
-  if (key === stageKey) return;
-  stageKey = key; el.textContent = txt; el.style.fontSize = "";
-  let fs = parseFloat(getComputedStyle(el).fontSize);
-  while (el.scrollWidth > el.clientWidth && fs > 11) { fs -= 1; el.style.fontSize = fs + "px"; }
-}
-function updateUI() {
-  $("gold").textContent = fmt(S.gold);
-  $("echoTop").textContent = S.echoes ? S.echoes + " echoes" : "";
-  $("dustTop").textContent = (S.stardustTotal ? fmt(S.stardust || 0) + " stardust" : "") + (S.abyss && S.abyss.total ? (S.stardustTotal ? " · " : "") + fmt(S.abyss.stone) + " voidstone" : "");
-  $("wGold").textContent = fmt(S.gold); $("wEcho").textContent = S.echoes;
-  $("shardTop").textContent = fmt(S.shards) + " shards"; $("wShard").textContent = fmt(S.shards);
-  const hd = mode.hud();
-  fitStage(hd.title);
-  $("stageSub").textContent = hd.sub;
-  $("prog").style.width = Math.max(0, Math.min(100, hd.prog * 100)) + "%";
-  $("mode").textContent = hd.button;
-  $("hpTxt").textContent = fmt(Math.max(0, hero.hp));
-  $("mpTxt").textContent = fmt(Math.max(0, hero.mp));
-  const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
-  $("menuDot").className = claim ? "dot" : "";
-  $("dpsVal").textContent = fmt(dps());
-  const hb = $("hBarrier");
-  hb.style.display = hero.shield > 0 ? "" : "none";
-  if (hero.shield > 0) hb.setAttribute("opacity", (.35 + .65 * hero.shield / hero.shieldMax).toFixed(2));
-  $("eTxt").innerHTML = enemy ? (enemy.boss ? fmt(Math.max(0, enemy.hp)) + ' <b class="tmT">' + Math.ceil(Math.max(0, enemy.timer)) + "s</b>" : fmt(Math.max(0, enemy.hp))) : "";
-  $("packN").textContent = S.inv.length ? S.inv.length : "";
-  foes.forEach(f => {
-    if (f === enemy || !f.el) return;
-    const v = Math.max(0, f.hp / f.max);
-    if (Math.abs(v - f.mFrac) < .005) return;
-    f.mFrac = v; f.el.mFg.setAttribute("d", v < .01 ? "" : arcD(f.mr, 40, 40 + 100 * v));
-  });
-  $("boardDot").className = S.bounties.some(b => !b.empty && b.prog >= b.n) ? "dot" : "";
-  let chips = "";
-  for (const k in STATUS) {
-    const on = st(k); heroModel.classList.toggle("st-" + k, on);
-    if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
-  }
-  if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
-  let mt = "", mb = -1;
-  if (enemy && !enemy.dead) {
-    const M = enemy.m;
-    if (enemy.stun > 0) mt = "Stunned";
-    else if (M && M.well && M.well.ch > 0) { mt = "Gravity Well: deal " + fmt(Math.max(0, M.well.need - M.well.dealt)) + " more to break it"; mb = Math.min(1, M.well.dealt / M.well.need); }
-    else if (M && M.facets && M.facets.n > 0) mt = "Facet shield: " + M.facets.n + " left, tap to break it";
-    else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: your hits reflect back";
-    else if (M && M.mirror && M.mirror.tele > 0) mt = "Mirror forming";
-    else if (M && M.motes && M.motes.n > 0) mt = M.motes.n + " motes healing the boss, tap them";
-  }
-  $("mechTxt").textContent = mt;
-  mech.mechFrac = mb >= 0 ? mb : 0;
-  $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
-  updateSkillbar();
-  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
-}
-
-// ---- js/progress/ascend.js
-// Ascending: echoes, echo power, starting a run, and the Ascend tab.
-
-function starterKit(st) {
-  ["weapon", "armor", "boots", "charm"].forEach(sl => { const it = makeItem(st, false, 2, sl); S.equip[sl] = it; });
-}
-// the hero's temporary combat state goes back to rest: buffs, shield and statuses
-function resetCombat() {
-  hero.shield = 0; hero.odT = 0; hero.markT = 0; heroModel.classList.remove("od");
-  for (const k in stT) stT[k] = 0;
-}
-// shared by ascend and transcend: place the core at the run's start stage and rebuild everything
-function startRun() {
-  recalc();
-  const st0 = startStage();
-  S.stage = S.maxStage = st0; S.runStart = st0; S.cyclePeak = Math.max(S.cyclePeak || 1, st0);
-  if (ST.starterKit) starterKit(st0);
-  returnToMain();
-  clearFoes(false); spawn.spawnT = .8; Object.keys(cds).forEach(k => cds[k] = 0);
-  resetCombat();
-  recalc(); hero.hp = ST.maxHp; hero.mp = ST.maxMp;
-  S.bounties.forEach(b => { b.shards = (3 + 3 * b.tier) * shardAmt(S.maxStage); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
-  burst(view.HERO_X, view.HERO_Y, "#ffd04d", 14); equipFlash(4);
-}
-function doAscend() {
-  const g = ascGain();
-  if (S.maxStage < ascMin() || g < 1) return false;
-  const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
-  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB, seenIntro: true });
-  startRun();
-  log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
-  log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");
-  save(); updateUI();
-  return true;
-}
-// where a run begins (Head Start and the web's head start node move it forward)
-const startStage = () => ST.startStage;
-// echoes only count the stages you climbed this run, so stages skipped by Head Start give nothing
-const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
-// you must climb at least 10 stages past where the run began (and reach stage 20) before you can ascend
-const ascMin = () => Math.max(20, runStart() + 10);
-const ascGain = () => Math.floor(ECHO_K * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .05 * (S.ascensions || 0)) * ST.echoGain);
-
-// ---- js/train/train.js
-// Training: lumen upgrades, their Overcharge, buying them (by hand or Auto-Train) and the Train window.
-
-// training: cost = base x g^level. Big stats compound and double at milestone levels (25, 50, 100, 150...)
-// oc (Overcharge): once a capped upgrade is maxed it keeps going with no level limit. Cost starts at 3x the last
-// normal level and grows ST.ocGrowth per level. Stats already at a hard ceiling get a related bonus instead.
-const TRAIN = [
-  { unlock: 1, id: "might", name: "Might", cat: "off", base: 10, g: 1.18, mode: "mult", stat: "attack", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ atk: v }) },
-  { unlock: 1, id: "vigor", name: "Vigor", cat: "def", base: 10, g: 1.18, mode: "mult", stat: "health", mile: 2, eff: L => (1 + .1 * L) * Math.pow(2, milesAt(L)), stats: v => ({ maxHp: v }) },
-  { unlock: 1, id: "focus", name: "Focus", cat: "off", base: 15, g: 1.5, max: 100, mode: "pct", stat: "tap damage", eff: L => 1 + .015 * L, stats: v => ({ tap: v }), oc: { per: .01, stat: "tap damage", stats: v => ({ tap: 1 + v }) } },
-  { unlock: 2, id: "greed", name: "Greed", cat: "fort", base: 40, g: 1.25, mode: "mult", stat: "lumen", mile: 1.25, eff: L => (1 + .05 * L) * Math.pow(1.25, milesAt(L)), stats: v => ({ gold: v }) },
-  { unlock: 3, id: "haste", name: "Haste", cat: "off", base: 50, g: 1.42, max: 120, mode: "pct", stat: "attack speed", eff: L => 1 + .01 * L, stats: v => ({ spd: v }), oc: { per: .005, stat: "attack speed", stats: v => ({ spd: 1 + v }) } },
-  { unlock: 5, id: "essence", name: "Essence", cat: "mana", base: 40, g: 1.6, max: 75, mode: "pct", stat: "max mana", eff: L => 1 + .04 * L, stats: v => ({ maxMp: v }), oc: { per: .02, stat: "max mana", stats: v => ({ maxMp: 1 + v }) } },
-  { unlock: 6, id: "tempo", name: "Tempo", cat: "mana", base: 60, g: 1.6, max: 50, mode: "less", stat: "skill cooldowns", eff: L => 1 - .01 * L, stats: v => ({ cdr: v }), oc: { per: .003, stat: "cooldowns", less: true, stats: v => ({ cdr: 1 - v, cdrFloor: plus(-Math.min(.1, v / 3)) }) } },
-  { unlock: 8, id: "flow", name: "Flow", cat: "mana", base: 50, g: 1.5, max: 100, mode: "pct", stat: "mana regen", eff: L => 1 + .03 * L, stats: v => ({ mpRegen: v }), oc: { per: .02, stat: "mana regen", stats: v => ({ mpRegen: 1 + v }) } },
-  { unlock: 10, id: "ferocity", name: "Ferocity", cat: "off", base: 80, g: 1.5, max: 100, mode: "pct", stat: "crit damage", eff: L => 1 + .01 * L, stats: v => ({ critDmg: v }), oc: { per: .02, stat: "red crit power", stats: v => ({ redPow: 1 + v }) } },
-  { unlock: 12, id: "agility", name: "Agility", cat: "def", base: 60, g: 1.22, mode: "pct", stat: "evasion rating", eff: L => 1 + .05 * L, stats: v => ({ evaR: v }) },
-  { unlock: 14, id: "clarity", name: "Clarity", cat: "def", base: 100, g: 1.6, max: 45, mode: "less", stat: "status duration", eff: L => 1 - .01 * L, stats: v => ({ statusDur: v }), oc: { per: .01, stat: "chance to ignore a new status effect", cap: .5, stats: v => ({ shrug: plus(v) }) } },
-  { unlock: 15, id: "guard", name: "Guard", cat: "def", base: 120, g: 1.6, max: 60, mode: "add", stat: "block chance", eff: L => .0025 * L, stats: v => ({ block: plus(v) }), oc: { per: .005, stat: "damage blocked", cap: .2, stats: v => ({ blockLeak: plus(-v) }) } },
-  { unlock: 18, id: "precision", name: "Precision", cat: "off", base: 150, g: 1.55, max: 80, mode: "add", stat: "crit chance", eff: L => .0025 * L, stats: v => ({ crit: plus(v) }), oc: { per: .01, stat: "crit chance", stats: v => ({ crit: plus(v) }) } },
-  { unlock: 20, id: "insight", name: "Insight", cat: "mana", base: 120, g: 1.45, max: 100, mode: "pct", stat: "skill power", eff: L => 1 + .01 * L, stats: v => ({ skillPow: v }), oc: { per: .01, stat: "skill power", stats: v => ({ skillPow: 1 + v }) } },
-  { unlock: 25, id: "leech", name: "Leech", cat: "def", base: 150, g: 1.45, max: 40, mode: "add", stat: "life steal", eff: L => .0015 * L, stats: v => ({ leech: plus(v) }), oc: { per: .03, stat: "life steal heal limit", stats: v => ({ leechCap: plus(v) }) } },
-  { unlock: 30, id: "fortune", name: "Fortune", cat: "fort", base: 200, g: 1.6, max: 50, mode: "pct", stat: "loot drop chance", eff: L => 1 + .01 * L, stats: v => ({ drop: v }), oc: { per: .01, stat: "rare luck", stats: v => ({ luck: plus(v) }) } }
-];
-const TRN = {};
-statSource(give => TRAIN.forEach(t => { give(t, tm(t.id)); if (t.oc && ocL(t.id)) give(t.oc, ocV(t.id)); }));
- TRAIN.forEach(t => TRN[t.id] = t);
-const tmax = t => t.max ? t.max + ST.trainCap : 0;
-const ocL = id => (S.oc && S.oc[id]) || 0;
-const ocV = id => { const o = TRN[id].oc, v = o.per * ocL(id); return o.cap ? Math.min(o.cap, v) : v; };
-const trainLvl = id => S.train[id] || 0;
-const isOC = t => !!(t.max && t.oc && trainLvl(t.id) >= tmax(t));
-const ocCostN = (t, n) => { const first = 3 * t.base * Math.pow(t.g, tmax(t) - 1); let c = 0; const L = ocL(t.id); for (let i = 0; i < n; i++) c += first * Math.pow(ST.ocGrowth, L + i); return Math.ceil(c); };
-const tm = id => TRN[id].eff(trainLvl(id));
-let buyN = 1;
-const trainCostN = (t, n) => { let c = 0; const L = trainLvl(t.id); for (let i = 0; i < n; i++) c += t.base * Math.pow(t.g, L + i); return Math.ceil(c); };
-// what the next n levels of t cost (Overcharge levels once it's maxed), or Infinity when they can't be bought
-function trainPrice(t, n) {
-  if (S.maxStage < t.unlock) return Infinity;
-  if (isOC(t)) return t.oc.cap && ocV(t.id) >= t.oc.cap ? Infinity : ocCostN(t, n);
-  if (t.max && trainLvl(t.id) + n > tmax(t)) return Infinity;
-  return trainCostN(t, n);
-}
-function buyTraining(t, n) {
-  const oc = isOC(t), c = trainPrice(t, n);
-  if (!(S.gold >= c)) return false;
-  S.gold -= c;
-  if (oc) { S.oc = S.oc || {}; S.oc[t.id] = ocL(t.id) + n; } else S.train[t.id] = trainLvl(t.id) + n;
-  return true;
-}
-function buyCount(t) {
-  if (isOC(t)) {
-    if (buyN !== "max") return buyN;
-    let n = 0; while (n < 500 && ocCostN(t, n + 1) <= S.gold) n++;
-    return Math.max(1, n);
-  }
-  const L = trainLvl(t.id), room = t.max ? tmax(t) - L : 1e9;
-  if (buyN !== "max") return Math.max(1, Math.min(buyN, room));
-  let n = 0, c = 0;
-  while (n < room && n < 2000) { const nc = t.base * Math.pow(t.g, L + n); if (c + nc > S.gold) break; c += nc; n++; }
-  return Math.max(1, n);
-}
-function effText(t, L) {
-  const v = t.eff(L);
-  const pc = x => String(Number((x * 100).toFixed(2)));
-  if (t.mode === "mult") return "x" + (v < 100 ? v.toFixed(2) : fmt(v)) + " " + t.stat;
-  if (t.mode === "pct") return "+" + pc(v - 1) + "% " + t.stat;
-  if (t.mode === "less") return "-" + pc(1 - v) + "% " + t.stat;
-  return "+" + pc(v) + "% " + t.stat;
-}
-function renderTrain() {
-  const bar = '<div class="buyBar"><span>Buy</span>' + [1, 10, "max"].map(n => '<button class="btn' + (buyN === n ? " go" : "") + '" data-act="buyN" data-id="' + n + '">' + (n === "max" ? "Max" : "x" + n) + "</button>").join("") + "</div>";
-  $("trainBody").innerHTML = bar + ["off", "def", "mana", "fort"].map(cat => '<div class="wsub list" data-sub="' + cat + '">' + TRAIN.filter(t => t.cat === cat).map(t => {
-    if (S.maxStage < t.unlock) return '<div class="row lock"><span class="n">' + t.name + '</span><span class="d">' + t.stat + ". Unlocks at stage " + t.unlock + "</span></div>";
-    if (isOC(t)) {
-      const o = t.oc, n = buyCount(t), c = ocCostN(t, n), v0 = ocV(t.id), v1 = o.cap ? Math.min(o.cap, o.per * (ocL(t.id) + n)) : o.per * (ocL(t.id) + n);
-      const pc = v => (o.less ? "-" : "+") + String(Number((v * 100).toFixed(1))) + "%";
-      return '<div class="row oc"><span class="n">' + t.name + ' <span class="ocTag">OC</span> Lv ' + ocL(t.id) + '</span><span class="d">' + effText(t, tmax(t)) + '</span><span class="d ocd">Overcharge: ' + pc(v0) + " " + o.stat + '<span class="nx"> →\u00a0' + pc(v1) + "</span></span>" +
-        '<div class="side">' + (o.cap && v0 >= o.cap ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-n="' + n + '" data-cost="' + c + '">' + (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen</button>") + "</div></div>";
-    }
-    const L = trainLvl(t.id), maxed = t.max && L >= tmax(t), n = buyCount(t), c = trainCostN(t, n), nm = t.mile && nextMile(L);
-    return '<div class="row"><span class="n">' + t.name + " Lv " + L + (t.max ? " / " + tmax(t) : "") + '</span><span class="d">' + effText(t, L) + (maxed ? "" : '<span class="nx"> →\u00a0' + effText(t, L + n).replace(/ .*/, "") + "</span>") + "</span>" +
-      (nm ? '<span class="d mile">x' + t.mile + " bonus at Lv " + nm + "</span>" : "") + '<div class="side">' +
-      (maxed ? '<button class="btn" disabled>Maxed</button>' : '<button class="btn" data-act="train" data-id="' + t.id + '" data-n="' + n + '" data-cost="' + c + '">' + (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen</button>") + "</div></div>";
-  }).join("") + "</div>").join("");
-}
-panel("train", {
-  render: renderTrain,
-  // with "max" picked, keep each buy button's count and price in step with your lumen
-  refresh() {
-    if (buyN !== "max") return;
-    $("p-train").querySelectorAll('[data-act="train"]').forEach(b => {
-      const t = TRN[b.dataset.id], n = buyCount(t), c = isOC(t) ? ocCostN(t, n) : trainCostN(t, n);
-      if (Number(b.dataset.n) === n) return;
-      if (isOC(t)) { markDirty("train"); return; }
-      b.dataset.n = n; b.dataset.cost = c; b.textContent = (n > 1 ? "+" + n + " · " : "") + fmt(c) + " lumen";
-      b.classList.toggle("afford", S.gold >= c);
-      const nx = b.closest(".row").querySelector(".nx"); if (nx) nx.textContent = " → " + effText(t, trainLvl(t.id) + n).replace(/ .*/, "");
-    });
-  }
-});
-action("buyN", id => { buyN = id === "max" ? "max" : Number(id); });
-action("train", id => {
-  const t = TRN[id], before = milesAt(trainLvl(id));
-  if (!buyTraining(t, buyCount(t))) return false;
-  sfx("buy", 0, 0);
-  if (t.mile && milesAt(trainLvl(id)) > before) { floatText(t.name + " x" + t.mile + "!", "info", "hero", "#ffd04d"); sfx("chord", 0, 0); }
-});
-// Auto-Train: keep buying the cheapest single level among the upgrades you've left on
-function autoTrain() {
-  let bought = 0;
-  for (let g = 0; g < 80; g++) {
-    let best = null, bc = Infinity;
-    TRAIN.forEach(t => { if (S.autoCfg.train[t.id] === false) return; const c = trainPrice(t, 1); if (c < bc) { bc = c; best = t; } });
-    if (!best || !buyTraining(best, 1)) break;
-    bought++;
-  }
-  if (bought) { recalc(); markDirty("train", "skills"); }
-}
-
-// ---- js/progress/automation.js
-// Automation (free after a Transcend): Auto-Train, Auto-Push, Auto-Ascend.
-
-// automation is free for good once you have transcended
-const autoOn = () => (S.transcends || 0) >= 1;
-const AUTO_REFUND = { aTrain: 12, aPush: 8, aAsc: 15, smart: 10 };
-let autoT = 0, farmT = 0, stallT = 0, stallMax = 0;
-function autoTick(dt) {
-  if (!mode.auto) return;
-  if (heroDown) return;
-  autoT += dt;
-  if (!autoOn()) return;
-  if (S.autoCfg.trainOn !== false && autoT >= 2) { autoT = 0; autoTrain(); }
-  if ((S.autoCfg.push ?? 60) > 0 && !S.push) { farmT += dt; if (farmT >= (S.autoCfg.push ?? 60)) { farmT = 0; S.push = true; log("Auto-Push: pushing again", "r0"); updateUI(); } } else farmT = 0;
-  {
-    if (S.maxStage > stallMax) { stallMax = S.maxStage; stallT = 0; } else stallT += dt;
-    const at = S.autoCfg.ascAt || 0;
-    // never ascend right where a run starts (Head Start), or it would loop forever
-    const floor = ascMin();
-    if (((at > 0 && S.maxStage >= Math.max(at, floor)) || (S.autoCfg.ascStall && stallT > 300 && S.maxStage >= Math.max(20, floor)))) {
-      stallT = 0; stallMax = 0;
-      if (ascGain() >= 1 && S.maxStage >= ascMin()) { log("Auto-Ascend at stage " + S.maxStage, "r4"); doAscend(); }
-    }
-  }
-}
-
-// ---- js/skills/skills.js
-// Skills: each one's numbers, cast and auto-cast rule, levels, the skill bar and the Skills window.
-
-// Skills: everything about each one lives in its entry. Levels add 6% power and take 1% off its cooldown.
-// smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
-// reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
-// auto(c): the skill's own auto-cast rule instead of the usual mana-reserve one.
-const skMult = L => 1 + .06 * (L - 1);
-const SKILLS = [
-  {
-    id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, smart: 3, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z",
-    dmg: L => ST.atk * 2.5 * skMult(L) * ST.skillPow * ST.novaPow,
-    desc: L => "Burst for " + fmt(SK.nova.dmg(L)) + " damage",
-    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, 220, "nova"); }
-  },
-  {
-    id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, reserve: true, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z",
-    amt: L => ST.maxHp * (.3 + .015 * (L - 1)) * ST.skillPow * ST.aegis,
-    time: L => 8 + .1 * (L - 1),
-    desc: L => "Shield absorbs " + fmt(SK.barrier.amt(L)) + " damage for " + SK.barrier.time(L).toFixed(1) + "s",
-    auto: c => c.foe && (enemy.tele > 0 || c.hpPct < .6),
-    cast(L) {
-      hero.shield = hero.shieldMax = this.amt(L); hero.shieldT = this.time(L);
-      anim($("hBarrier"), [{ transform: "scale(.3)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: .7 }, { transform: "scale(1)", opacity: 1 }], 300);
-    }
-  },
-  {
-    id: "overdrive", name: "Surge", unlock: 12, cd: 15, cost: .2, foe: true, smart: 3, icon: "M2 4 L10 12 L2 20 L5.5 20 L13.5 12 L5.5 4 Z M10.5 4 L18.5 12 L10.5 20 L14 20 L22 12 L14 4 Z",
-    pct: L => 50 + 2.5 * (L - 1),
-    time: L => 6 + .1 * (L - 1) + ST.surgeTime,
-    desc: L => "+" + SK.overdrive.pct(L) + "% attack speed for " + SK.overdrive.time(L).toFixed(1) + "s",
-    cast(L) { hero.odT = this.time(L); heroModel.classList.add("od"); burst(view.HERO_X, view.HERO_Y, "#ffd04d", 8); },
-    fx: { attackSpeed: c => { if (hero.odT > 0) c.v *= 1 + SK.overdrive.pct(lvl("overdrive")) / 100; } }
-  },
-  {
-    id: "storm", name: "Storm", unlock: 20, cd: 10, cost: .22, foe: true, smart: 2, icon: "M12 1 L14.5 10 L12 12.5 L9.5 10 Z M2.5 18.5 L10 12.8 L12 15 L10.5 17.5 Z M21.5 18.5 L13.5 17.5 L12 15 L14 12.8 Z",
-    blades: L => 6 + Math.floor(L / 10) + ST.stormBlades,
-    dmg: L => ST.atk * .45 * skMult(L) * ST.skillPow,
-    desc: L => SK.storm.blades(L) + " blades for " + fmt(SK.storm.dmg(L)) + " each",
-    cast(L) { const n = this.blades(L), d = this.dmg(L); for (let i = 0; i < n; i++) setTimeout(() => { if (alive()) { throwBlade(false, i + 1); hit(d, wDelay(), "storm"); } }, i * 170); }
-  },
-  {
-    // a quick burst in the direction you're moving (or away from danger), untouchable while it lasts,
-    // slicing every foe it passes through and shaking off statuses
-    id: "dash", name: "Dash", unlock: 30, cd: 6, cost: .08, foe: false, icon: "M9 4 L20 12 L9 20 L12 12 Z M2 8 H8 V9.6 H2 Z M1 11.2 H9 V12.8 H1 Z M2 14.4 H8 V16 H2 Z",
-    dist: L => 150 + 3 * (L - 1), guard: L => .4 + .01 * (L - 1), dmg: L => ST.atk * 1.5 * skMult(L) * ST.skillPow,
-    desc: L => "Dash " + Math.round(SK.dash.dist(L)) + " units, untouchable for " + SK.dash.guard(L).toFixed(2) + "s, slicing foes in your path for " + fmt(SK.dash.dmg(L)) + " and clearing statuses",
-    // auto-dash only to escape: out of a boss Crush, or away when health is low
-    auto: c => !!foes.find(f => !f.dead && f.tele > 0 && f.tele < .7) || (c.hpPct < .35 && c.foe),
-    cast(L) { startDash(L); for (const k in stT) stT[k] = 0; }
-  },
-  {
-    id: "shatter", name: "Shatter", unlock: 45, cd: 22, cost: .25, foe: true, smart: 3, sound: "shatterSkill", icon: "M12 0 L14 9 L24 12 L14 15 L12 24 L10 15 L0 12 L10 9 Z",
-    time: L => 5 + .15 * (L - 1), critBonus: L => .05 * L,
-    desc: L => "Every hit crits for " + SK.shatter.time(L).toFixed(1) + "s with +" + Math.round(SK.shatter.critBonus(L) * 100) + "% crit damage",
-    cast(L) { hero.markT = this.time(L); crackFx(); }
-  }
-];
-const SK = {};
- SKILLS.forEach(s => SK[s.id] = s);
-statSource(give => SKILLS.forEach(s => give(s)));
-// web attunement: for a skill that isn't open from stage 1, the first rank unlocks it; every other rank adds 3 starting levels
-const attRank = id => { const n = TREE.find(x => x.att === id); return n ? T(n.id) : 0; };
-const baseLvl = id => Math.min(skillMaxAll(), 1 + 3 * Math.max(0, attRank(id) - (SK[id].unlock > 1 ? 1 : 0)));
-const lvl = id => Math.max(S.skill[id] || 1, baseLvl(id));
-const unlocked = id => S.maxStage >= SK[id].unlock || attRank(id) > 0;
-const skillCost = sk => emit("skillCost", { v: sk.cost * 100 * ST.costMult }).v;
-// skill levels go to 40, but the level you can buy is capped by your best stage this run (+1 per 3 stages)
-const SKILL_MAX = 40;
-const skillMaxAll = () => SKILL_MAX + 5 * ST.skillMastery;
-const skillCap = () => Math.min(skillMaxAll(), 4 + 2 * ST.skillMastery + Math.floor(S.maxStage / 3));
-const capStage = L => Math.max(1, 3 * (L - 4 - 2 * ST.skillMastery));
-const skillCd = sk => sk.cd * ST.cdr * (1 - .01 * (lvl(sk.id) - 1));
-const canCast = sk => unlocked(sk.id) && !(cds[sk.id] > 0) && !heroDown && hero.mp >= skillCost(sk) && (!sk.foe || alive());
-function cast(id, manual) {
-  const sk = SK[id];
-  if (!canCast(sk)) {
-    if (manual && unlocked(id) && !(cds[id] > 0)) floatText(sk.foe && !alive() ? "No target" : "Need mana", "info", "hero");
-    return false;
-  }
-  const cost = skillCost(sk);
-  hero.mp -= cost; cds[id] = skillCd(sk);
-  sfx(sk.sound || id, 0, 0);
-  const L = lvl(id), c = { id, cost, dmg: 0 };
-  sk.cast(L, c);
-  emit("cast", c);
-  bump("cast", 1);
-  return true;
-}
-function autoCast() {
-  if (heroDown || !ST) return;
-  const c = { foe: alive(), hpPct: hero.hp / ST.maxHp };
-  const big = c.foe && (enemy.boss || enemy.elite);
-  const keep = big ? SKILLS.filter(s => s.reserve && unlocked(s.id) && S.auto[s.id] && !(cds[s.id] > 0)).reduce((a, s) => Math.max(a, skillCost(s)), 0) : 0;
-  for (const sk of SKILLS) {
-    if (!S.auto[sk.id] || !canCast(sk)) continue;
-    let go;
-    if (sk.auto) go = sk.auto(c);
-    else {
-      go = c.foe && hero.mp - skillCost(sk) >= ST.maxMp * (S.manaRes == null ? .3 : S.manaRes);
-      if (go && sk.smart && autoOn() && S.autoCfg.smart !== false) go = big || foes.filter(f => !f.dead && inView(f)).length >= sk.smart;
-      if (keep && !sk.reserve && hero.mp - skillCost(sk) < keep) go = false;
-    }
-    if (go) cast(sk.id, false);
-  }
-}
-// shard cost per skill level: cut to offset the earlier shard nerf (40% cheaper base, +17% per level instead of +20%)
-const skillUpCost = sk => Math.ceil(.6 * (2 + sk.unlock / 5) * Math.pow(1.17, lvl(sk.id) - 1));
-const skEls = {};
-function buildSkillbar() {
-  const bar = $("skillbar"); bar.innerHTML = "";
-  SKILLS.forEach(sk => {
-    const b = document.createElement("button"), open = unlocked(sk.id);
-    b.type = "button"; b.className = "sk chf";
-    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + sk.icon + '" fill="currentColor" fill-rule="evenodd"/></svg><span class="lb">' + (open ? sk.name : "Stage " + sk.unlock) + '</span><span class="au"></span><span class="cd"></span><span class="ct"></span>';
-    b.setAttribute("aria-label", open ? "Cast " + sk.name : sk.name + " unlocks at stage " + sk.unlock);
-    if (!open) { b.classList.add("locked"); b.querySelector(".au").style.display = "none"; }
-    // fire on press: iOS won't send a click while another finger is down (the joystick)
-    b.addEventListener("pointerdown", e => { e.preventDefault(); if (unlocked(sk.id)) cast(sk.id, true); });
-    b.addEventListener("click", e => { if (e.detail === 0 && unlocked(sk.id)) cast(sk.id, true); });
-    bar.appendChild(b);
-    skEls[sk.id] = { b, cd: b.querySelector(".cd"), ct: b.querySelector(".ct"), au: b.querySelector(".au") };
-  });
-}
-function updateSkillbar() {
-  SKILLS.forEach(sk => {
-    const el = skEls[sk.id];
-    if (!el || !unlocked(sk.id)) return;
-    const left = cds[sk.id] > 0 ? cds[sk.id] : 0;
-    el.cd.style.height = left > 0 ? Math.min(100, left / skillCd(sk) * 100) + "%" : "0";
-    el.ct.textContent = left > 0 ? Math.ceil(left) : "";
-    el.b.classList.toggle("ready", left <= 0 && hero.mp >= skillCost(sk));
-    el.b.classList.toggle("poor", hero.mp < skillCost(sk));
-    el.au.style.display = S.auto[sk.id] ? "" : "none";
-  });
-}
-function renderSkills() {
-  const r = S.manaRes == null ? .3 : S.manaRes;
-  $("resBar").innerHTML = '<span>Auto-cast keeps</span>' + [0, .3, .5].map(v => '<button class="btn' + (Math.abs(r - v) < .01 ? " go" : "") + '" data-act="manaRes" data-id="' + v + '">' + Math.round(v * 100) + "%</button>").join("") + "<span>mana in reserve</span>";
-  $("skillsBody").innerHTML = SKILLS.map(sk => {
-    if (!unlocked(sk.id)) return '<div class="row lock"><span class="n">' + sk.name + '</span><span class="d">Unlocks at stage ' + sk.unlock + " each run</span></div>";
-    const L = lvl(sk.id), c = skillUpCost(sk);
-    const cap = skillCap();
-    return '<div class="row"><span class="n">' + sk.name + " Lv " + L + (L < cap ? " / " + cap : "") + '</span><span class="d">' + sk.desc(L) + '</span><span class="d">' + (sk.cost ? fmt(skillCost(sk)) + " mana, " : "Free, ") + skillCd(sk).toFixed(1) + 's cooldown</span><div class="side">' +
-      (L >= skillMaxAll() ? '<button class="btn" disabled>Maxed</button>' : L >= cap ? '<button class="btn" disabled>Next level at stage ' + capStage(L + 1) + "</button>" : '<button class="btn shardc" data-act="skup" data-id="' + sk.id + '" data-cost="' + c + '" data-cur="shard">Upgrade ' + fmt(c) + " shards</button>") +
-      '<button class="btn" data-act="skauto" data-id="' + sk.id + '">Auto: ' + (S.auto[sk.id] ? "On" : "Off") + "</button></div></div>";
-  }).join("");
-}
-panel("skills", { render: renderSkills });
-action("skup", id => {
-  const c = skillUpCost(SK[id]);
-  if (S.shards < c || lvl(id) >= skillCap()) return false;
-  sfx("buy", 0, 0); S.shards -= c; S.skill[id] = lvl(id) + 1;
-});
-action("skauto", id => { S.auto[id] = !S.auto[id]; });
-action("manaRes", id => { S.manaRes = Number(id); });
-
-// ---- js/modes/modes.js
-// Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
-
-// Momentum: once you've transcended, stages below half your best ever fly by
-const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * ST.momentumAt) : 0;
-const momentum = () => mode === MAIN && S.stage < momentumCap();
-
-const spawn = {
-  stageSpawned: 0,
-  spawnT: .3
-};
-// Combat runs inside a mode: the main run (stages you push or farm, with Momentum after a Transcend) or the Abyss.
-// The mode says what stage the fight is at and owns spawning, kills, deaths, boss escapes and the stage readout.
-// S.stage is only ever the main run's stage.
-const MAIN = {
-  stage: () => S.stage,
-  zone: () => Math.floor((S.stage - 1) / 10),
-  mythic: st => (S.transcends || 0) >= 1 && st >= TRANS_AT,
-  lumen: () => momentum() ? 8 / 3 : 1,
-  auto: true,
-  enter() { spawn.stageSpawned = S.kills; spawn.spawnT = .6; },
-  leave() {},
-  step() {},
-  stepSpawns(dt) {
-    const need = killsNeeded();
-    if (spawn.stageSpawned >= need) return;
-    const st = S.stage, boss = st % 10 === 0;
-    const live = foes.filter(f => !f.dead).length, cap = boss ? 1 : st < 10 ? 3 : st < 25 ? 4 : st < 50 ? 5 : 6;
-    spawn.spawnT -= dt;
-    if (spawn.spawnT > 0 || live >= cap) return;
-    const packMax = boss ? 1 : st < 3 ? 1 : st < 8 ? 2 : 3;
-    let n = Math.min(1 + rnd(packMax), cap - live, need - spawn.stageSpawned);
-    // the elite always arrives on its own, as the last spawn of the stage
-    if (st > 10 && !boss && spawn.stageSpawned + n >= need && n > 1) n = Math.max(1, need - 1 - spawn.stageSpawned);
-    const base = pickSpawnAngle();
-    for (let i = 0; i < n; i++) {
-      const elite = st > 10 && !boss && spawn.stageSpawned === need - 1;
-      spawnFoe(makeEnemy(st, elite), base + (i - (n - 1) / 2) * .32, i * 22); spawn.stageSpawned++;
-    }
-    spawn.spawnT = (.9 + Math.random() * .8) * (momentum() ? .35 : 1);
-  },
-  kill(e, c) {
-    if (c.split) return;
-    S.kills++;
-    if (S.kills < killsNeeded()) return;
-    S.kills = 0; spawn.stageSpawned = 0; spawn.spawnT = .5;
-    if (!S.push) return;
-    S.stage++; bump("stage", 1);
-    if (S.stage > S.maxStage) {
-      const before = S.maxStage; S.maxStage = S.stage; markDirty("tree");
-      SKILLS.forEach(sk => { if (before < sk.unlock && S.maxStage >= sk.unlock) { log("Skill unlocked: " + sk.name, "r4"); sfx("chord", 0, 300); buildSkillbar(); markDirty("skills"); } });
-      TRAIN.forEach(t => { if (before < t.unlock && S.maxStage >= t.unlock) { log("Training unlocked: " + t.name, "r3"); markDirty("train"); } });
-    }
-    if (S.stage > S.peak) {
-      if (S.peak < SLOT2_AT && S.stage >= SLOT2_AT) {
-        log("Second orbital slot unlocked", "r4");
-        const best = S.autoEquip && fillOrbital(ORBIT.weapon2);
-        if (best) log("Equipped " + best.name + " as your second orbital", "r" + best.r);
-        S.peak = S.stage; recalc(); markDirty("gear", "pack");
-      }
-      S.peak = S.stage;
-    }
-  },
-  death() {
-    log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");
-    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
-  },
-  escape() {
-    log("The boss escaped. Back to stage " + Math.max(1, S.stage - 1) + ", now farming", "bad");
-    S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
-    clearFoes(true); spawn.spawnT = 1;
-  },
-  hud() {
-    const need = killsNeeded();
-    return {
-      title: "Stage " + S.stage, button: S.push ? "Pushing" : "Farming", prog: S.kills / need,
-      sub: (momentum() ? "Momentum: " : "") + (S.stage % 10 === 0 ? "Boss fight" : S.kills + "/" + need + " kills" + (foes.some(f => f.elite && !f.dead) ? ", elite here" : "")) + ", best " + S.maxStage
-    };
-  },
-  button() { S.push = !S.push; }
-};
-let mode = MAIN;
-const fightStage = () => mode.stage();
-// a reset (ascend, transcend) always lands in the main run, without the "you left" fanfare
-function returnToMain() { if (mode !== MAIN) { mode.leave(); mode = MAIN; } }
-// pick the main run up where the save left it
-function resumeRun() { spawn.stageSpawned = S.kills; }
-// leave the current mode for m, starting m's fight fresh
-function switchMode(m) {
-  mode.leave(); mode = m;
-  clearFoes(false); m.enter(); setZone(true); recalc();
-  save(); updateUI();
-}
-
-const killsNeeded = () => (S.stage % 10 === 0 ? 1 : momentum() ? 3 : 8);
-
-// ---- js/world/scene.js
-// The arena: layout, camera, starfield backdrop and zone.
-
-// stars and faint zone shapes are painted once into a tile image; it repeats under the scene and slides
-// with the camera (with a little parallax), so the endless plane costs almost nothing per frame
-const PARA = .75;
-let bgTW = 1, bgTH = 1, bgOX = NaN, bgOY = NaN;
-function drawBackdrop() {
-  const ab = lastZone === 999, zone = ab ? 0 : Math.max(0, lastZone), h = ab ? 285 : (zone * 53 + 200) % 360;
-  $("bgSky").style.background = ab ? "radial-gradient(ellipse at 50% 50%, hsl(285 45% 10%), hsl(260 40% 3%) 75%)" : "radial-gradient(ellipse at 50% 50%, hsl(" + h + " 40% 16%), hsl(" + h + " 35% 6%) 75%)";
-  const dpr = Math.min(2, window.devicePixelRatio || 1), tw = Math.max(200, Math.round(MAP_W * SC)), th = Math.max(200, Math.round(MAP_H * SC));
-  const c = document.createElement("canvas"); c.width = Math.round(tw * dpr); c.height = Math.round(th * dpr);
-  const x = c.getContext("2d"); x.scale(dpr, dpr);
-  // draw anything near an edge on the opposite side too, so the tile repeats without seams
-  const wrap = (cx, cy, r, fn) => { for (const ox of [0, -tw, tw]) for (const oy of [0, -th, th]) { if (cx + ox < -r || cx + ox > tw + r || cy + oy < -r || cy + oy > th + r) continue; fn(cx + ox, cy + oy); } };
-  const nS = Math.round(MAP_W * MAP_H / 5200);
-  x.fillStyle = "#fff";
-  for (let i = 0; i < nS; i++) {
-    const cx = Math.random() * tw, cy = Math.random() * th, r = (.4 + Math.random() * 1.1) * SC;
-    x.globalAlpha = .15 + Math.random() * .55;
-    wrap(cx, cy, r, (px, py) => { x.beginPath(); x.arc(px, py, r, 0, 6.2832); x.fill(); });
-  }
-  const nF = Math.max(6, Math.round(MAP_W * MAP_H / 42000)), sides = 3 + zone % 6;
-  for (let i = 0; i < nF; i++) {
-    const cx = Math.random() * tw, cy = Math.random() * th, r = (10 + Math.random() * 40) * SC, rot = Math.random() * 6, outline = Math.random() < .45;
-    x.globalAlpha = outline ? .1 + Math.random() * .16 : .05 + Math.random() * .1;
-    wrap(cx, cy, r, (px, py) => {
-      x.beginPath();
-      const pts = ab ? jitterShape(VOID_SHAPES[(i * 7) % VOID_SHAPES.length].p).map(([u, v]) => [px + u * r, py + v * r]) : null;
-      if (pts) pts.forEach(([u, v], k) => k ? x.lineTo(u, v) : x.moveTo(u, v));
-      else for (let k = 0; k < sides; k++) { const a = rot + k * 6.2832 / sides; k ? x.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r) : x.moveTo(px + Math.cos(a) * r, py + Math.sin(a) * r); }
-      x.closePath();
-      if (outline) { x.strokeStyle = "hsl(" + h + " 70% 70%)"; x.lineWidth = 1.2 * SC; x.stroke(); } else { x.fillStyle = "hsl(" + h + " 60% 60%)"; x.fill(); x.fillStyle = "#fff"; }
-    });
-  }
-  const bp = $("bgPlane");
-  bp.style.backgroundImage = "url(" + c.toDataURL("image/png") + ")";
-  bp.style.backgroundSize = tw + "px " + th + "px";
-  bp.style.width = (SW + tw + 2) + "px"; bp.style.height = (SH + th + 2) + "px";
-  bgTW = tw; bgTH = th; bgOX = NaN; placeBackdrop();
-}
-function placeBackdrop() {
-  const md = (n, m) => ((n % m) + m) % m;
-  const ox = -md(view.CAMX * PARA * SC, bgTW), oy = -md(view.CAMY * PARA * SC, bgTH);
-  if (Math.abs(ox - bgOX) < .25 && Math.abs(oy - bgOY) < .25) return;
-  bgOX = ox; bgOY = oy;
-  $("bgPlane").style.transform = "translate3d(" + ox.toFixed(1) + "px," + oy.toFixed(1) + "px,0)";
-}
-let lastZone = -1;
-function setZone(force) {
-  const zone = mode.zone();
-  if (zone === lastZone && !force) return;
-  lastZone = zone;
-  if (SW > 0) drawBackdrop();
-}
-let ARENA_T = 60, ARENA_B = 700;
-// the map is bigger than the screen; the camera follows your core. VX0/VY0 is the top-left of the view in map units
-// the plane is endless: MAP_W x MAP_H is just the size of the repeating backdrop tile
-let MAP_W = 1400, MAP_H = 1800, mapReady = false;
-const view = {
-  CAMX: 0,
-  CAMY: 0,
-  VX0: 0,
-  VY0: 0,
-  HERO_X: 180,
-  HERO_Y: 340,
-  ENEMY_X: 290,
-  ENEMY_Y: 382
-};
-const VX1 = () => view.VX0 + VW, VY1 = () => view.VY0 + VH;
-function layout() {
-  const ohx = view.HERO_X, ohy = view.HERO_Y;
-  SW = arena.clientWidth || innerWidth; SH = arena.clientHeight || innerHeight;
-  SC = Math.max(.5, Math.min(SW / 470, SH / 760, 1.4));
-  VW = SW / SC; VH = SH / SC;
-  $("scene").setAttribute("viewBox", "0 0 " + VW.toFixed(1) + " " + VH.toFixed(1));
-  MAP_W = Math.max(900, Math.round(VW * 1.6)); MAP_H = Math.max(1200, Math.round(VH * 1.6));
-  if (!mapReady) { mapReady = true; view.HERO_X = MAP_W / 2; view.HERO_Y = MAP_H / 2; }
-  view.CAMX = view.HERO_X - VW / 2; view.CAMY = view.HERO_Y - VH * .49; view.VX0 = view.CAMX; view.VY0 = view.CAMY; applyCam();
-  ENGAGE = Math.min(145, Math.max(104, Math.min(VW, VH) * .25));
-  // the open play area between the top HUD and the skill bar, in scene units
-  const ar = arena.getBoundingClientRect(), hb = document.querySelector(".hudStage"), sb = $("skillbar");
-  const hr = hb && hb.getBoundingClientRect(), br = sb && sb.getBoundingClientRect();
-  ARENA_T = hr && hr.height ? Math.max(20, (hr.bottom - ar.top) / SC) : 60;
-  ARENA_B = br && br.height ? Math.min(VH - 10, (br.top - ar.top) / SC - 6) : VH - 70;
-  if (ARENA_B - ARENA_T < 200) { ARENA_T = 40; ARENA_B = VH - 40; }
-
-  $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
-  syncTarget();
-  drawBackdrop();
-  setZone(true);
-}
-const keys = {};
-function applyCam() {
-  $("cam").setAttribute("transform", "translate(" + (-view.CAMX).toFixed(2) + " " + (-view.CAMY).toFixed(2) + ")");
-  $("heroPos").setAttribute("transform", "translate(" + view.HERO_X.toFixed(1) + " " + view.HERO_Y.toFixed(1) + ")");
-}
-// logical arena coordinates, recomputed to fill the screen
-let VW = 360, VH = 780, SC = 1, ENGAGE = 105, SW = 390, SH = 844;
-
-// ---- js/ui/floats.js
-// Floating combat text over the hero and enemies.
-
-// hits landing within 150ms on the same enemy are added up into one number, so fast attacks don't flood the screen
-function dmgFloat(e, d, crit, tap, red) {
-  const now = performance.now();
-  if (!e.fl) e.fl = { sum: 0, crit: false, red: false, tap: true, t: 0, pend: false };
-  const F = e.fl; F.sum += d; F.crit = F.crit || crit; F.red = F.red || !!red; F.tap = F.tap && tap;
-  if (F.pend) return;
-  const wait = Math.max(0, 150 - (now - F.t));
-  F.pend = true;
-  setTimeout(() => {
-    F.pend = false; F.t = performance.now();
-    if (F.sum > 0 && !document.hidden) floatText(fmt(F.sum) + (F.red ? "!!" : F.crit ? "!" : ""), F.red ? "rcrit" : F.crit ? "crit" : F.tap ? "tapn" : "hit", e.dead ? { px: e.px, py: e.py, R: e.R } : e);
-    F.sum = 0; F.crit = false; F.red = false; F.tap = true;
-  }, wait);
-}
-const floats = [];
-function floatText(text, cls, side, color) {
-  const el = document.createElement("span");
-  el.className = "float " + cls; el.textContent = text;
-  if (color) el.style.color = color;
-  const fe = typeof side === "object" && side ? side : side === "enemy" ? enemy : null;
-  const R = fe ? fe.R : 25, loot = cls === "gold" || cls === "shardf";
-  const x = fe ? fe.px + (Math.random() * 24 - 12) : side === "enemy" ? view.HERO_X + 60 : view.HERO_X + (Math.random() * 20 - 10);
-  const y = fe ? fe.py + (loot ? R * .5 : -R * .45) + Math.random() * 12 - 6 : view.HERO_Y - 34 - Math.random() * 12;
-  el.style.left = ((x - view.VX0) * SC).toFixed(0) + "px";
-  el.style.top = ((y - view.VY0) * SC).toFixed(0) + "px";
-  arena.appendChild(el); floats.push(el);
-  while (floats.length > 12) floats.shift().remove();
-  setTimeout(() => { el.remove(); const i = floats.indexOf(el); if (i >= 0) floats.splice(i, 1); }, 820);
-}
-
 // ---- js/gear/inventory.js
 // Getting, stashing, salvaging and equipping items, and the Gear and Pack windows.
 
@@ -2206,7 +2283,6 @@ function stash(it) {
   if (it.r < S.salv || S.inv.length >= PACK_CAP) { salvage(it); return; }
   S.inv.unshift(it); markDirty("pack");
 }
-// put a pack item in slot k; whatever was there takes its place in the pack
 function equipFromPack(k, id) {
   const idx = S.inv.findIndex(i => i.id === id);
   if (idx < 0 || !slotOpen(k) || S.inv[idx].slot !== baseSlot(k)) return false;
@@ -2215,7 +2291,6 @@ function equipFromPack(k, id) {
   equipFlash(it.r);
   return true;
 }
-// a newly opened orbital slot takes your best spare orbital
 function fillOrbital(o) {
   const best = S.inv.filter(i => i.slot === "weapon").sort((a, b) => score(b) - score(a))[0];
   if (!best || S.equip[o.key]) return null;
@@ -2257,7 +2332,7 @@ function receive(it, quiet) {
 const glyph = slotId => '<svg class="glyph" viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[slotId].shape + '" fill="var(--rc, var(--line))" fill-rule="evenodd"/></svg>';
 function itemCard(it, mode, label, extra) {
   const slot = SLOT[it.slot], r = RARITY[it.r];
-  const tr = it.slot === "weapon" ? WTRAIT[HERO_WEAPON[noun(it)] ? noun(it) : "Glaive"] : null;
+  const tr = it.slot === "weapon" ? WTRAIT[weaponType(it)] : null;
   const im = implOf(it);
   const traitL = (tr ? '<div class="trait"><b>' + tr.name + "</b>: " + traitText(it) + "</div>" : "") + (im ? '<div class="impl">' + noun(it) + ": " + im.txt + "</div>" : "") +
     (it.u && UNIQ[it.u] ? '<div class="uniq"><b>' + UNIQ[it.u].name + "</b>: " + UNIQ[it.u].desc + "</div>" : "");
@@ -2296,17 +2371,15 @@ function renderStats() {
 }
 panel("stats", { render: renderStats, refresh: renderStats });
 let gearSel = "weapon", gearPick = null;
-// a copy of your core as it looks in combat, with orbitals placed evenly around it
+// a copy of your core as it looks in combat
 function coreSnap() {
   const src = $("heroModel"); if (!src) return "";
   const cl = src.cloneNode(true);
   ["hGrav", "hCrack", "hStatic", "hEclipse", "hEclipseRing", "hBarrier"].forEach(id => { const e = cl.querySelector("#" + id); if (e) e.remove(); });
-  // orbitals spaced evenly and slowly circling the core, like in combat
   const pos = { hWpn1: [0, -38], hWpn2: [32.9, 19], hWpn3: [-32.9, 19] }, ring = document.createElementNS(NS, "g");
   ring.setAttribute("class", "spinSlow");
   for (const id in pos) { const e = cl.querySelector("#" + id); if (e) { e.setAttribute("transform", "translate(" + pos[id][0] + " " + pos[id][1] + ")"); const o = e.parentNode; if (o.style.display !== "none") ring.appendChild(o); else o.remove(); } }
   const bob = cl.querySelector(".bob") || cl; bob.appendChild(ring);
-  // a Glaive keeps spinning on its own
   ring.querySelectorAll("path").forEach(pth => { if (pth.getAttribute("d") === HERO_WEAPON.Glaive) pth.setAttribute("class", (pth.getAttribute("class") || "") + " spinRev"); });
   cl.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); cl.removeAttribute("id"); cl.removeAttribute("class"); cl.removeAttribute("style");
   return '<svg viewBox="-52 -52 104 104" aria-hidden="true">' + cl.outerHTML + "</svg>";
@@ -2351,7 +2424,6 @@ action("uneq", id => {
   delete S.equip[id]; S.inv.unshift(it);
 });
 action("eqTo", (id, b) => { if (!equipFromPack(b.dataset.slot, Number(id))) return false; gearPick = null; });
-// the item's in-combat sprite, drawn into a small standalone svg
 const spriteCache = new Map();
 function spriteSvg(it) {
   const key = it.slot + noun(it) + it.r;
@@ -2366,18 +2438,16 @@ function spriteSvg(it) {
 function tileIcon(it, slotId) {
   if (it) return spriteSvg(it);
   const col = it ? "#efeaff" : "var(--line)";
-  if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + (HERO_WEAPON[noun(it)] || HERO_WEAPON.Glaive) + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
+  if (it && it.slot === "weapon") return '<svg viewBox="-14 -14 28 28" aria-hidden="true"><path d="' + HERO_WEAPON[weaponType(it)] + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
   return '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="' + SLOT[it ? it.slot : baseSlot(slotId)].shape + '" fill="' + col + '" fill-rule="evenodd"/></svg>';
 }
-// how much better an item is than what it would replace (orbitals compare to your weakest orbital slot)
 function upPct(it) {
   const cands = it.slot === "weapon" ? openOrbitals().map(o => S.equip[o.key]) : [S.equip[it.slot]];
   if (cands.some(c => !c)) return 999;
   const worst = cands.reduce((a, b) => score(a) < score(b) ? a : b);
   return Math.round((score(it) / score(worst) - 1) * 100);
 }
-// a tile: white icon of the item's shape, rarity as the border and tint, the shape's name underneath.
-// badge: an optional +/-% in the corner (gear picks); in the pack a green arrow marks an upgrade
+// badge: an optional +/-% in the corner (gear picks)
 function tile(it, act, id, label, sel, extraCls, badge) {
   if (!it) return '<button class="tile empty' + (sel ? " sel" : "") + (extraCls ? " " + extraCls : "") + '" data-act="' + act + '" data-id="' + id + '" type="button">' + tileIcon(null, id) + '<span class="tl">' + (label || "") + "</span></button>";
   const up = act === "pkSel" && upPct(it) > 0, lbl = label || noun(it);
@@ -2385,11 +2455,10 @@ function tile(it, act, id, label, sel, extraCls, badge) {
     (it.set ? '<i class="sd" style="--sc:' + SET[it.set].col + '"></i>' : "") + (badge != null ? '<b class="bd ' + (badge > 0 ? "up" : "dn") + '">' + (badge > 0 ? "+" : "") + badge + "%</b>" : up ? '<b class="ua">▲</b>' : "") + (it.u ? '<span class="uq">✦</span>' : "") + '<span class="tl">' + lbl + "</span></button>";
 }
 let pkSel = null;
-// bring the selected item's card into view
 const scrollToDetail = () => { const el = document.querySelector(".panel:not([hidden]) .pkDetail .card"); if (el) el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); };
 const PK_SORT = [["up", "Best for you"], ["rar", "Rarity"], ["new", "Newest"], ["set", "Grouped by set"]];
 const PK_SLOT = [["all", "All"], ["weapon", "Orbital"], ["armor", "Shell"], ["boots", "Corona"], ["charm", "Lens"]];
-const pkView = () => S.packView || (S.packView = { slot: "all", set: "any", sort: "up", up: false });
+const pkView = () => S.packView;
 function packItems() {
   const v = pkView();
   let L = S.inv.filter(it => (v.slot === "all" || it.slot === v.slot) && (v.set === "any" || (v.set === "sets" ? !!it.set : v.set === "none" ? !it.set : it.set === v.set)));
@@ -2411,7 +2480,7 @@ function renderPack() {
   else {
     let grid = "", lastSet = null;
     L.forEach(it => {
-      if (v.sort === "set" && (it.set || "") !== lastSet) { if (grid) h += '<div class="tileGrid">' + grid + "</div>"; grid = ""; lastSet = it.set || ""; h += '<div class="gHd"' + (it.set ? ' style="color:' + SET[it.set].col + '"' : "") + ">" + (it.set ? SET[it.set].name + " · " + S.inv.filter(x => x.set === it.set).length + " in pack, " + ((ST.sets[it.set]) || 0) + " worn" : "No set") + "</div>"; }
+      if (v.sort === "set" && (it.set || "") !== lastSet) { if (grid) h += '<div class="tileGrid">' + grid + "</div>"; grid = ""; lastSet = it.set || ""; h += '<div class="gHd"' + (it.set ? ' style="color:' + SET[it.set].col + '"' : "") + ">" + (it.set ? SET[it.set].name + " · " + S.inv.filter(x => x.set === it.set).length + " in pack, " + (setCounts()[it.set] || 0) + " worn" : "No set") + "</div>"; }
       grid += tile(it, "pkSel", it.id, null, it.id === pkSel);
     });
     h += '<div class="tileGrid">' + grid + "</div>";
@@ -2462,10 +2531,8 @@ const headStart = r => 10 * r;
 const OFF_H = [8, 12, 16, 20, 24, 24];
 const FG = {};
 statSource(give => FORGE.forEach(f => give(f, FR(f.id))));
-// Star Power: every Stardust ever earned adds attack, health and echo gain
 statSource(give => give(() => ({ atk: starPow(), maxHp: starPow(), echoGain: starEcho() })));
  FORGE.forEach(f => FG[f.id] = f);
-// Star Power: every Stardust ever earned gives +3% attack and health and +2% echo gain; past 50 each counts half
 const starEff = () => { const t = S.stardustTotal || 0; return Math.min(t, 50) + Math.max(0, t - 50) * .5; };
 const starPow = () => 1 + .03 * starEff();
 const starEcho = () => 1 + .02 * starEff();
@@ -2501,13 +2568,8 @@ function renderTrans() {
   FORGE.forEach(f => {
     if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
     const r = FR(f.id), maxed = r >= f.max, c = f.cost(r), nx = Array.isArray(f.nx) ? f.nx[r] : typeof f.nx === "function" ? f.nx(r) : f.nx;
-    let extra = "";
-    if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.trainOn !== false ? " on" : "") + '" data-act="aTrainOn">' + (S.autoCfg.trainOn !== false ? "On" : "Off") + "</button>" + TRAIN.map(t => '<button class="chip' + (S.autoCfg.train[t.id] === false ? "" : " on") + '" data-act="aTrainT" data-id="' + t.id + '">' + t.name + "</button>").join("") + "</div>";
-    if (false) extra = '<div class="chips"><span>Push again after</span>' + [30, 60, 120].map(v => '<button class="chip' + ((S.autoCfg.push || 60) === v ? " on" : "") + '" data-act="aPushD" data-id="' + v + '">' + (v < 60 ? v + "s" : v / 60 + " min") + "</button>").join("") + "</div>";
-    if (false) extra = '<div class="chips"><span>Ascend at stage</span>' + [0, 40, 60, 80, 100, 120, 150, 200].map(v => '<button class="chip' + ((S.autoCfg.ascAt || 0) === v ? " on" : "") + '" data-act="aAscAt" data-id="' + v + '">' + (v ? v : "Off") + "</button>").join("") + '<button class="chip' + (S.autoCfg.ascStall ? " on" : "") + '" data-act="aAscStall">When stuck 5 min</button></div>';
-    if (false) extra = '<div class="chips"><button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button></div>";
     h += '<div class="row forge"><span class="n">' + f.name + (f.max > 1 ? " · Rank " + r + " / " + f.max : r ? " · Unlocked" : "") + '</span><span class="d">' + f.desc(r) + (maxed || !nx ? "" : '<span class="nx"> → ' + nx + "</span>") + "</span>" +
-      '<div class="side">' + (maxed ? '<button class="btn" disabled>' + (f.max > 1 ? "Maxed" : "Owned") + "</button>" : '<button class="btn dustb" data-act="forge" data-id="' + f.id + '" data-cost="' + c + '" data-cur="dust">' + c + " Stardust</button>") + "</div>" + extra + "</div>";
+      '<div class="side">' + (maxed ? '<button class="btn" disabled>' + (f.max > 1 ? "Maxed" : "Owned") + "</button>" : '<button class="btn dustb" data-act="forge" data-id="' + f.id + '" data-cost="' + c + '" data-cur="dust">' + c + " Stardust</button>") + "</div>" + "</div>";
   });
   h += '<h4 class="forgeH">Automation</h4>';
   if (!autoOn()) return h + '<p class="note">Auto-Train, Auto-Push, Auto-Ascend and Smart Cast unlock for free on your first Transcend.</p>';
@@ -2528,7 +2590,7 @@ action("forge", id => {
   if (r >= f.max || S.stardust < c) return false;
   S.stardust -= c; S.forge[id] = r + 1; sfx("chord", 0, 0);
   if (id === "orb3") fillOrbital(ORBIT.weapon3);
-  recalc(); ensureBoard(); buildSkillbar();
+  buildSkillbar();
   log("Star Forge: " + f.name + " rank " + (r + 1), "r4");
 });
 action("aTrainT", id => { S.autoCfg.train[id] = S.autoCfg.train[id] === false; });
@@ -2561,7 +2623,6 @@ const WTRAIT = {
 const SLOT2_AT = 25, SLOT2_DMG = .6;
 const WDELAY = { Glaive: 170, Drone: 120, Laser: 60, Swarm: 190, Hammer: 230, Coil: 60 };
 const MOTE = "M0 -3.5 A3.5 3.5 0 1 1 0.01 -3.5 Z";
-// orbital traits get stronger at Legendary and Mythic; Coil chains further with every tier
 const COIL = [[.3, 1], [.3, 1], [.3, 2], [.35, 3], [.4, 4], [.5, 5]];
 function wTr(slot) {
   const t = wType(slot), b = WTRAIT[t], it = S.equip[slot], r = it ? it.r : 0, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
@@ -2574,7 +2635,7 @@ function wTr(slot) {
   return o;
 }
 function traitText(it) {
-  const t = HERO_WEAPON[noun(it)] ? noun(it) : "Glaive", r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
+  const t = weaponType(it), r = it.r, hi = r >= 5 ? 2 : r >= 4 ? 1 : 0;
   if (t === "Drone") return "Fires " + [30, 40, 50][hi] + "% faster at 80% damage per volley";
   if (t === "Glaive") return "Hits on the way out and again on the way back, " + [55, 65, 75][hi] + "% each";
   if (t === "Laser") return "Ignores Shielded blocks and Armored damage reduction" + (hi ? ", +" + [0, 15, 25][hi] + "% damage" : "");
@@ -2584,7 +2645,9 @@ function traitText(it) {
 }
 let attackCount = 0;
 const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
-const wType = (slot = "weapon") => S.equip[slot] ? (HERO_WEAPON[noun(S.equip[slot])] ? noun(S.equip[slot]) : "Glaive") : "Mote";
+// an orbital item's weapon type (old names it doesn't know fall back to Glaive)
+const weaponType = it => HERO_WEAPON[noun(it)] ? noun(it) : "Glaive";
+const wType = (slot = "weapon") => S.equip[slot] ? weaponType(S.equip[slot]) : "Mote";
 // flight time from the orbital's muzzle to the target; the hit lands exactly when the shot arrives
 const SHOT_SPD = { Drone: 900, Mote: 850, Swarm: 700, Hammer: 620, Glaive: 760 };
 function wDelay(slot = "weapon") {
@@ -2664,7 +2727,6 @@ function poseOrbitals(dt) {
     if (!act[i]) continue;
     k++;
     const o = ORBITALS[i].pose, type = wType(ORBITALS[i].key);
-    // fan the active orbitals out around the line to the target
     const spread = n === 1 ? 0 : n === 2 ? (k ? .55 : -.55) : [-.8, 0, .8][k];
     if (t) {
       const goal = Math.atan2(t.py - view.HERO_Y, t.px - view.HERO_X) + spread + (reduce ? 0 : Math.sin(orbT * [1.2, .9, 1.05][i] + i * 2.1) * (n > 1 ? .3 : .55));
@@ -2745,7 +2807,6 @@ function fireOrbital(slot) {
   if (tr.chain && Math.random() < tr.chain[0]) setTimeout(() => chainZap(enemy, tr.chain[1], slotAtk(slot) * .6, slot), T + 20);
   emit("fire", { slot, delay: T });
 }
-// nearest living foes to a point, skipping some
 function nearFoes(x, y, n, skip, maxD) {
   return foes.filter(f => !f.dead && !skip.has(f) && Math.hypot(f.px - x, f.py - y) < (maxD || 1e9)).sort((a, b) => Math.hypot(a.px - x, a.py - y) - Math.hypot(b.px - x, b.py - y)).slice(0, n);
 }
@@ -2879,8 +2940,8 @@ action("perfMode", () => { S.perf = !S.perf; applyGfx(); });
 action("saver", () => { S.saver = !S.saver; });
 action("musToggle", () => { S.music = S.music === false; audioInit(); setMusicVol(); });
 action("musVol", () => { S.mvol = { low: "med", med: "high", high: "low" }[S.mvol || "med"]; audioInit(); setMusicVol(); });
-action("sndToggle", () => { S.sound = S.sound === false; audioInit(); setVolume(); if (S.sound) setTimeout(() => sfx("buy"), 60); });
-action("sndVol", () => { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; audioInit(); setVolume(); setTimeout(() => sfx("buy", 0, 0), 60); });
+action("sndToggle", () => { S.sound = S.sound === false; setVolume(); if (S.sound) audioInit().then(() => sfx("buy")); });
+action("sndVol", () => { S.vol = { low: "med", med: "high", high: "low" }[S.vol || "med"]; setVolume(); audioInit().then(() => sfx("buy", 0, 0)); });
 action("intro", () => { closeWindow(); showIntro(); return false; });
 action("saveCopy", () => {
   save();
@@ -2942,11 +3003,14 @@ function setCounts() {
   Object.values(S.equip).forEach(it => { if (it && it.set) c[it.set] = (c[it.set] || 0) + 1; });
   return c;
 }
-// echo power: every echo you've ever earned adds +1% attack and health, permanently. It never caps,
-// so each ascension pushes you further even once the web is full
+// echo power never caps, so each ascension pushes you further even once the web is full
 statSource(give => give(() => ({ echoBonus: onBase(.01 * (S.echoesTotal || 0)) })));
 const evadeChance = () => Math.min(.5, ST.evaR / (ST.evaR + 6 * itemPow(fightStage())));
-// recompute stats, keeping health and mana at the same share of their new maximums
+// the hero's temporary combat state goes back to rest: buffs, shield and statuses
+function resetCombat() {
+  hero.shield = 0; hero.odT = 0; hero.markT = 0; heroModel.classList.remove("od");
+  clearStatuses();
+}
 function recalc() {
   const old = refreshStats();
   hero.hp = old ? Math.min(ST.maxHp, hero.hp * (ST.maxHp / old.maxHp)) : ST.maxHp;
@@ -2955,7 +3019,6 @@ function recalc() {
   markDirty("stats");
 }
 const heroModel = $("heroModel");
-// health and mana as two thin segmented arcs around the core
 const RING_R = 50, HP_ARC = [128, 232], MP_ARC = [52, -52];
 function arcD(r, a0, a1) {
   const P = a => (Math.cos(a * Math.PI / 180) * r).toFixed(2) + " " + (Math.sin(a * Math.PI / 180) * r).toFixed(2);
@@ -3016,14 +3079,14 @@ function lensSvg(n, c, r, into) {
 }
 function drawHero() {
   const w = S.equip.weapon, a = S.equip.armor, b = S.equip.boots, c = S.equip.charm, hw = $("hWeapon");
-  hw.setAttribute("d", w ? (HERO_WEAPON[noun(w)] || HERO_WEAPON.Fang) : MOTE);
+  hw.setAttribute("d", w ? HERO_WEAPON[weaponType(w)] : MOTE);
   hw.setAttribute("fill", w ? ARENA_C[w.r] : "#effffc");
   hw.style.color = w ? ARENA_C[w.r] : "#7be0d0";
   hw.classList.toggle("glow", !w || w.r >= 3);
   ORBITALS.slice(1).forEach(o => {
     const wo = o.open() ? S.equip[o.key] : null, el = $(o.ids[2]);
     $(o.ids[0]).style.display = wo ? "" : "none";
-    if (wo) { el.setAttribute("d", HERO_WEAPON[noun(wo)] || HERO_WEAPON.Glaive); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
+    if (wo) { el.setAttribute("d", HERO_WEAPON[weaponType(wo)]); el.setAttribute("fill", ARENA_C[wo.r]); el.style.color = ARENA_C[wo.r]; el.classList.toggle("glow", wo.r >= 3); }
   });
   if (a) shellSvg(noun(a), ARENA_C[a.r], a.r); else $("hShell").innerHTML = "";
   if (b) coronaSvg(noun(b), ARENA_C[b.r], b.r); else { $("hCorona").innerHTML = ""; $("hCoronaStatic").innerHTML = ""; }
@@ -3048,7 +3111,7 @@ function startDash(L) {
   // a second finger on the button can briefly interrupt the stick, so fall back to the last steered direction
   if (Math.hypot(dx, dy) < .2 && performance.now() - lastDT < 900) { dx = lastDX; dy = lastDY; }
   if (Math.hypot(dx, dy) < .2) { dx = hvx; dy = hvy; }
-  if (Math.hypot(dx, dy) < 5 && Math.hypot(dx, dy) < .2) {
+  if (Math.hypot(dx, dy) < 5) {
     let best = null, bd = 1e9; for (const f of foes) { if (f.dead) continue; const d = Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y); if (d < bd) { bd = d; best = f; } }
     if (best) { dx = view.HERO_X - best.px; dy = view.HERO_Y - best.py; } else { dx = 0; dy = -1; }
   }
@@ -3074,14 +3137,12 @@ function stepHero(dt) {
     hvx = dashVX * .25; hvy = dashVY * .25;
     for (const f of foes) if (!f.dead && !dashHit.has(f) && Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y) < f.R + 34) { dashHit.add(f); land(f, dashD, "storm"); }
   }
-  // smooth acceleration toward the stick direction
   const k = 1 - Math.exp(-dt * 18);
   const spd = HERO_SPD * (ST ? ST.move : 1);
   hvx += (ix * spd - hvx) * k; hvy += (iy * spd - hvy) * k;
   if (dashT > 0) {} else if (Math.abs(hvx) + Math.abs(hvy) > .5) {
     view.HERO_X += hvx * dt; view.HERO_Y += hvy * dt;
   } else { hvx = 0; hvy = 0; }
-  // the camera glides after the core
   const tx = view.HERO_X - VW / 2, ty = view.HERO_Y - VH * .49, c = 1 - Math.exp(-dt * 11);
   view.CAMX += (tx - view.CAMX) * c; view.CAMY += (ty - view.CAMY) * c;
   if (Math.abs(tx - view.CAMX) < .05 && Math.abs(ty - view.CAMY) < .05) { view.CAMX = tx; view.CAMY = ty; }
@@ -3126,10 +3187,8 @@ const LEGACY = {
 const RARITY = [
   { name: "Common", mult: 1, w: 70, n: 0 }, { name: "Magic", mult: 1.5, w: 24, aff: [4, 8], n: 1 }, { name: "Rare", mult: 2.3, w: 5, aff: [8, 15], ramp: 20, cap: 3, n: 2 },
   { name: "Epic", mult: 3.5, w: .8, aff: [15, 25], ramp: 15, cap: 4, n: 3 }, { name: "Legendary", mult: 5.5, w: .1, aff: [25, 40], ramp: 12, cap: 5, n: 3 },
-  // Mythic: only after your first Transcend, only from bosses at stage 150+. Always a set item, always has a unique effect
   { name: "Mythic", mult: 8, w: .1, aff: [40, 60], n: 4, myth: true }
 ];
-// rarity colours inside the arena (as SVG fills), from the stylesheet's .arena --c0..--c5
 const ARENA_C = [0, 1, 2, 3, 4, 5].map(i => getComputedStyle(document.querySelector(".arena")).getPropertyValue("--c" + i).trim());
 // f: how a roll turns into the stat (a Legendary roll of 25-40 is 25-40% attack, but 2.5-4% life steal)
 const AFF = {
@@ -3140,7 +3199,6 @@ const AFF = {
   dr: { l: "damage reduction", f: .15, stats: v => ({ dmgTaken: cutBy("affix", v) }) }, mcost: { l: "lower mana costs", f: .2, stats: v => ({ costMult: cutBy("affix", v) }) }, move: { l: "move speed", f: .3, stats: v => ({ move: 1 + v }) },
   crit: { l: "crit chance", f: .1, stats: v => ({ crit: plus(v) }) }, skill: { l: "skill power", f: .75, stats: v => ({ skillPow: 1 + v }) }, shrug: { l: "chance to ignore a new status", f: .2, stats: v => ({ shrug: plus(v) }) }, shard: { l: "shard find", f: .5, stats: v => ({ shardF: plus(v) }) }
 };
-// which affixes can roll where: a shared pool plus each gear type's own
 const AFF_SHARED = ["atk", "hp", "mp", "gold", "spd", "cdmg", "tap", "regen", "leech"];
 const AFF_SLOT = { weapon: ["boss", "elite", "orb", "redp"], armor: ["block", "dr"], boots: ["eva", "mcost", "move"], charm: ["crit", "skill", "shrug", "shard"] };
 const affPool = slot => AFF_SHARED.concat(AFF_SLOT[slot] || []);
@@ -3252,7 +3310,7 @@ const SETS = [
 ];
 const SET = {};
  SETS.forEach(s => SET[s.id] = s);
-// every Shell, Corona and Lens shape has a built-in bonus that grows with rarity (Rare value shown; Legendary x2, Mythic x3)
+// each shape's v is its Rare value; IMPL_M scales it for the other rarities
 const IMPL_M = [.4, .7, 1, 1.5, 2, 3];
 const IMPL = {
   Ring: { v: .005, txt: v => "+" + (v * 100).toFixed(2).replace(/\.?0+$/, "") + "% health regen per second", stats: v => ({ hpRegen: plus(v) }) },
@@ -3275,7 +3333,6 @@ const IMPL = {
   Cube: { v: .1, txt: v => "+" + pctS(v) + " lumen", stats: v => ({ gold: 1 + v }) }
 };
 const implOf = it => { const d = it && IMPL[noun(it)]; return d ? { d, v: d.v * IMPL_M[it.r], txt: d.txt(d.v * IMPL_M[it.r]) } : null; };
-// unique effects: Legendary and Mythic items roll one from their gear type's list
 const UNIQ = {
   split: { s: "weapon", name: "Splitshot", desc: "25% chance a volley also splits into 2 shards that hit other enemies for 40% each", fx: { fire(c) { if (Math.random() < .25) setTimeout(() => splitShot(enemy, slotAtk(c.slot) * .4, c.slot), c.delay + 10); } } },
   heat: { s: "weapon", name: "Overheat", desc: "Each orbital hit on the same target adds +3% damage, up to +90%", fx: { e: null, n: 0, deal(h) { if (h.kind !== "blade") return; if (this.e === h.e) this.n = Math.min(30, this.n + 1); else { this.e = h.e; this.n = 0; } h.dmg *= 1 + .03 * this.n; } } },
@@ -3330,7 +3387,6 @@ const UNIQ = {
   lucky: { s: "charm", name: "Lucky Star", desc: "5% of kills drop a bonus item", stats: () => ({ bonusDrop: plus(.05) }) }
 };
 const uniqFor = slot => Object.keys(UNIQ).filter(k => UNIQ[k].s === slot);
-// gear: each slot's base stats, affixes summed over everything equipped, shape bonuses, set bonuses and uniques
 statSource(give => {
   const eq = Object.values(S.equip).filter(Boolean), sum = {};
   SLOTS.forEach(sl => { const it = S.equip[sl.id]; if (it) give(sl, it.power, it.power / itemPow(it.stage || 1)); });
@@ -3346,7 +3402,6 @@ const affSum = it => (it.affs || []).reduce((a, x) => a + x[1], 0);
 const score = it => it.power * (1 + affSum(it) / 100) * (it.set ? 1.1 : 1);
 const salvValue = it => Math.ceil(.6 * lumenAt(it.stage) * (1 + it.r) * ST.salv);
 function rollRarity(boss, minR, stage) {
-  // higher tiers get more common the deeper you go, up to a cap
   const mythic = boss && mode.mythic(stage);
   const w = RARITY.map((r, i) => i < minR || (r.myth && !mythic) ? 0 : (r.myth ? ST.mythChance : 1) * r.w * (r.ramp ? Math.min(r.cap, 1 + stage / r.ramp) : 1) * (boss ? (i >= 2 ? 2.5 : .6) : 1) * (i >= 2 ? ST.luck : 1));
   let t = w.reduce((a, b) => a + b, 0) * Math.random();
@@ -3444,7 +3499,6 @@ function ripple(x, y) {
   el.className = "ripple"; el.style.left = (x - r.left) + "px"; el.style.top = (y - r.top) + "px";
   arena.appendChild(el); setTimeout(() => el.remove(), 360);
 }
-// force: skill visuals always show, even when the particle budget is full
 // an expanding ring: ring() always draws (skills), ringIfRoom() skips when the effect budget is used up
 function ringIfRoom(x, y, col, from, to, ms, width) { if (!fxBusy()) ring(x, y, col, from, to, ms, width); }
 function ring(x, y, col, from, to, ms, width) {
@@ -3589,10 +3643,10 @@ const SHAPE_NAMES = { 3: "Triad", 4: "Quadrant", 5: "Pentad", 6: "Hexen", 7: "He
 const MODS = {
   shielded: { name: "Shielded", desc: "Every 4th hit on it is fully blocked", fx: { guard(h, e) { if (h.pierce) return; e.hitN = (e.hitN || 0) + 1; if (e.hitN % 4 === 0) { h.dmg = 0; h.note = "Blocked"; } } } },
   hasted: { name: "Hasted", desc: "Attacks 40% faster", fx: { attackRate: c => { c.v *= 1.4; } } },
-  vampiric: { name: "Vampiric", desc: "Heals 4% of its health each time it hits you", fx: { landed(c, e) { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow())); } } },
+  vampiric: { name: "Vampiric", desc: "Heals 1.2% of its health each time it hits you", fx: { landed(c, e) { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .005 : .012) * Math.min(1.5, modPow())); } } },
   armored: { name: "Armored", desc: "Takes 30% less damage from blades and skills, but taps ignore it", fx: { take(h) { if (h.kind !== "tap" && !h.pierce) h.dmg *= .7; } } },
   volatile: { name: "Volatile", desc: "Explodes for 25% of your max health when destroyed", fx: {
-    // blasts hit for 25% of your health (more after many ascensions, up to 35%), and several at once can't add up past 50% in 1.5s
+    // several blasts at once can't add up past 50% in 1.5s
     winT: 0, sum: 0,
     death(c, e) {
       setTimeout(() => {
@@ -3603,8 +3657,7 @@ const MODS = {
       }, 150);
     }
   } },
-  // Regenerating heals only after 2.5s without being hit, so steady damage keeps it shut off
-  regen: { name: "Regenerating", desc: "Heals 2% of its health every second", fx: { tick(c, e) { if (performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * c.dt); } } },
+  regen: { name: "Regenerating", desc: "Heals 1% of its health every second after 2.5s without being hit", fx: { tick(c, e) { if (performance.now() - (e.lastHitT || 0) > 2500) e.hp = Math.min(e.max, e.hp + e.max * (e.boss ? .004 : .01) * Math.min(1.5, modPow()) * c.dt); } } },
   splitting: { name: "Splitting", desc: "Splits into a smaller copy when destroyed", fx: { death(c, e) { if (!e.child) c.split = true; } } },
   draining: { name: "Draining", desc: "Every hit that lands inflicts a random status", fx: { landed(c, e) { applyStatus(pick(ZONE_STATUS), 5, false, e); } } }
 };
@@ -3638,8 +3691,7 @@ const MECHS = {
   mirror: {
     init: () => ({ t: 7, tele: 0, on: 0 }),
     fx: {
-      // reflects a slice of each hit, scaled to your health so huge damage can't one-shot you:
-      // at most 2% of your max health per hit and 30% per Mirror phase
+      // reflects a slice of each hit, scaled to your health so huge damage can't one-shot you
       struck(h, e) {
         const R = e.m.mirror; if (!(R.on > 0)) return;
         const room = ST.maxHp * .3 - (R.dealt || 0);
@@ -3705,7 +3757,6 @@ const MECH_IDS = Object.keys(MECHS);
 const foeFx = (mods, m, extra) => mods.map(k => MODS[k].fx).concat(m ? Object.keys(m).map(k => MECHS[k].fx) : [], extra || []);
 const modPow = () => 1 + .1 * Math.max(0, (S.ascensions || 0) - 1);
 function enemyStatuses(stage, boss, elite, v) {
-  // random statuses; deeper stages stack more of them on each enemy
   if (stage < 6 && !boss && !v.stx) return { list: [], chance: 0 };
   const n = Math.min(5, (stage < 20 ? 1 : stage < 40 ? 2 : stage < 60 ? 3 : 4) + (boss || elite ? 1 : 0) + (v.stx && stage >= 6 ? v.stx : 0));
   const pool = ZONE_STATUS.slice(), list = [];
@@ -3731,7 +3782,6 @@ function makeEnemy(stage, elite) {
   const hpE = stageHp(stage) * (boss ? 8 : elite ? 4 : 1) * (momentum() ? .02 : 1);
   const dmg = stageDmg(stage) * (boss ? 1.3 : elite ? 1.5 : 1) * (momentum() ? .25 : 1);
   const tier = Math.min(4, Math.floor(stage / 12) + (boss ? 2 : elite ? 1 : 0) + (Math.random() < .2 ? 1 : 0));
-  // bosses deep in get more time: +0.75s per stage past 40, up to +45s
   const tm = 30 + Math.min(45, Math.max(0, (stage - 40) * .75)) + ST.bossTime;
   const mods = rollMods(boss, elite && !boss), m = boss ? bossMechs(zone) : null;
   return {
@@ -3810,7 +3860,6 @@ const AB_MILES = [
   [100, "Endless", "Double Voidstone", { stats: () => ({ stoneGain: 2 }) }]
 ];
 statSource(give => AB_MILES.forEach(([d, , , def]) => { if (def && abMile(d)) give(def); }));
-// irregular shapes for the Void enemies
 const VOID_SHAPES = [
   { n: "Rhomb", p: [[0, -1], [.6, 0], [0, 1], [-.6, 0]] },
   { n: "Kite", p: [[0, -1], [.55, -.25], [0, 1], [-.55, -.25]] },
@@ -3834,7 +3883,6 @@ function jitterShape(pts) {
   const m = Math.max(...q.map(([x, y]) => Math.hypot(x, y))) || 1, rot = Math.random() * 6.28, c = Math.cos(rot), sn = Math.sin(rot);
   return q.map(([x, y]) => [(x * c - y * sn) / m, (x * sn + y * c) / m]);
 }
-// shape-aware outline: irregular Void shapes, or the usual regular polygon
 function eVerts(e, r, rot, cx, cy) {
   if (!e.shape) return vertices(e.sides, r, rot, cx, cy);
   const c = Math.cos(rot), sn = Math.sin(rot);
@@ -3857,7 +3905,6 @@ function exitAbyss() {
   switchMode(MAIN);
   log("You left the Abyss. Back to stage " + S.stage, "r0");
 }
-// Guardian down: Voidstone, a new best, and one depth deeper
 function abyssCleared(e) {
   const A = S.abyss, d = A.depth, first = d > A.best;
   const g = Math.ceil((2 + Math.floor(d / 2)) * (first ? 3 : 1) * ST.stoneGain);
@@ -3906,7 +3953,6 @@ const ABYSS = {
     if (ab.phase < 3) { ab.phase++; ab.need = abWaveSize(); ab.spawned = 0; ab.pause = 1.2; floatText("Wave " + ab.phase + "/3", "info", "hero", "#c08bff"); }
     else { ab.phase = 4; ab.need = 1; ab.spawned = 0; ab.pause = 1.6; floatText("Guardian", "info", "hero", "#ff5fa8"); sfx("warn"); }
   },
-  // poison pools (Corrosion) hurt you while you stand in them
   step(dt) {
     const n = ruleN("pools"); poolT += dt;
     for (let i = pools.length - 1; i >= 0; i--) {
@@ -3948,7 +3994,6 @@ function makeVoid(kind) {
     statuses: enemyStatuses(st, boss, elite && !boss, v), mods, m, fx: foeFx(mods, m, plated ? [plated] : []), stun: 0, aHaste: 1 + .25 * ruleN("hasted"), blinkT: 3 + Math.random() * 4
   };
 }
-// Void enemies blink: every few seconds they vanish and reappear somewhere else around you
 function voidBlink(e) {
   ringIfRoom(e.px, e.py, e.stroke, 1.5, .2, 260, 2);
   const a = Math.random() * 6.28, dist = (e.stopR || 120) + 20 + Math.random() * 60;
@@ -3956,7 +4001,7 @@ function voidBlink(e) {
   newWaypoint(e); setFoePos(e); ringIfRoom(e.px, e.py, e.stroke, .2, 2, 300, 2);
 }
 function renderAbyss() {
-  if (!abyssOpen()) return '<p class="note">Reach stage 150 to open the Abyss.</p>';
+  if (!abyssOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to open the Abyss.</p>";
   const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
   let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
     '<div class="note" style="margin:0">The Abyss is an endless climb that never resets, not even when you transcend. Each depth is 3 waves of Void shapes and a Guardian. Clear it for Voidstone and go one deeper. Every depth adds a rule. Die and you fall back 2 depths. Mythics can drop from Guardians. Your build comes with you; leaving puts you back on stage ' + S.stage + ".</div>" +
@@ -3984,11 +4029,10 @@ action("altar", id => {
 // ---- js/enemies/shots.js
 // Enemy attacks: projectiles, beams and lobs that land on the hero.
 
-// every enemy attack is a projectile or beam now; the damage lands when it reaches the core
+// every enemy attack is a projectile or beam; the damage lands when it reaches the core
 const FAR_DMG = .4, FAR_RATE = 1.5;
 let lastBurnFloat = 0;
 function enemyAttack(e) {
-  // shots fired while still closing in are long-range and hit softer
   const heavy = !!(e.v.crit && Math.random() < e.v.crit), dmg = e.dmg * (e.enraged ? 2 : 1) * (heavy ? 2 : 1) * (.9 + Math.random() * .2) * (e.arrived ? 1 : FAR_DMG);
   let statusDone = false;
   const land = (mult) => {
@@ -4017,10 +4061,8 @@ const SHOT_SPEC = {
   bastion: { spd: 240, r: 8 },     // mortar shell: aimed where you're heading, wide burst
   umbral: { spd: 0, r: 0 }         // lance: tracks you, locks at the last moment, instant beam
 };
-// tougher the deeper you go, and from elites and bosses
 const shotSkill = e => Math.min(1.6, .55 + fightStage() / 70) * (e.boss ? 1.35 : e.elite ? 1.2 : 1);
 // aim point: where the core will be when the shot arrives (partly; sometimes they guess, sometimes they don't)
-// where enemies aim: the core, or the Phantom Veil decoy while it lasts
 const tgtX = () => field.decoy ? field.decoy.x : view.HERO_X, tgtY = () => field.decoy ? field.decoy.y : view.HERO_Y;
 function leadPt(fromX, fromY, spd, f) {
   if (field.decoy) return [field.decoy.x, field.decoy.y];
@@ -4074,7 +4116,7 @@ function fireShot(e, heavy, land) {
     return;
   }
   if (id === "bastion") {
-    // mortar: lobs a shell at the spot you're standing on, marked on the ground, and bursts there
+    // mortar: lobs a shell, marked on the ground, and bursts there
     const a0 = aimFrom(e), [tx, ty] = leadPt(a0.x, a0.y, sp.spd, Math.min(1.1, (.5 + Math.random() * .6) * shotSkill(e))), R = (heavy ? 48 : 40) * (.9 + .15 * shotSkill(e));
     const mark = svgEl("circle", { cx: tx.toFixed(1), cy: ty.toFixed(1), r: R, fill: "rgba(255,90,90,.07)", stroke: "#ff6b6b", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: .9 }, fx);
     const C = 170;
@@ -4376,7 +4418,7 @@ function placeFoe(e, fadeMs) {
 }
 function arrive(e) { e.arrived = true; setFoePos(e); }
 // free roaming: each foe wanders between waypoints around the core. The roaming area starts wide
-// (most of the screen) and tightens over about 12 seconds, so foes drift around while honing in on you
+// and tightens, so foes drift around while honing in on you
 function roamR(e) {
   const far = Math.max(e.stopR + 60, Math.hypot(VW, VH) * .36), near = e.stopR + (e.boss ? 20 : 35);
   const f = Math.min(1, (e.age || 0) / (e.boss ? 8 : 12));
@@ -4399,7 +4441,6 @@ function newWaypoint(e, first) {
 }
 // smooth floating: each foe steers toward a target velocity with inertia, curving in, easing to a stop,
 // then drifting slowly around the core while keeping its distance from other foes
-// stage pacing: enemies get a bit quicker and more erratic the deeper you go
 const pace = () => 1 + Math.min(.55, (fightStage() - 1) * .008);
 const sporadic = () => Math.min(1.05, .45 + fightStage() * .01);
 let bumpFxT = 0;
@@ -4580,7 +4621,6 @@ function stepFoe(e, dt) {
   if (e.slowT > performance.now()) dt *= .8;
   foeEmit(e, "tick", { dt });
   if (e.stun > 0) { e.stun -= dt; if (e.stun <= 0) e.el.model.classList.remove("stun"); }
-  // ranged: they shoot while closing in (a little slower) and keep shooting once in position
   if (e.boss && e.arrived) {
     e.timer -= dt;
     if (e.timer <= 0) { bossEscape(); return; }
@@ -4602,407 +4642,37 @@ function stepFoe(e, dt) {
   if (e.void && !e.boss && e.arrived && !(e.stun > 0)) { e.blinkT -= dt; if (e.blinkT <= 0) { e.blinkT = 5 + Math.random() * 4; voidBlink(e); } }
 }
 
-// ---- js/combat/combat.js
-// Hits and damage both ways: the hit pipeline, hurting the hero, deaths, kills and their rewards.
+// ---- js/ui/floats.js
+// Floating combat text over the hero and enemies.
 
-let heroDown = false;
-const cds = {}, dpsLog = [];
-const F = () => fdir(enemy);
-const alive = () => !!enemy && !enemy.dead && !heroDown;
-function dps() {
+// hits landing close together on the same enemy are added up into one number, so fast attacks don't flood the screen
+function dmgFloat(e, d, crit, tap, red) {
   const now = performance.now();
-  while (dpsLog.length && now - dpsLog[0][0] > 5000) dpsLog.shift();
-  return dpsLog.reduce((a, x) => a + x[1], 0) / 5;
-}
-let lastHealFloat = 0, leechPool = 0;
-// a hit is aimed now but only lands (health, effects, numbers) when the shot arrives
-function hit(base, delay, kind, slot) {
-  if (!alive()) return;
-  const e = enemy;
-  if (delay && !document.hidden) setTimeout(() => land(e, base, kind, slot), delay); else land(e, base, kind, slot);
-}
-function land(e, base, kind, slot) {
-  if (heroDown || !e || e.dead || !foes.includes(e)) return;
-  slot = slot || "weapon";
-  const tr = kind === "blade" ? wTr(slot) : null;
-  const h = { e, kind, slot, dmg: 0, crit: false, red: false, note: "", lethal: false, first: !!e.fresh, pierce: !!(tr && tr.pierce), seeking: !!(tr && tr.seeking) };
-  e.fresh = false;
-  const forced = hero.markT > 0;
-  // crit chance past 100% rolls red crits; while Shatter forces crits, your crit chance becomes red crit chance
-  const cc = emit("critChance", { v: ST.crit }).v;
-  h.crit = forced || Math.random() < cc;
-  h.red = h.crit && Math.random() < (forced ? cc : cc - 1) + ST.redBonus;
-  emit("crit", h);
-  h.dmg = base * (.9 + Math.random() * .2);
-  if (h.crit) h.dmg *= ST.critDmg * (forced ? 1 + SK.shatter.critBonus(lvl("shatter")) : 1) * (h.red ? ST.redPow : 1);
-  if (e.boss) h.dmg *= ST.bossDmg;
-  if (e.elite) h.dmg *= ST.eliteDmg;
-  emit("deal", h);
-  foeEmit(e, "take", h);
-  if (h.lethal) h.dmg = Math.max(h.dmg, e.hp);
-  if (e.v && e.v.eva && kind !== "tap" && !h.seeking && Math.random() < e.v.eva) { h.dmg = 0; h.note = "Miss"; }
-  foeEmit(e, "guard", h);
-  const { dmg, crit, red, note } = h;
-  e.hp -= dmg; if (dmg > 0) e.lastHitT = performance.now();
-  dpsLog.push([performance.now(), dmg]);
-  if (dmg > 0 && !e.dead) {
-    if (kind === "blade" && ST.burn > 0) e.burn = { dps: ST.atk * ST.burn / 2, t: 2 };
-    emit("hit", h);
-  }
-  if (tr && tr.stun && dmg > 0 && e.hp > 0 && Math.random() < tr.stun) {
-    e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
-    floatText("Stunned", "info", e);
-  }
-  if (dmg > 0) foeEmit(e, "struck", h);
-  if (ST.leech > 0 && dmg > 0 && leechPool > 0) {
-    // life steal heals from a pool that refills at twice your life steal % of max health per second
-    const got = Math.min(dmg * ST.leech, leechPool); leechPool -= got;
-    const before = hero.hp; heal(got);
-    const now = performance.now();
-    if (hero.hp - before > ST.maxHp * .02 && now - lastHealFloat > 600) { lastHealFloat = now; floatText("+" + fmt(hero.hp - before), "heal", "hero"); }
-  }
-  if (crit) bump("crit", 1);
-  const show = () => {
-    if (kind === "blade" || kind === "storm") slash(crit, slot, e);
-    else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
-    if (note) sfx("miss", 0, 120);
-    else if (crit) sfx("crit", 0, 160);
-    else if (kind !== "tap") sfx("hit", 0, 70);
-    if (note) floatText(note, "info", e);
-    else dmgFloat(e, dmg, crit, kind === "tap", red);
-    if (red && !document.hidden) sparks(e.px, e.py, 5, "#ff2e4d", 28);
-    if (crit && kind !== "tap") shake(3, 160);
-    const tn = performance.now();
-    if (!e.dead && e.el && !(tn - (e.flashT || 0) < 140)) { e.flashT = tn; anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -3), filter: "brightness(2.2)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160); }
-    if (!note) knock(e, (kind === "tap" ? 7 : tr ? tr.knock : 12) * (crit ? 1.7 : 1));
-  };
-  show();
-  if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
-}
-const effSpd = () => emit("attackSpeed", { v: ST.spd }).v;
-// a decoy (Phantom Veil) draws enemy fire while it lasts
-
-const field = {
-  decoy: null
-};
-// damage that skips crits and floats (bleeds, burns, trails, fields, blasts)
-function dotDmg(e, d) {
-  if (!e || e.dead || heroDown || d <= 0) return;
-  e.hp -= d; e.lastHitT = performance.now(); dpsLog.push([performance.now(), d]);
-  if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
-}
-// damage over time on enemies, then every effect's tick
-function stepEffects(dt) {
-  for (const e of foes) {
-    if (e.dead) continue;
-    if (e.bleed && e.bleed.t > 0) { e.bleed.t -= dt; dotDmg(e, e.bleed.dps * dt); }
-    if (e.burn && e.burn.t > 0) { e.burn.t -= dt; dotDmg(e, e.burn.dps * dt); }
-  }
-  emit("tick", { dt, moving: Math.abs(hvx) + Math.abs(hvy) > 40 });
-  if (field.decoy && field.decoy.until < performance.now()) field.decoy = null;
-}
-function checkDeath() {
-  if (hero.hp > 0) return;
-  if (!emit("revive", { done: false }).done) onDeath();
-}
-function trueDamage(d, label) {
-  if (heroDown) return;
-  if (hero.shield > 0) { const a = Math.min(hero.shield, d); hero.shield -= a; d -= a; }
-  hero.hp -= d;
-  if (d > 0) floatText(label + " -" + fmt(d), "hurt", "hero");
-  checkDeath();
-}
-function hurt(d, noEvade, from) {
-  const dir = from ? fdir(from) : F();
-  if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
-  const c = emit("incoming", { d, evade: noEvade ? 0 : evadeChance(), block: ST.block, cancel: false });
-  if (c.cancel) return false;
-  if (c.evade > 0 && Math.random() < c.evade) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); emit("evaded", c); return false; }
-  let blocked = false;
-  if (c.block > 0 && Math.random() < c.block) {
-    c.d *= ST.blockLeak; blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120);
-    emit("blocked", c);
-  }
-  c.d *= ST.dmgTaken;
-  emit("taken", c);
-  d = c.d;
-  const hadShield = hero.shield > 0;
-  if (hero.shield > 0) { const a = Math.min(hero.shield, d); hero.shield -= a; d -= a; if (a > 0) anim($("hBarrier"), [{ opacity: 1 }, { opacity: .3 }, { opacity: 1 }], 160); }
-  if (hadShield && hero.shield <= 0) emit("shieldBroken", c);
-  hero.hp -= d;
-  if (d > 0) emit("hurt", c);
-  const src = from || enemy;
-  if (d > 0 && ST.thorn && src && !src.dead && !heroDown) {
-    const e = src, r = d * ST.thorn;
-    e.hp -= r; dpsLog.push([performance.now(), r]);
-    if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); }
-  }
-  floatText(d <= 0 ? "Absorbed" : (blocked ? "Block -" : "-") + fmt(d), d <= 0 ? "info" : "hurt", "hero");
-  if (d > 0 && !blocked) sfx("hurt", 0, 120);
-  anim(heroModel, [{ transform: "translateX(0px)", filter: "none" }, { transform: "translateX(" + dir * 6 + "px)", filter: "drop-shadow(0 0 6px #ff6b6b) brightness(1.6)", offset: .4 }, { transform: "translateX(0px)", filter: "none" }], 220);
-  checkDeath();
-  return true;
-}
-function crush(e) {
-  e.el.model.classList.remove("tele");
-  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
-  shake(9, 450); sfx("crush");
-  // the Crush lands where the warning ring was: move out of it to dodge
-  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
-  log("Crush!", "bad");
-  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
-}
-function bossEscape() { mode.escape(); }
-function killFoe(e) {
-  if (e.removed) return;
-  e.removed = true;
-  const boss = e.boss, elite = e.elite, c = foeEmit(e, "death", { e, split: false });
-  const st = fightStage(), g = Math.ceil(lumenAt(st) * mode.lumen() * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
-  addGold(g, true); S.totalKills++;
-  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
-  bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
-  const fam = e.family, kk = boss ? "b" : elite ? "e" : "n";
-  if (fam) {
-    const rec = S.bestiary[fam.key] || (S.bestiary[fam.key] = { n: 0, e: 0, b: 0 });
-    const before = IT(fam.key, kk);
-    rec[kk]++;
-    if (e.v) { rec.v = rec.v || {}; rec.v[e.v.id] = (rec.v[e.v.id] || 0) + 1; }
-    const tt = IT(fam.key, kk);
-    if (tt > before) {
-      log("Index: " + (kk === "e" ? "Elite " : kk === "b" ? "Grand " : "") + fam.name + " tier " + ["", "I", "II", "III"][tt] + " reached. Now +" + +(fam[kk][0] * tt).toFixed(1) + fam[kk][1], "r4");
-      floatText("Index up", "info", "hero", "#ffd04d"); sfx("chord", 0, 300);
-      recalc();
-    }
-    markDirty("index");
-  }
-  floatText("+" + fmt(g) + " lumen", "gold", e);
-  heal(ST.maxHp * ST.killHeal);
-  hero.mp = Math.min(ST.maxMp, hero.mp + ST.maxMp * ((boss ? .25 : elite ? .1 : .03) + ST.killMana));
-  shatter(e); sfx("shatter", boss || elite, 150);
-  if (e.el) e.el.pos.style.visibility = "hidden";
-  let best = -1;
-  if (boss) {
-    const up = ST.bossLoot;
-    best = receive(makeItem(st, true, 1, null, up)).r;
-    best = Math.max(best, receive(makeItem(st, true, 1, null, up)).r);
-    if (Math.random() < .2) best = Math.max(best, receive(makeItem(st, true, 2, null, up)).r);
-    log(e.name + " destroyed", "good");
-  } else if (elite) {
-    best = receive(makeItem(st, false, Math.random() < .5 ? 1 : 0)).r;
-    if (Math.random() < ST.eliteSpoils) best = Math.max(best, receive(makeItem(st, false, 1)).r);
-    log(e.name + " destroyed", "good");
-  } else if (!e.child && Math.random() < ST.drop) best = receive(makeItem(st, false, 0)).r;
-  if (!e.child && Math.random() < ST.bonusDrop) best = Math.max(best, receive(makeItem(st, boss, 0)).r);
-  if (best >= 1) setTimeout(() => { lootBeam(best, e.px, e.py); sfx("loot", best, 200); }, 250);
-  emit("kill", c);
-  const splits = c.split;
-  if (splits) log(e.name + " splits apart", "r3");
-  mode.kill(e, c);
-  removeFoe(e, false);
-  if (splits) spawnChild(e);
-  pickTarget();
-}
-function onDeath() {
-  sfx("death");
-  mode.death();
-  heroDown = true; resetCombat();
-  const fall = anim(heroModel, [{ transform: "scale(1)", opacity: 1, filter: "brightness(1)" }, { transform: "scale(1.3)", opacity: 1, filter: "brightness(3)", offset: .25 }, { transform: "scale(0)", opacity: 0, filter: "brightness(1)" }], { duration: 600, easing: "ease-in", fill: "forwards" });
-  setTimeout(() => burst(view.HERO_X, view.HERO_Y, "#7be0d0", 10), 350);
-  setTimeout(() => clearFoes(true), 450);
+  if (!e.fl) e.fl = { sum: 0, crit: false, red: false, tap: true, t: 0, pend: false };
+  const F = e.fl; F.sum += d; F.crit = F.crit || crit; F.red = F.red || !!red; F.tap = F.tap && tap;
+  if (F.pend) return;
+  const wait = Math.max(0, 150 - (now - F.t));
+  F.pend = true;
   setTimeout(() => {
-    if (fall) fall.cancel();
-    hero.hp = ST.maxHp; hero.mp = ST.maxMp; heroDown = false; spawn.spawnT = .4;
-    anim(heroModel, [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1.2)", offset: .7 }, { opacity: 1, transform: "scale(1)" }], 400);
-    burst(view.HERO_X, view.HERO_Y, "#ffffff", 6);
-  }, 1300);
+    F.pend = false; F.t = performance.now();
+    if (F.sum > 0 && !document.hidden) floatText(fmt(F.sum) + (F.red ? "!!" : F.crit ? "!" : ""), F.red ? "rcrit" : F.crit ? "crit" : F.tap ? "tapn" : "hit", e.dead ? { px: e.px, py: e.py, R: e.R } : e);
+    F.sum = 0; F.crit = false; F.red = false; F.tap = true;
+  }, wait);
 }
-function step(dt) {
-  if (heroDown) return;
-  statusFx(dt);
-  for (const k in cds) if (cds[k] > 0) cds[k] -= dt;
-  if (hero.shieldT > 0) { hero.shieldT -= dt; if (hero.shieldT <= 0) hero.shield = 0; }
-  if (hero.odT > 0) { hero.odT -= dt; if (hero.odT <= 0) heroModel.classList.remove("od"); }
-  if (hero.markT > 0) { hero.markT -= dt; if (hero.markT <= 0) foes.forEach(f => f.el.cracks.style.display = "none"); }
-  for (const k in stT) if (stT[k] > 0) stT[k] -= dt;
-  heal(ST.maxHp * ST.hpRegen * dt);
-  stepEffects(dt);
-  mode.step(dt);
-  leechPool = Math.min(ST.maxHp * ST.leech * 3 * ST.leechCap, leechPool + ST.maxHp * ST.leech * 4 * ST.leechCap * dt);
-  hero.mp = Math.min(ST.maxMp, hero.mp + emit("manaRegen", { v: ST.maxMp * ST.mpRegen * dt }).v);
-  if (document.hidden) moveFoes(dt);
-  mode.stepSpawns(dt);
-  pickTarget();
-  autoCast();
-  for (const e of foes.slice()) { stepFoe(e, dt); if (heroDown) return; }
-  pickTarget();
-  if (!alive()) return;
-  for (const o of ORBITALS) {
-    if (!alive() || !o.active()) continue;
-    o.cd -= dt;
-    if (o.cd <= 0) { o.cd += 1 / (effSpd() * orbRate(o.key)); if (o.i) fireOrbital(o.key); else heroAttack(); }
-  }
-}
-
-// ---- js/audio/music.js
-// The generative background music.
-
-let mus = null, musBus = null, musNext = 0, musStep = 0;
-const MUS_VOL = { low: .3, med: .55, high: .85 };
-const musVol = () => S.music === false ? 0 : MUS_VOL[S.mvol || "med"];
-const CHORDS = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]];
-const ZONE_KEY = [0, -3, 2, -5, 4, -2, 5, -4];
-const ARP_EXTRA = [587.3, 880, 1174.7];
-function musicInit(out) {
-  mus = actx.createGain(); mus.gain.value = musVol();
-  const lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3000;
-  musBus = actx.createGain();
-  const dl = actx.createDelay(2), fb = actx.createGain(), wet = actx.createGain(), dlf = actx.createBiquadFilter();
-  dl.delayTime.value = .62; fb.gain.value = .38; wet.gain.value = .4; dlf.type = "lowpass"; dlf.frequency.value = 1800;
-  musBus.connect(mus); musBus.connect(dl); dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(wet); wet.connect(mus);
-  mus.connect(lp); lp.connect(out);
-  musNext = actx.currentTime + .3;
-}
-function setMusicVol() { if (mus) mus.gain.setTargetAtTime(musVol(), actx.currentTime, .3); }
-function mnote(type, f, t, dur, peak, atk, rel) {
-  const o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.value = f;
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(peak, t + atk);
-  g.gain.setValueAtTime(peak, t + Math.max(atk, dur - rel));
-  g.gain.linearRampToValueAtTime(0, t + dur);
-  o.connect(g); g.connect(musBus); o.start(t); o.stop(t + dur + .05);
-}
-function musStepAt(i, t, spb) {
-  const zone = Math.floor((fightStage() - 1) / 10), tr = Math.pow(2, ZONE_KEY[zone % ZONE_KEY.length] / 12);
-  const boss = !!(enemy && enemy.boss && !enemy.dead), rage = boss && enemy.enraged;
-  const bar = Math.floor(i / 8), beat = i % 8, ch = CHORDS[Math.floor(bar / 2) % 4];
-  if (i % 16 === 0) ch.forEach(f => {
-    mnote("sine", f * tr, t, 16 * spb + 1, .018, 1.8, 1.6);
-    mnote("triangle", f * tr * 1.004, t, 16 * spb + 1, .008, 2.2, 1.6);
-  });
-  if (beat === 0 || beat === 4) mnote("sine", ch[0] * tr / 2, t, spb * 3.5, boss ? .06 : .045, .04, spb * 2);
-  if (boss) mnote("sine", ch[0] * tr / 2, t, spb * .8, rage ? .03 : .02, .01, spb * .6);
-  if (Math.random() < (rage ? .7 : boss ? .5 : .32)) {
-    const pool = ch.map(f => f * 2).concat(ch.map(f => f * 4), ARP_EXTRA);
-    const f = pool[Math.floor(Math.random() * pool.length)] * tr;
-    mnote("sine", f, t, 1.1, .022, .01, 1);
-    mnote("sine", f * 2, t, .6, .006, .01, .55);
-  }
-}
-function musTick() {
-  if (!actx || !mus || actx.state !== "running" || heroDown === undefined) return;
-  const spb = 60 / 144;
-  if (musNext < actx.currentTime - .5) musNext = actx.currentTime + .05;
-  if (S.music === false) { musNext = actx.currentTime + .1; return; }
-  while (musNext < actx.currentTime + .6) { musStepAt(musStep, musNext, spb); musStep++; musNext += spb; }
-}
-
-function initMusic() {
-  setInterval(musTick, 150);
-  document.addEventListener("visibilitychange", () => { if (!actx) return; if (document.hidden) actx.suspend(); else actx.resume(); });
-}
-
-// ---- js/audio/sound.js
-// Synthesized sound effects (no audio files).
-
-let actx = null, master = null, bus = null, noiseBuf = null, voices = 0;
-const SND_VOL = { low: .35, med: .65, high: 1 };
-const sndVol = () => S.sound === false ? 0 : SND_VOL[S.vol || "med"];
-function audioInit() {
-  if (actx) { if (actx.state === "suspended") actx.resume(); return; }
-  try {
-    actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain(); master.gain.value = sndVol();
-    const comp = actx.createDynamicsCompressor();
-    comp.threshold.value = -20; comp.ratio.value = 4;
-    const soften = actx.createBiquadFilter(); soften.type = "lowpass"; soften.frequency.value = 5200;
-    master.connect(soften); soften.connect(comp); comp.connect(actx.destination);
-    musicInit(comp);
-    // light echo for a glassy, spacious feel
-    bus = actx.createGain(); bus.connect(master);
-    const dl = actx.createDelay(1), fb = actx.createGain(), wet = actx.createGain(), dlf = actx.createBiquadFilter();
-    dl.delayTime.value = .19; fb.gain.value = .3; wet.gain.value = .32; dlf.type = "lowpass"; dlf.frequency.value = 2600;
-    bus.connect(dl); dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(wet); wet.connect(master);
-    noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  } catch (err) { actx = null; }
-}
-function setVolume() { if (master) master.gain.setTargetAtTime(sndVol(), actx.currentTime, .05); }
-function env(g, t, dur, peak, atk) {
-  const a = atk || .008;
-  g.gain.setValueAtTime(.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + a);
-  g.gain.exponentialRampToValueAtTime(.0001, t + Math.max(dur, a + .02));
-}
-// soft sine/triangle voices only, routed through the echo bus
-function tone(type, f0, f1, dur, peak, delay, atk) {
-  const t = actx.currentTime + (delay || 0), o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.setValueAtTime(f0, t);
-  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
-  env(g, t, dur, peak, atk); o.connect(g); g.connect(bus);
-  o.start(t); o.stop(t + dur + .05); voices++; o.onended = () => voices--;
-}
-function air(f0, f1, dur, peak, delay) {
-  const t = actx.currentTime + (delay || 0), src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
-  src.buffer = noiseBuf; f.type = "bandpass"; f.Q.value = 1.2;
-  f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
-  env(g, t, dur, peak, dur * .35); src.connect(f); f.connect(g); g.connect(bus);
-  src.start(t, Math.random() * .5); src.stop(t + dur + .05); voices++; src.onended = () => voices--;
-}
-// everything is tuned to one pentatonic scale so overlapping sounds stay in harmony
-const NOTE = [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3, 659.3, 784, 880, 1046.5, 1174.7, 1318.5, 1568, 1760];
-const pickN = (lo, hi) => NOTE[lo + Math.floor(Math.random() * (hi - lo + 1))];
-const bell = (f, peak, delay, len) => { tone("sine", f, f, len || .45, peak, delay); tone("sine", f * 2, f * 2, (len || .45) * .6, peak * .3, delay); };
-const SFX = {
-  Drone: () => { const f = pickN(10, 12); tone("sine", f, f, .07, .02); tone("sine", f, f, .07, .016, .06); },
-  Glaive: () => air(700, 1500, .22, .03),
-  Laser: () => tone("sine", 1568, 1046.5, .14, .022),
-  Swarm: () => [9, 10, 11].forEach((n, i) => tone("triangle", NOTE[n], NOTE[n], .07, .014, i * .04)),
-  Hammer: () => { tone("sine", 165, 82, .28, .07, .21); tone("triangle", 330, 165, .18, .018, .21); },
-  Coil: () => { tone("sine", 1318.5, 1318.5, .12, .012); tone("sine", 1330, 1330, .12, .012); },
-  Mote: () => tone("sine", 1046.5, 1046.5, .07, .014),
-  hit: () => {},
-  crit: () => bell(pickN(10, 13), .045),
-  tap: () => tone("sine", pickN(8, 12), 0, .05, .012),
-  miss: () => {},
-  shatter: big => {
-    const n = big ? 5 : 2, start = big ? 12 : 13;
-    for (let i = 0; i < n; i++) bell(NOTE[Math.max(5, start - i * 2)], big ? .03 : .018, i * .06, .35);
-    if (big) tone("sine", 130.8, 98, .7, .06, 0, .02);
-  },
-  hurt: () => tone("sine", 220, 165, .14, .04),
-  block: () => tone("triangle", 880, 880, .1, .022),
-  evade: () => air(900, 1800, .18, .018),
-  bossIn: () => { tone("sine", 98, 98, 1.4, .07, 0, .5); tone("sine", 146.8, 146.8, 1.4, .05, .1, .5); tone("sine", 196, 196, 1.2, .03, .2, .4); },
-  eliteIn: () => { tone("sine", 196, 196, .5, .045, 0, .08); tone("sine", 293.7, 293.7, .45, .025, .05, .08); },
-  warn: () => { tone("sine", 440, 440, .12, .03); tone("sine", 440, 440, .12, .03, .25); tone("sine", 523.3, 523.3, .16, .035, .5); },
-  crush: () => { tone("sine", 110, 55, .55, .12, 0, .01); air(300, 120, .45, .03); },
-  status: () => { tone("sine", 622.3, 622.3, .3, .018, 0, .03); tone("sine", 587.3, 587.3, .3, .018, 0, .03); },
-  loot: r => [5, 7, 8, 10, 12].slice(0, 2 + r).forEach((n, i) => bell(NOTE[n], .03, i * .08, .4)),
-  death: () => [10, 8, 6, 5].forEach((n, i) => tone("sine", NOTE[n], NOTE[n], .45, .035, i * .14, .02)),
-  chord: () => [5, 7, 8, 10].forEach((n, i) => tone("sine", NOTE[n], NOTE[n], .9, .025, i * .05, .06)),
-  ascend: () => [0, 2, 3, 5, 7, 8, 10, 12].forEach((n, i) => bell(NOTE[n], .03, i * .09, .9)),
-  buy: () => { bell(1046.5, .022, 0, .2); bell(1318.5, .022, .07, .3); },
-  shard: () => bell(1568, .014, 0, .25),
-  nova: () => { tone("sine", 261.6, 523.3, .35, .05, 0, .05); bell(784, .025, .12, .5); },
-  barrier: () => { tone("sine", 523.3, 523.3, .8, .025, 0, .15); tone("sine", 784, 784, .8, .02, .05, .15); },
-  overdrive: () => [7, 8, 10, 12].forEach((n, i) => tone("triangle", NOTE[n], NOTE[n], .12, .018, i * .045)),
-  storm: () => air(500, 2200, .5, .028),
-  dash: () => [7, 9, 12].forEach((n, i) => bell(NOTE[n], .018, i * .035, .2)),
-  shatterSkill: () => [13, 12, 14].forEach((n, i) => bell(NOTE[n], .022, i * .05, .5))
-};
-const lastSnd = {};
-function sfx(key, arg, gap) {
-  if (!actx || actx.state !== "running" || S.sound === false || voices > 22) return;
-  const now = performance.now();
-  if (now - (lastSnd[key] || 0) < (gap === undefined ? 50 : gap)) return;
-  lastSnd[key] = now;
-  try { SFX[key](arg); } catch (err) {}
-}
-
-function initSound() {
-  ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, audioInit, { passive: true }));
+const floats = [];
+function floatText(text, cls, side, color) {
+  const el = document.createElement("span");
+  el.className = "float " + cls; el.textContent = text;
+  if (color) el.style.color = color;
+  const fe = typeof side === "object" && side ? side : side === "enemy" ? enemy : null;
+  const R = fe ? fe.R : 25, loot = cls === "gold" || cls === "shardf";
+  const x = fe ? fe.px + (Math.random() * 24 - 12) : side === "enemy" ? view.HERO_X + 60 : view.HERO_X + (Math.random() * 20 - 10);
+  const y = fe ? fe.py + (loot ? R * .5 : -R * .45) + Math.random() * 12 - 6 : view.HERO_Y - 34 - Math.random() * 12;
+  el.style.left = ((x - view.VX0) * SC).toFixed(0) + "px";
+  el.style.top = ((y - view.VY0) * SC).toFixed(0) + "px";
+  arena.appendChild(el); floats.push(el);
+  while (floats.length > 12) floats.shift().remove();
+  setTimeout(() => { el.remove(); const i = floats.indexOf(el); if (i >= 0) floats.splice(i, 1); }, 820);
 }
 
 // ---- js/core/economy.js
@@ -5128,6 +4798,285 @@ panel("board", {
 action("claim", id => claim(Number(id)));
 action("reroll", () => reroll());
 
+// ---- js/combat/combat.js
+// Hits and damage both ways: the hit pipeline, hurting the hero, deaths, kills and their rewards.
+
+let heroDown = false;
+const dpsLog = [];
+const F = () => fdir(enemy);
+const alive = () => !!enemy && !enemy.dead && !heroDown;
+function dps() {
+  const now = performance.now();
+  while (dpsLog.length && now - dpsLog[0][0] > 5000) dpsLog.shift();
+  return dpsLog.reduce((a, x) => a + x[1], 0) / 5;
+}
+let lastHealFloat = 0, leechPool = 0;
+// a hit is aimed now but only lands (health, effects, numbers) when the shot arrives
+function hit(base, delay, kind, slot) {
+  if (!alive()) return;
+  const e = enemy;
+  if (delay && !document.hidden) setTimeout(() => land(e, base, kind, slot), delay); else land(e, base, kind, slot);
+}
+function land(e, base, kind, slot) {
+  if (heroDown || !e || e.dead || !foes.includes(e)) return;
+  slot = slot || "weapon";
+  const tr = kind === "blade" ? wTr(slot) : null;
+  const h = { e, kind, slot, dmg: 0, crit: false, red: false, note: "", lethal: false, first: !!e.fresh, pierce: !!(tr && tr.pierce), seeking: !!(tr && tr.seeking) };
+  e.fresh = false;
+  // crit chance past 100% rolls red crits; when a crit is certain (Shatter), crit chance becomes red crit chance
+  const c = emit("critChance", { v: ST.crit, sure: false }), cc = c.v;
+  h.crit = c.sure || Math.random() < cc;
+  h.red = h.crit && Math.random() < (c.sure ? cc : cc - 1) + ST.redBonus;
+  emit("crit", h);
+  h.dmg = base * (.9 + Math.random() * .2);
+  if (h.crit) h.dmg *= ST.critDmg * (h.red ? ST.redPow : 1);
+  if (e.boss) h.dmg *= ST.bossDmg;
+  if (e.elite) h.dmg *= ST.eliteDmg;
+  emit("deal", h);
+  foeEmit(e, "take", h);
+  if (h.lethal) h.dmg = Math.max(h.dmg, e.hp);
+  if (e.v && e.v.eva && kind !== "tap" && !h.seeking && Math.random() < e.v.eva) { h.dmg = 0; h.note = "Miss"; }
+  foeEmit(e, "guard", h);
+  const { dmg, crit, red, note } = h;
+  e.hp -= dmg; if (dmg > 0) e.lastHitT = performance.now();
+  dpsLog.push([performance.now(), dmg]);
+  if (dmg > 0 && !e.dead) {
+    if (kind === "blade" && ST.burn > 0) e.burn = { dps: ST.atk * ST.burn / 2, t: 2 };
+    emit("hit", h);
+  }
+  if (tr && tr.stun && dmg > 0 && e.hp > 0 && Math.random() < tr.stun) {
+    e.stun = Math.max(e.stun || 0, e.boss ? .5 : 1.2); e.el.model.classList.add("stun");
+    floatText("Stunned", "info", e);
+  }
+  if (dmg > 0) foeEmit(e, "struck", h);
+  if (ST.leech > 0 && dmg > 0 && leechPool > 0) {
+    const got = Math.min(dmg * ST.leech, leechPool); leechPool -= got;
+    const before = hero.hp; heal(got);
+    const now = performance.now();
+    if (hero.hp - before > ST.maxHp * .02 && now - lastHealFloat > 600) { lastHealFloat = now; floatText("+" + fmt(hero.hp - before), "heal", "hero"); }
+  }
+  if (crit) bump("crit", 1);
+  const show = () => {
+    if (kind === "blade" || kind === "storm") slash(crit, slot, e);
+    else if (kind === "tap") sparks(e.px, e.py, crit ? 6 : 3, crit ? "#ff8a3d" : "#9ff3e6", 22);
+    if (note) sfx("miss", 0, 120);
+    else if (crit) sfx("crit", 0, 160);
+    else if (kind !== "tap") sfx("hit", 0, 70);
+    if (note) floatText(note, "info", e);
+    else dmgFloat(e, dmg, crit, kind === "tap", red);
+    if (red && !document.hidden) sparks(e.px, e.py, 5, "#ff2e4d", 28);
+    if (crit && kind !== "tap") shake(3, 160);
+    const tn = performance.now();
+    if (!e.dead && e.el && !(tn - (e.flashT || 0) < 140)) { e.flashT = tn; anim(e.el.body, [{ transform: "translate(0px,0px)", filter: "brightness(1)" }, { transform: lungeT(e, -3), filter: "brightness(2.2)", offset: .5 }, { transform: "translate(0px,0px)", filter: "brightness(1)" }], 160); }
+    if (!note) knock(e, (kind === "tap" ? 7 : tr ? tr.knock : 12) * (crit ? 1.7 : 1));
+  };
+  show();
+  downIfDead(e);
+}
+// a foe at zero health is dead; its kill resolves a moment later, once this hit's effects have played
+function downIfDead(e) { if (e.hp <= 0 && !e.dead) { e.dead = true; setTimeout(() => killFoe(e), 20); } }
+const effSpd = () => emit("attackSpeed", { v: ST.spd }).v;
+// a decoy (Phantom Veil) draws enemy fire while it lasts
+
+const field = {
+  decoy: null
+};
+// damage that skips crits and floats (bleeds, burns, trails, fields, blasts)
+function dotDmg(e, d) {
+  if (!e || e.dead || heroDown || d <= 0) return;
+  e.hp -= d; e.lastHitT = performance.now(); dpsLog.push([performance.now(), d]);
+  downIfDead(e);
+}
+function stepEffects(dt) {
+  for (const e of foes) {
+    if (e.dead) continue;
+    if (e.bleed && e.bleed.t > 0) { e.bleed.t -= dt; dotDmg(e, e.bleed.dps * dt); }
+    if (e.burn && e.burn.t > 0) { e.burn.t -= dt; dotDmg(e, e.burn.dps * dt); }
+  }
+  emit("tick", { dt, moving: Math.abs(hvx) + Math.abs(hvy) > 40 });
+  if (field.decoy && field.decoy.until < performance.now()) field.decoy = null;
+}
+function checkDeath() {
+  if (hero.hp > 0) return;
+  if (!emit("revive", { done: false }).done) onDeath();
+}
+function trueDamage(d, label) {
+  if (heroDown) return;
+  if (hero.shield > 0) { const a = Math.min(hero.shield, d); hero.shield -= a; d -= a; }
+  hero.hp -= d;
+  if (d > 0) floatText(label + " -" + fmt(d), "hurt", "hero");
+  checkDeath();
+}
+function hurt(d, noEvade, from) {
+  const dir = from ? fdir(from) : F();
+  if (dashIT > 0) { floatText("Dodged", "info", "hero"); return false; }
+  const c = emit("incoming", { d, evade: noEvade ? 0 : evadeChance(), block: ST.block, cancel: false });
+  if (c.cancel) return false;
+  if (c.evade > 0 && Math.random() < c.evade) { floatText("Evade", "info", "hero"); evadeFx(dir); sfx("evade", 0, 120); bump("evade", 1); emit("evaded", c); return false; }
+  let blocked = false;
+  if (c.block > 0 && Math.random() < c.block) {
+    c.d *= ST.blockLeak; blocked = true; bump("block", 1); blockFx(dir); sfx("block", 0, 120);
+    emit("blocked", c);
+  }
+  c.d *= ST.dmgTaken;
+  emit("taken", c);
+  d = c.d;
+  const hadShield = hero.shield > 0;
+  if (hero.shield > 0) { const a = Math.min(hero.shield, d); hero.shield -= a; d -= a; if (a > 0) anim($("hBarrier"), [{ opacity: 1 }, { opacity: .3 }, { opacity: 1 }], 160); }
+  if (hadShield && hero.shield <= 0) emit("shieldBroken", c);
+  hero.hp -= d;
+  if (d > 0) emit("hurt", c);
+  const src = from || enemy;
+  if (d > 0 && ST.thorn && src) dotDmg(src, d * ST.thorn);
+  floatText(d <= 0 ? "Absorbed" : (blocked ? "Block -" : "-") + fmt(d), d <= 0 ? "info" : "hurt", "hero");
+  if (d > 0 && !blocked) sfx("hurt", 0, 120);
+  anim(heroModel, [{ transform: "translateX(0px)", filter: "none" }, { transform: "translateX(" + dir * 6 + "px)", filter: "drop-shadow(0 0 6px #ff6b6b) brightness(1.6)", offset: .4 }, { transform: "translateX(0px)", filter: "none" }], 220);
+  checkDeath();
+  return true;
+}
+function crush(e) {
+  e.el.model.classList.remove("tele");
+  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
+  shake(9, 450); sfx("crush");
+  // the Crush lands where the warning ring was
+  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
+  log("Crush!", "bad");
+  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
+}
+function bossEscape() { mode.escape(); }
+function killFoe(e) {
+  if (e.removed) return;
+  e.removed = true;
+  const boss = e.boss, elite = e.elite, c = foeEmit(e, "death", { e, split: false });
+  const st = fightStage(), g = Math.ceil(lumenAt(st) * mode.lumen() * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
+  addGold(g, true); S.totalKills++;
+  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
+  bump("kill", 1); if (boss) bump("boss", 1); if (elite) bump("elite", 1);
+  recordKill(e);
+  floatText("+" + fmt(g) + " lumen", "gold", e);
+  heal(ST.maxHp * ST.killHeal);
+  hero.mp = Math.min(ST.maxMp, hero.mp + ST.maxMp * ((boss ? .25 : elite ? .1 : .03) + ST.killMana));
+  shatter(e); sfx("shatter", boss || elite, 150);
+  if (e.el) e.el.pos.style.visibility = "hidden";
+  let best = -1;
+  if (boss) {
+    const up = ST.bossLoot;
+    best = receive(makeItem(st, true, 1, null, up)).r;
+    best = Math.max(best, receive(makeItem(st, true, 1, null, up)).r);
+    if (Math.random() < .2) best = Math.max(best, receive(makeItem(st, true, 2, null, up)).r);
+    log(e.name + " destroyed", "good");
+  } else if (elite) {
+    best = receive(makeItem(st, false, Math.random() < .5 ? 1 : 0)).r;
+    if (Math.random() < ST.eliteSpoils) best = Math.max(best, receive(makeItem(st, false, 1)).r);
+    log(e.name + " destroyed", "good");
+  } else if (!e.child && Math.random() < ST.drop) best = receive(makeItem(st, false, 0)).r;
+  if (!e.child && Math.random() < ST.bonusDrop) best = Math.max(best, receive(makeItem(st, boss, 0)).r);
+  if (best >= 1) setTimeout(() => { lootBeam(best, e.px, e.py); sfx("loot", best, 200); }, 250);
+  emit("kill", c);
+  const splits = c.split;
+  if (splits) log(e.name + " splits apart", "r3");
+  mode.kill(e, c);
+  removeFoe(e, false);
+  if (splits) spawnChild(e);
+  pickTarget();
+}
+function onDeath() {
+  sfx("death");
+  mode.death();
+  heroDown = true; resetCombat();
+  const fall = anim(heroModel, [{ transform: "scale(1)", opacity: 1, filter: "brightness(1)" }, { transform: "scale(1.3)", opacity: 1, filter: "brightness(3)", offset: .25 }, { transform: "scale(0)", opacity: 0, filter: "brightness(1)" }], { duration: 600, easing: "ease-in", fill: "forwards" });
+  setTimeout(() => burst(view.HERO_X, view.HERO_Y, "#7be0d0", 10), 350);
+  setTimeout(() => clearFoes(true), 450);
+  setTimeout(() => {
+    if (fall) fall.cancel();
+    hero.hp = ST.maxHp; hero.mp = ST.maxMp; heroDown = false; spawn.spawnT = .4;
+    anim(heroModel, [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1.2)", offset: .7 }, { opacity: 1, transform: "scale(1)" }], 400);
+    burst(view.HERO_X, view.HERO_Y, "#ffffff", 6);
+  }, 1300);
+}
+function step(dt) {
+  if (heroDown) return;
+  statusFx(dt);
+  stepSkills(dt);
+  stepStatuses(dt);
+  heal(ST.maxHp * ST.hpRegen * dt);
+  stepEffects(dt);
+  mode.step(dt);
+  leechPool = Math.min(ST.maxHp * ST.leech * 3 * ST.leechCap, leechPool + ST.maxHp * ST.leech * 4 * ST.leechCap * dt);
+  hero.mp = Math.min(ST.maxMp, hero.mp + emit("manaRegen", { v: ST.maxMp * ST.mpRegen * dt }).v);
+  if (document.hidden) moveFoes(dt);
+  mode.stepSpawns(dt);
+  pickTarget();
+  autoCast();
+  for (const e of foes.slice()) { stepFoe(e, dt); if (heroDown) return; }
+  pickTarget();
+  if (!alive()) return;
+  for (const o of ORBITALS) {
+    if (!alive() || !o.active()) continue;
+    o.cd -= dt;
+    if (o.cd <= 0) { o.cd += 1 / (effSpd() * orbRate(o.key)); if (o.i) fireOrbital(o.key); else heroAttack(); }
+  }
+}
+
+// ---- js/audio/music.js
+// The generative background music.
+
+let mus = null, musBus = null, musNext = 0, musStep = 0;
+const MUS_VOL = { low: .3, med: .55, high: .85 };
+const musVol = () => S.music === false ? 0 : MUS_VOL[S.mvol || "med"];
+const CHORDS = [[261.6, 329.6, 392], [220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+const ZONE_KEY = [0, -3, 2, -5, 4, -2, 5, -4];
+const ARP_EXTRA = [587.3, 880, 1174.7];
+function musicInit(out) {
+  mus = actx.createGain(); mus.gain.value = musVol();
+  const lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3000;
+  musBus = actx.createGain();
+  const dl = actx.createDelay(2), fb = actx.createGain(), wet = actx.createGain(), dlf = actx.createBiquadFilter();
+  dl.delayTime.value = .62; fb.gain.value = .38; wet.gain.value = .4; dlf.type = "lowpass"; dlf.frequency.value = 1800;
+  musBus.connect(mus); musBus.connect(dl); dl.connect(dlf); dlf.connect(fb); fb.connect(dl); dlf.connect(wet); wet.connect(mus);
+  mus.connect(lp); lp.connect(out);
+  musNext = actx.currentTime + .3;
+}
+function setMusicVol() { if (mus) mus.gain.setTargetAtTime(musVol(), actx.currentTime, .3); }
+function mnote(type, f, t, dur, peak, atk, rel) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak, t + atk);
+  g.gain.setValueAtTime(peak, t + Math.max(atk, dur - rel));
+  g.gain.linearRampToValueAtTime(0, t + dur);
+  o.connect(g); g.connect(musBus); o.start(t); o.stop(t + dur + .05);
+}
+function musStepAt(i, t, spb) {
+  const zone = Math.floor((fightStage() - 1) / 10), tr = Math.pow(2, ZONE_KEY[zone % ZONE_KEY.length] / 12);
+  const boss = !!(enemy && enemy.boss && !enemy.dead), rage = boss && enemy.enraged;
+  const bar = Math.floor(i / 8), beat = i % 8, ch = CHORDS[Math.floor(bar / 2) % 4];
+  if (i % 16 === 0) ch.forEach(f => {
+    mnote("sine", f * tr, t, 16 * spb + 1, .018, 1.8, 1.6);
+    mnote("triangle", f * tr * 1.004, t, 16 * spb + 1, .008, 2.2, 1.6);
+  });
+  if (beat === 0 || beat === 4) mnote("sine", ch[0] * tr / 2, t, spb * 3.5, boss ? .06 : .045, .04, spb * 2);
+  if (boss) mnote("sine", ch[0] * tr / 2, t, spb * .8, rage ? .03 : .02, .01, spb * .6);
+  if (Math.random() < (rage ? .7 : boss ? .5 : .32)) {
+    const pool = ch.map(f => f * 2).concat(ch.map(f => f * 4), ARP_EXTRA);
+    const f = pool[Math.floor(Math.random() * pool.length)] * tr;
+    mnote("sine", f, t, 1.1, .022, .01, 1);
+    mnote("sine", f * 2, t, .6, .006, .01, .55);
+  }
+}
+function musTick() {
+  if (!actx || !mus || actx.state !== "running" || heroDown === undefined) return;
+  const spb = 60 / 144;
+  if (musNext < actx.currentTime - .5) musNext = actx.currentTime + .05;
+  if (S.music === false) { musNext = actx.currentTime + .1; return; }
+  while (musNext < actx.currentTime + .6) { musStepAt(musStep, musNext, spb); musStep++; musNext += spb; }
+}
+
+function initMusic() {
+  setInterval(musTick, 150);
+  document.addEventListener("visibilitychange", () => { if (!actx) return; if (document.hidden) actx.suspend(); else actx.resume(); });
+}
+
 // ---- js/core/load.js
 // Loading the save, with every migration from older versions in one place.
 
@@ -5151,7 +5100,7 @@ function migrateEco() {
   if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
   if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
   if ((S.eco || 0) >= 6) return;
-  // v6 retune: training caps changed, so trim anything above the new maximums
+  // v6 retune: training caps changed
   if (S.eco === 5) { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); S.eco = 7; return; }
   const fix = it => {
     if (!it) return; const r = RARITY[it.r] || RARITY[0];
@@ -5164,7 +5113,6 @@ function migrateEco() {
   S.bounties.forEach(b => { if (!b.empty && !b.eff) { b.eff = b.type === "gold" ? b.n / lumenAt(S.maxStage) : EFFORT[b.type] ? EFFORT[b.type](b.n) : b.n; delete b.gold; } });
   S.eco = 7;
 }
-// read the save into S and bring it up to date
 function load() {
   const d = readSave();
   if (!d) return;
@@ -5179,7 +5127,7 @@ function load() {
   S.oc = d.oc || {};
   S.forge = d.forge || {};
   S.abyss = Object.assign(KEPT().abyss, d.abyss || {}); S.abyss.altar = S.abyss.altar || {};
-  // saved by an older version inside the Abyss, which borrowed the main stage: put the main run back
+  // saved by an older version inside the Abyss, which borrowed the main stage
   if (S.abyss.ret) { S.stage = S.abyss.ret.stage; S.kills = S.abyss.ret.kills; S.push = S.abyss.ret.push; delete S.abyss.ret; }
   S.autoCfg = Object.assign(KEPT().autoCfg, d.autoCfg || {});
   if (!d.cyclePeak) S.cyclePeak = Math.max(S.peak || 1, S.maxStage || 1);
@@ -5192,38 +5140,6 @@ function load() {
   Object.values(S.equip).forEach(it => migrateItem(it, from));
   S.inv.forEach(it => migrateItem(it, from));
   migrateEco();
-}
-
-// ---- js/ui/offline.js
-// Offline progress: what your core farmed while you were away.
-
-const offCap = () => ST.offHours * 3600;
-function offlineGains(sec) {
-  sec = Math.min(sec, offCap());
-  const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * ST.offRate, st = Math.max(1, S.stage);
-  const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
-  const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
-  const items = Math.min(3, Math.floor(kills * ST.drop / 40));
-  return { sec, kills: Math.floor(kills), gold, shards, items };
-}
-function showOffline(sec) {
-  if (sec < 60 || !ST) return;
-  const g = offlineGains(sec);
-  if (g.gold <= 0 && g.shards <= 0) return;
-  addGold(g.gold, false); if (g.shards) addShards(g.shards);
-  const found = []; for (let i = 0; i < g.items; i++) { const it = makeItem(S.stage, false, 1); found.push(RARITY[it.r].name); receive(it, true); }
-  S.totalKills += g.kills;
-  const h = Math.floor(g.sec / 3600), m = Math.floor(g.sec % 3600 / 60), t = (h ? h + "h " : "") + m + "m";
-  $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > offCap() ? " (the most it can store is " + ST.offHours + " hours)" : "") + ".";
-  $("awayList").innerHTML = '<div><span>Shapes destroyed</span><b>' + fmt(g.kills) + '</b></div><div><span>Lumen</span><b class="g">+' + fmt(g.gold) + '</b></div>' +
-    (g.shards ? '<div><span>Shards</span><b class="s">+' + fmt(g.shards) + "</b></div>" : "") + (found.length ? "<div><span>Items</span><b>" + found.join(", ") + "</b></div>" : "");
-  $("away").hidden = false;
-  log("Away for " + t + ": earned " + fmt(g.gold) + " lumen" + (g.shards ? " and " + g.shards + " shards" : ""), "good");
-  save();
-}
-
-function initOffline() {
-  $("awayOk").addEventListener("click", () => { $("away").hidden = true; updateUI(); });
 }
 
 // ---- js/ui/input.js
@@ -5243,7 +5159,6 @@ function initInput() {
     if (near && near !== targeting.focus) { targeting.focus = near; pickTarget(); }
     if (!alive()) return;
     e.preventDefault();
-    // rapid taps build a combo: +2% tap damage per chained tap, up to +98%
     const tnow = performance.now();
     combo = tnow - lastTapT < 450 ? Math.min(50, combo + 1) : 1; lastTapT = tnow;
     if (combo === 25 || combo === 50) floatText(combo + " combo", "info", "hero", "#9ff3e6");
@@ -5291,23 +5206,47 @@ function initInput() {
     document.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
     addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
   })();
-  $("mode").addEventListener("click", () => { mode.button(); updateUI(); save(); });
+  $("mode").addEventListener("click", () => runAction("modeButton"));
+}
+
+// ---- js/ui/offline.js
+// Offline progress: what your core farmed while you were away.
+
+const offCap = () => ST.offHours * 3600;
+function offlineGains(sec) {
+  sec = Math.min(sec, offCap());
+  const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * ST.offRate, st = Math.max(1, S.stage);
+  const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
+  const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
+  const items = Math.min(3, Math.floor(kills * ST.drop / 40));
+  return { sec, kills: Math.floor(kills), gold, shards, items };
+}
+function showOffline(sec) {
+  if (sec < 60 || !ST) return;
+  const g = offlineGains(sec);
+  if (g.gold <= 0 && g.shards <= 0) return;
+  addGold(g.gold, false); if (g.shards) addShards(g.shards);
+  const found = []; for (let i = 0; i < g.items; i++) { const it = makeItem(S.stage, false, 1); found.push(RARITY[it.r].name); receive(it, true); }
+  S.totalKills += g.kills;
+  const h = Math.floor(g.sec / 3600), m = Math.floor(g.sec % 3600 / 60), t = (h ? h + "h " : "") + m + "m";
+  $("awayText").innerHTML = "Your core kept farming stage " + S.stage + " for <b>" + t + "</b>" + (sec > offCap() ? " (the most it can store is " + ST.offHours + " hours)" : "") + ".";
+  $("awayList").innerHTML = '<div><span>Shapes destroyed</span><b>' + fmt(g.kills) + '</b></div><div><span>Lumen</span><b class="g">+' + fmt(g.gold) + '</b></div>' +
+    (g.shards ? '<div><span>Shards</span><b class="s">+' + fmt(g.shards) + "</b></div>" : "") + (found.length ? "<div><span>Items</span><b>" + found.join(", ") + "</b></div>" : "");
+  $("away").hidden = false;
+  log("Away for " + t + ": earned " + fmt(g.gold) + " lumen" + (g.shards ? " and " + g.shards + " shards" : ""), "good");
+  save();
+}
+
+function initOffline() {
+  $("awayOk").addEventListener("click", () => { $("away").hidden = true; updateUI(); });
 }
 
 // ---- js/main.js
 // Boot and the main loop.
 
-initInput();
-initHero();
-initMusic();
-initSound();
-initWeb();
-initWindows();
-initOffline();
-initGuide();
+// drawing: everything that moves smoothly, once per animation frame
 let lastFrame = 0;
 function frame(now) {
-  // battery saver draws every other frame (about 30 fps)
   if (S.saver && lastFrame && now - lastFrame < 30) { requestAnimationFrame(frame); return; }
   const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
   stepHero(dt);
@@ -5320,9 +5259,37 @@ function frame(now) {
   syncTarget(); placeTags(dt); placeReticle(dt);
   requestAnimationFrame(frame);
 }
-let gTimer = 0, saveT = 0, uiT = 0, lightT = 0;
+
+// the game itself: combat and automation every 50ms, plus slower bookkeeping
+let prev = Date.now(), gTimer = 0, saveT = 0, uiT = 0, lightT = 0, boardT = 0, kLast = -1, hiddenAt = 0;
+function tick() {
+  const now = Date.now(), dt = Math.min((now - prev) / 1000, .25);
+  prev = now;
+  if (!paused()) { step(dt); autoTick(dt); }
+  if (S.maxStage > (S.cyclePeak || 1)) S.cyclePeak = S.maxStage;
+  gTimer += dt; saveT += dt; uiT += dt; lightT += dt; boardT += dt;
+  if (gTimer >= 2) {
+    S.gps = S.gps * .8 + (earned.gAcc / gTimer) * .2; earned.gAcc = 0;
+    if (!paused() && !heroDown) { const k = S.totalKills - (kLast < 0 ? S.totalKills : kLast); S.kps = (S.kps || .3) * .95 + (k / gTimer) * .05; }
+    kLast = S.totalKills; gTimer = 0;
+  }
+  if (uiT >= .1) { uiT = 0; updateUI(); }
+  if (lightT >= .5) { lightT = 0; refreshPanel(); }
+  if (boardT >= 1) { boardT = 0; ensureBoard(); }
+  if (saveT >= 5) { saveT = 0; save(); }
+}
+
+initInput();
+initHero();
+initMusic();
+initSound();
+initWeb();
+initWindows();
+initOffline();
+initGuide();
+
 load();
-whenActionsRun(() => { recalc(); markDirty(...Object.keys(PANELS)); save(); updateUI(); });
+whenActionsRun(() => { recalc(); ensureBoard(); markDirty(...Object.keys(PANELS)); save(); updateUI(); });
 applyGfx();
 recalc();
 ensureBoard();
@@ -5339,23 +5306,7 @@ if (S.refundNote) { log("Automation is now free once you Transcend: refunded " +
 if (!S.seenIntro) showIntro();
 else showOffline((Date.now() - S.last) / 1000);
 updateUI();
-let prev = Date.now(), boardT = 0, kLast = -1, hiddenAt = 0;
-setInterval(() => {
-  const now = Date.now(), dt = Math.min((now - prev) / 1000, .25);
-  prev = now;
-  if (!paused()) { step(dt); autoTick(dt); }
-  if (S.maxStage > (S.cyclePeak || 1)) S.cyclePeak = S.maxStage;
-  gTimer += dt; saveT += dt; uiT += dt; lightT += dt; boardT += dt;
-  if (gTimer >= 2) {
-    S.gps = S.gps * .8 + (earned.gAcc / gTimer) * .2; earned.gAcc = 0;
-    if (!paused() && !heroDown) { const k = S.totalKills - (kLast < 0 ? S.totalKills : kLast); S.kps = (S.kps || .3) * .95 + (k / gTimer) * .05; }
-    kLast = S.totalKills; gTimer = 0;
-  }
-  if (uiT >= .1) { uiT = 0; updateUI(); }
-  if (lightT >= .5) { lightT = 0; refreshPanel(); }
-  if (boardT >= 1) { boardT = 0; ensureBoard(); }
-  if (saveT >= 5) { saveT = 0; save(); }
-}, 50);
+setInterval(tick, 50);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { hiddenAt = Date.now(); save(); }
   else { prev = Date.now(); if (hiddenAt && $("away").hidden) showOffline((Date.now() - hiddenAt) / 1000); hiddenAt = 0; }
