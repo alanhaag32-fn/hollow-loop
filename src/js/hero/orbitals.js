@@ -90,7 +90,6 @@ function traitOf(it) {
 export const wTr = slot => traitOf(S.equip[slot]);
 export const traitText = it => WEAPON[weaponType(it)].trait.text(traitOf(it));
 let attackCount = 0;
-export const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
 // an orbital item's weapon type (old names it doesn't know fall back to Glaive)
 export const weaponType = it => { const n = noun(it); return WEAPON[n] && !WEAPON[n].bare ? n : "Glaive"; };
 export const wType = (slot = "weapon") => S.equip[slot] ? weaponType(S.equip[slot]) : "Mote";

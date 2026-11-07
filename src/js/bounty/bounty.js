@@ -29,6 +29,8 @@ const BOUNTY_T = [
 ];
 const BT = {};
  BOUNTY_T.forEach(b => BT[b.type] = b);
+// a finished bounty waits on the board to be claimed
+export const bountyReady = () => S.bounties.some(b => !b.empty && b.prog >= b.n);
 // effort in "kills worth of time" for each bounty type; rewards are worth well over the time spent
 export const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n };
 export const bountyShards = tier => (3 + 3 * tier) * shardAmt(S.maxStage);

@@ -9,13 +9,16 @@ import { RARITY, makeItem } from "../gear/items.js";
 import { updateUI } from "./hud.js";
 import { log } from "./log.js";
 import { hold } from "../core/pause.js";
+import { KILLS } from "../modes/modes.js";
+import { ELITE_SHARDS, SHARD_CHANCE } from "../combat/combat.js";
 
 const offCap = () => ST.offHours * 3600;
 function offlineGains(sec) {
   sec = Math.min(sec, offCap());
   const kps = Math.min(2, Math.max(.05, S.kps || .2)), kills = kps * sec * ST.offRate, st = Math.max(1, S.stage);
   const gold = Math.ceil(kills * lumenAt(st) * ST.gold * 1.1);
-  const shards = Math.floor(kills * (.08 * 7 / 8 + (st > 10 ? 2 / 8 : 0)) * shardAmt(st) * .6);
+  // as if each stage had one elite (past stage 10) and the rest regular shapes, at 60% of the shards
+  const shards = Math.floor(kills * (SHARD_CHANCE * (KILLS - 1) / KILLS + (st > 10 ? ELITE_SHARDS / KILLS : 0)) * shardAmt(st) * .6);
   const items = Math.min(3, Math.floor(kills * ST.drop / 40));
   return { sec, kills: Math.floor(kills), gold, shards, items };
 }

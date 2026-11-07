@@ -1,7 +1,7 @@
 // Enemies on the field: their SVG, movement, targeting, spawning and each one's turn.
 import { sfx } from "../audio/sound.js";
-import { crush, heroDown } from "../combat/combat.js";
-import { foeEmit } from "../core/stats.js";
+import { heroDown, hurt } from "../combat/combat.js";
+import { ST, foeEmit } from "../core/stats.js";
 import { $, polyPts, starPts, svgEl } from "../core/util.js";
 import { MODS, ePts, eVerts, makeChild } from "./enemies.js";
 import { FAR_RATE, enemyAttack } from "./shots.js";
@@ -19,6 +19,8 @@ import { ARENA_B, ARENA_T, ENGAGE, SC, VH, VW, VX1, VY1, setZone, view } from ".
 const FOE_TPL = '<g class="eModel"><g class="hover"><g class="eBody"><g class="eSpin"><g class="eRing"></g><polygon class="ePlate" fill="none" stroke-width="3" stroke-linejoin="round"/><g class="eSpikes"></g><polygon class="ePoly" stroke-width="2.5" stroke-linejoin="round"/><polygon class="eInner" fill="none" stroke-width="1.5" opacity=".7"/><g class="eDeco"></g><g class="eCracks" style="display:none"></g></g><g class="eTrail"></g><g class="eCrown"></g><circle class="eEye" r="5" fill="#fff"/><circle class="ePupil" r="2.2"/></g><g class="eFacetWrap"><g class="eFacets spinSlow"></g></g><g class="eMoteWrap"><g class="eMotes spinRev"></g></g><g class="eModMarks"></g><g class="eArm"><g class="eSwing"><g class="eAim"><path class="eWeapon" stroke="#000" stroke-opacity=".35" stroke-width="1"/><g transform="translate(0 -22)"><g class="eSaw sawSpin"></g></g></g></g></g></g></g><g class="eMini" fill="none"><path class="mBg" stroke="rgba(255,255,255,.14)" stroke-width="2.2"/><path class="mFg" stroke="#ff6b6b" stroke-width="2.2"/></g>';
 export const foes = [];
 let moveT = 0;
+// the height the current target's body is drawn at (in the hero's frame when there is none)
+export const enemyCY = () => view.ENEMY_Y + (enemy ? enemy.cy : -40);
 export const targeting = {
   focus: null
 };
@@ -335,6 +337,15 @@ function drawVariant(e, cy) {
   E.inner.setAttribute("opacity", k.innerOp || .7);
   E.model.classList.toggle("umbral", k.cls === "umbral");
   k.deco(e, E.deco, cy, eVerts(e, e.R, 0, 0, cy));
+}
+// a boss Crush: lands where the warning ring was shown 1.3s earlier
+function crush(e) {
+  e.el.model.classList.remove("tele");
+  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
+  shake(9, 450); sfx("crush");
+  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
+  log("Crush!", "bad");
+  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
 }
 export function stepFoe(e, dt) {
   if (e.dead || !foes.includes(e)) return;

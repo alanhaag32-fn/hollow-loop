@@ -54,6 +54,25 @@ test("Last Stand: under 30% health you take 40% less damage", async () => {
   assert.ok(Math.abs(ratio - .6) < 1e-9, String(ratio));
 });
 
+test("Void Step (Abyss depth 10): a dash leaves a rift that hits shapes along its path when it ends", async () => {
+  const lost = [];
+  for (const best of [0, 15]) {
+    const page = await open(baseSave({ stage: 5, maxStage: 5, abyss: { best, depth: 1, stone: 0, total: 0, altar: {}, seed: 1 } }));
+    lost.push(await game(page, ["hero/hero.js", "enemies/enemies.js", "enemies/foes.js", "world/scene.js"], async m => {
+      m.foes.clearFoes();
+      Math.random = () => .99;
+      const e = m.foes.spawnFoe(m.enemies.makeEnemy(5, false));
+      e.v = Object.assign({}, e.v, { eva: 0 }); e.fresh = false; e.max = e.hp = 1e15;
+      e.px = m.scene.view.HERO_X; e.py = m.scene.view.HERO_Y + 50;
+      m.hero.startDash(1);
+      await new Promise(r => setTimeout(r, 600));
+      return 1e15 - e.hp;
+    }));
+    assert.deepEqual(page.errors, []);
+  }
+  assert.ok(lost[1] > lost[0], JSON.stringify(lost));
+});
+
 test("ascending resets the run but keeps Stardust, the Star Forge and the Abyss", async () => {
   const page = await open(baseSave({ gold: 1e6, stage: 60, maxStage: 60, peak: 60, stardust: 7, stardustTotal: 9, forge: { craft: 1 }, abyss: { best: 3, depth: 4, stone: 5, total: 5, altar: {}, seed: 1 }, echoes: 2 }));
   await press(page, "tree", "asc", "ascend", 2);

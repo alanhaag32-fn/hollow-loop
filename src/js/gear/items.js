@@ -6,7 +6,7 @@ import { S } from "../core/save.js";
 import { ST, cutBy, onBase, plus, statSource } from "../core/stats.js";
 import { $, fmt, pctS, pick, rnd, svgEl } from "../core/util.js";
 import { enemy, foes, inView } from "../enemies/foes.js";
-import { burst, fxBusy, ring, ringIfRoom, tempFx } from "../fx/effects.js";
+import { NOVA_MS, burst, fxBusy, ring, ringIfRoom, tempFx } from "../fx/effects.js";
 import { anim, reduce } from "../fx/gfx.js";
 import { heal, hero, setCounts } from "../hero/hero.js";
 import { ORBITALS, slotAtk, splitShot, throwBlade, wDelay } from "../hero/orbitals.js";
@@ -54,7 +54,7 @@ export const SETS = [
     b4: { d: "Nova damage x2, and Nova marks its target to take +15% damage for 4s", stats: () => ({ novaPow: 2 }), fx: { hit(h) { if (h.kind === "nova") h.e.voidT = performance.now() + 4000; }, deal(h) { if (h.e.voidT > performance.now()) h.dmg *= 1.15; } } },
     b6: { d: "Nova leaves a void field for 3s that deals 50% attack per second and pulls enemies in", fx: {
       fields: [],
-      cast(c) { const tg = enemy; if (c.id === "nova" && tg) setTimeout(() => { if (!tg.dead) this.field(tg.px, tg.py); }, 220); },
+      cast(c) { const tg = enemy; if (c.id === "nova" && tg) setTimeout(() => { if (!tg.dead) this.field(tg.px, tg.py); }, NOVA_MS); },
       field(x, y) {
         this.fields.push({ x, y, R: 70, t: 3 });
         if (!reduce) tempFx(svgEl("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 70, fill: "rgba(122,69,224,.18)", stroke: "#b48cff", "stroke-width": 2, "stroke-dasharray": "6 5" }), [{ opacity: 0 }, { opacity: 1, offset: .1 }, { opacity: 1, offset: .85 }, { opacity: 0 }], 3000);

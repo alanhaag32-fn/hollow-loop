@@ -8,10 +8,10 @@ import { VARIANTS, addMod, makeFoe } from "../enemies/enemies.js";
 import { clearFoes, foes, newWaypoint, pickSpawnAngle, setFoePos, spawnFoe } from "../enemies/foes.js";
 import { ringIfRoom, tempFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
-import { DASH_TIME, dashIT, recalc } from "../hero/hero.js";
+import { dashIT, recalc } from "../hero/hero.js";
 import { MAIN, mode, spawn, switchMode } from "../modes/modes.js";
 import { TRANS_AT } from "../progress/transcend.js";
-import { action, markDirty } from "../ui/actions.js";
+import { action, markDirty, sheet } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { closeWindow } from "../ui/windows.js";
@@ -61,13 +61,11 @@ statSource(give => ALTAR.forEach(a => give(a, AL(a.id))));
 const AB_MILES = [
   [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge", { stats: () => ({ orbit3Min: plus(.4) }) }],
   [10, "Void Step", "Dash tears a rift along its path that deals 300% attack", { fx: {
-    dash(c) {
+    dashEnd(c) {
       const { x0, y0 } = c;
-      setTimeout(() => {
-        const x1 = view.HERO_X, y1 = view.HERO_Y, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
-        if (!reduce) tempFx(svgEl("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#c08bff", "stroke-width": 10, "stroke-linecap": "round", opacity: .5, class: "glow" }), [{ opacity: .7 }, { opacity: 0 }], 500);
-        foes.forEach(f => { if (f.dead) return; const t = Math.max(0, Math.min(1, ((f.px - x0) * vx + (f.py - y0) * vy) / L2)); if (Math.hypot(f.px - (x0 + vx * t), f.py - (y0 + vy * t)) < f.R + 40) land(f, ST.atk * 3, "aoe"); });
-      }, DASH_TIME * 1000 + 20);
+      const x1 = view.HERO_X, y1 = view.HERO_Y, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
+      if (!reduce) tempFx(svgEl("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: "#c08bff", "stroke-width": 10, "stroke-linecap": "round", opacity: .5, class: "glow" }), [{ opacity: .7 }, { opacity: 0 }], 500);
+      foes.forEach(f => { if (f.dead) return; const t = Math.max(0, Math.min(1, ((f.px - x0) * vx + (f.py - y0) * vy) / L2)); if (Math.hypot(f.px - (x0 + vx * t), f.py - (y0 + vy * t)) < f.R + 40) land(f, ST.atk * 3, "aoe"); });
     }
   } }],
   [25, "Rift Keystone", "+25% echo power", { stats: () => ({ echoBonus: 1.25 }) }],
@@ -214,7 +212,7 @@ function voidBlink(e) {
   e.px = view.HERO_X + Math.cos(a) * dist; e.py = view.HERO_Y + Math.sin(a) * dist; e.vx = 0; e.vy = 0;
   newWaypoint(e); setFoePos(e); ringIfRoom(e.px, e.py, e.stroke, .2, 2, 300, 2);
 }
-export function renderAbyss() {
+function renderAbyss() {
   if (!abyssOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to open the Abyss.</p>";
   const A = S.abyss, d = A.depth, rules = AB_RULES.map(r => [r, ruleCountAt(r.id, d)]).filter(x => x[1] > 0);
   let h = '<div class="ascTop transTop"><div><b class="voidC">' + fmt(A.stone) + " Voidstone</b> to spend · best depth " + A.best + "</div>" +
@@ -231,6 +229,7 @@ export function renderAbyss() {
   });
   return h;
 }
+sheet("tree", "abyss", { label: "Abyss", at: 2, open: () => abyssOpen(), body: "abyssBody", render: renderAbyss });
 action("abEnter", () => enterAbyss());
 action("abLeave", () => { exitAbyss(); closeWindow(); });
 action("abDown", () => { S.abyss.depth = Math.max(1, S.abyss.depth - 5); });

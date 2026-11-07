@@ -9,6 +9,12 @@ export const PANELS = {}, ACTIONS = {};
 // bar() html for the tab row instead of tabs, fill(tab) to fill the sheet, shown() once it's on screen }
 export const panel = (id, def) => { PANELS[id] = Object.assign({ stale: true }, def); };
 export const action = (name, fn) => { ACTIONS[name] = fn; };
+// tabs a feature adds to another feature's window (the Transcend and Abyss tabs in the Tree). def: { label, at (tab
+// order), open() whether the tab shows, body: the element its render() html goes in }. The window lists and renders them.
+const SHEETS = {};
+export const sheet = (win, id, def) => { (SHEETS[win] = SHEETS[win] || []).push(Object.assign({ id }, def)); SHEETS[win].sort((a, b) => a.at - b.at); };
+export const sheetTabs = win => (SHEETS[win] || []).filter(s => s.open()).map(s => [s.id, s.label]);
+export const renderSheets = win => (SHEETS[win] || []).forEach(s => { document.getElementById(s.body).innerHTML = s.render(); });
 export function markDirty(...k) { k.forEach(x => { PANELS[x].stale = true; }); }
 let afterAction = () => {};
 // set once at boot: what follows every action that changed something

@@ -9,7 +9,7 @@ import { startRun } from "./ascend.js";
 import { autoOn } from "./automation.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { TRAIN } from "../train/train.js";
-import { action, confirmTap } from "../ui/actions.js";
+import { action, confirmTap, sheet } from "../ui/actions.js";
 import { log } from "../ui/log.js";
 
 const FR = id => (S.forge && S.forge[id]) || 0;
@@ -55,7 +55,7 @@ function doTranscend() {
   log("Echoes, the web and ascension modifiers have reset. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
   return true;
 }
-export function renderTrans() {
+function renderTrans() {
   if (!transOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to unlock Transcend.</p>";
   const g = dustGain(), bestC = Math.max(S.cyclePeak || 1, S.maxStage);
   let h = '<div class="ascTop transTop"><div><b class="dustC">' + fmt(S.stardust || 0) + " Stardust</b> to spend · " + fmt(S.stardustTotal || 0) + " earned in total</div>" +
@@ -78,6 +78,7 @@ export function renderTrans() {
   h += row("Smart Cast", "Auto-cast saves big skills for elites, bosses and groups.", '<button class="chip' + (S.autoCfg.smart !== false ? " on" : "") + '" data-act="smartT">' + (S.autoCfg.smart !== false ? "On" : "Off") + "</button>");
   return h;
 }
+sheet("tree", "trans", { label: "Transcend", at: 1, open: () => transOpen(), body: "transBody", render: renderTrans });
 action("transcend", (id, b) => {
   if (!transOpen() || !canTrans()) return false;
   if (!confirmTap(b, "Tap again to transcend")) return false;

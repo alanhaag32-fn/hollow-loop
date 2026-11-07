@@ -23,7 +23,7 @@ Forge) has a `stats` function next to its description and is registered with `st
 them using the definitions in `STATS` and knows none of the sources. To add a bonus, add it where it's described.
 
 **Behaviour is effect hooks.** Anything that changes how play works has an `fx` object of named hooks (`deal`, `hit`,
-`incoming`, `taken`, `revive`, `kill`, `cast`, `dash`, `tick`, `attackSpeed`, ...). Combat code calls `emit(name, ctx)`
+`incoming`, `taken`, `revive`, `kill`, `cast`, `dash`, `dashEnd`, `tick`, `attackSpeed`, ...). Combat code calls `emit(name, ctx)`
 and never checks which set, unique, node or status is active. Enemy modifiers and boss mechanics hook in the same way
 through `foeEmit`.
 
@@ -31,7 +31,13 @@ through `foeEmit`.
 `escape`, `hud`, ...). Combat asks the current `mode`; `S.stage` is only ever the main run's stage.
 
 **Actions and panels register next to their feature.** A button's `data-act` names an action; after any action the
-game recalculates, re-renders the open window, saves and refreshes the HUD, so actions never do that themselves.
+game recalculates, re-renders the open window, saves and refreshes the HUD, so actions never do that themselves. A
+feature that adds a tab to another feature's window registers it with `sheet()` (Transcend and the Abyss in the Tree).
+A feature nothing calls into, like the Abyss, is imported once by `main.js` for its registrations.
+
+**Kinds are one table entry each.** Each orbital weapon type is one `WEAPON` entry (sprite, trait, timing, muzzle,
+how it shoots and how its hits look); each enemy variant is one `VARIANTS` entry (stats, gun, body look) plus one
+`ATTACK` entry in `shots.js` (on-screen shot and off-screen version). Code asks the entry, never the type's name.
 
 **Play events.** Code where something happens calls `tell(type, n, detail)` (a kill, a crit, a cast, a stage
 cleared); bounties and the Index `listen` for them, so combat doesn't know either feature exists.

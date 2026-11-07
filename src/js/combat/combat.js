@@ -6,7 +6,7 @@ import { S } from "../core/save.js";
 import { ST, emit, foeEmit } from "../core/stats.js";
 import { $, fmt } from "../core/util.js";
 import { clearFoes, enemy, fdir, foes, knock, lungeT, moveFoes, pickTarget, removeFoe, spawnChild, stepFoe } from "../enemies/foes.js";
-import { blockFx, burst, evadeFx, lootBeam, ringIfRoom, shake, shatter, slash, sparks, statusFx } from "../fx/effects.js";
+import { blockFx, burst, evadeFx, lootBeam, shake, shatter, slash, sparks, statusFx } from "../fx/effects.js";
 import { receive } from "../gear/inventory.js";
 import { makeItem } from "../gear/items.js";
 import { dashIT, evadeChance, heal, hero, heroModel, hvx, hvy, resetCombat } from "../hero/hero.js";
@@ -151,22 +151,15 @@ export function hurt(d, noEvade, from) {
   checkDeath();
   return true;
 }
-export function crush(e) {
-  e.el.model.classList.remove("tele");
-  anim(e.el.model, [{ transform: "translate(0px,0px) scale(1)" }, { transform: lungeT(e, 60) + " scale(1.15)", offset: .4 }, { transform: "translate(0px,0px) scale(1)" }], 420);
-  shake(9, 450); sfx("crush");
-  // the Crush lands where the warning ring was
-  if (e.crX != null && Math.hypot(view.HERO_X - e.crX, view.HERO_Y - e.crY) > 58) { log("Crush dodged", "good"); floatText("Dodged", "info", "hero"); ringIfRoom(e.crX, e.crY, "#ff4d4d", 1, 2.2, 300, 3); return; }
-  log("Crush!", "bad");
-  hurt(ST.maxHp * .45 * ST.crushTaken, true, e);
-}
+// shards a kill drops: elites always drop ELITE_SHARDS lots, regular shapes one lot SHARD_CHANCE of the time
+export const SHARD_CHANCE = .08, ELITE_SHARDS = 2;
 function killFoe(e) {
   if (e.removed) return;
   e.removed = true;
   const boss = e.boss, elite = e.elite, c = foeEmit(e, "death", { e, split: false });
   const st = fightStage(), g = Math.ceil(lumenAt(st) * mode.lumen() * (boss ? 12 : elite ? 4 : 1) * (e.child ? .25 : 1) * ST.gold * (boss || elite ? ST.bigGold : 1));
   addGold(g, true); S.totalKills++;
-  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(2 * sa), e); else if (Math.random() < .08) addShards(Math.round(sa), e); }
+  if (!e.child) { const sa = shardAmt(st) * ST.shardF; if (boss) addShards(Math.round(4 * sa * ST.bossShards), e); else if (elite) addShards(Math.round(ELITE_SHARDS * sa), e); else if (Math.random() < SHARD_CHANCE) addShards(Math.round(sa), e); }
   tell("kill", 1, e); if (boss) tell("boss", 1); if (elite) tell("elite", 1);
   floatText("+" + fmt(g) + " lumen", "gold", e);
   heal(ST.maxHp * ST.killHeal);

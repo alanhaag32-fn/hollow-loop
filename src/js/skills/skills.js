@@ -5,7 +5,7 @@ import { S } from "../core/save.js";
 import { ST, emit, statSource } from "../core/stats.js";
 import { $, fmt } from "../core/util.js";
 import { enemy, foes, inView } from "../enemies/foes.js";
-import { burst, crackFx, novaFx } from "../fx/effects.js";
+import { NOVA_MS, burst, crackFx, novaFx } from "../fx/effects.js";
 import { hero, heroModel, startDash } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
 import { clearStatuses } from "../hero/statuses.js";
@@ -28,7 +28,7 @@ const SKILLS = [
     id: "nova", name: "Nova", unlock: 1, cd: 5, cost: .15, foe: true, smart: 3, icon: "M12 7 A5 5 0 1 1 11.99 7 Z M12 0 L13.5 4.5 L10.5 4.5 Z M12 24 L10.5 19.5 L13.5 19.5 Z M0 12 L4.5 10.5 L4.5 13.5 Z M24 12 L19.5 13.5 L19.5 10.5 Z",
     dmg: L => ST.atk * 2.5 * skMult(L) * ST.skillPow * ST.novaPow,
     desc: L => "Burst for " + fmt(SK.nova.dmg(L)) + " damage",
-    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, 220, "nova"); }
+    cast(L, c) { c.dmg = this.dmg(L); novaFx(); hit(c.dmg, NOVA_MS, "nova"); }
   },
   {
     id: "barrier", name: "Barrier", unlock: 5, cd: 14, cost: .2, foe: false, reserve: true, icon: "M12 1 L22 6.5 L22 17.5 L12 23 L2 17.5 L2 6.5 Z M12 5 L18 8.5 L18 15.5 L12 19 L6 15.5 L6 8.5 Z",

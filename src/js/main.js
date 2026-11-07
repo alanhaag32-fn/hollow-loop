@@ -21,6 +21,8 @@ import { log } from "./ui/log.js";
 import { initOffline, showOffline } from "./ui/offline.js";
 import { placeReticle, placeTags, retag } from "./ui/reticle.js";
 import { initWindows, refreshPanel } from "./ui/windows.js";
+// the Abyss only registers itself (its mode, tab, actions and bonuses); nothing else needs to call into it
+import "./abyss/abyss.js";
 import { initWeb } from "./web/web.js";
 import { layout } from "./world/scene.js";
 import { paused } from "./core/pause.js";

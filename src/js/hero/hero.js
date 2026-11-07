@@ -149,11 +149,12 @@ export function startDash(L) {
   dashVX = dx / l * v; dashVY = dy / l * v; dashT = DASH_TIME; dashIT = SK.dash.guard(L); dashHit = new Set(); dashD = SK.dash.dmg(L);
   const x0 = view.HERO_X, y0 = view.HERO_Y;
   dashD *= ST.dashPow; dashIT += ST.dashGuard;
-  emit("dash", { x0, y0 });
+  dashFrom = { x0, y0 };
+  emit("dash", dashFrom);
   dashFx(x0, y0, x0 + dashVX * DASH_TIME, y0 + dashVY * DASH_TIME);
   heroModel.classList.add("dashing");
 }
-let lastDX = 0, lastDY = 0, lastDT = 0;
+let lastDX = 0, lastDY = 0, lastDT = 0, dashFrom = null;
 export function stepHero(dt) {
   let ix = hero.joyX, iy = hero.joyY;
   const kx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
@@ -167,6 +168,8 @@ export function stepHero(dt) {
     hvx = dashVX * .25; hvy = dashVY * .25;
     for (const f of foes) if (!f.dead && !dashHit.has(f) && Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y) < f.R + 34) { dashHit.add(f); land(f, dashD, "storm"); }
   }
+  // the dash is over (or was cut short): effects that need where it ended hook dashEnd, with where it started
+  if (dashFrom && !(dashT > 0)) { const c = dashFrom; dashFrom = null; emit("dashEnd", c); }
   const k = 1 - Math.exp(-dt * 18);
   const spd = HERO_SPD * (ST ? ST.move : 1);
   hvx += (ix * spd - hvx) * k; hvy += (iy * spd - hvy) * k;

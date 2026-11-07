@@ -1,10 +1,10 @@
 // The target's ring (health, boss timer, mechanic progress) and the name tag above it.
 import { mechReadout } from "../enemies/enemies.js";
 import { $, polyPts, svgEl } from "../core/util.js";
-import { enemy, targeting } from "../enemies/foes.js";
+import { enemy, enemyCY, targeting } from "../enemies/foes.js";
 import { reduce } from "../fx/gfx.js";
 import { RING_R, arcD } from "../hero/hero.js";
-import { enemyCY } from "../hero/orbitals.js";
+
 import { SC, SH, SW, VX1, VY1, view } from "../world/scene.js";
 
 const FR_A = [-45, 225];

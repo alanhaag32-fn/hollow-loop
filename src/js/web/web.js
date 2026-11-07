@@ -1,5 +1,4 @@
 // The ascension web: nodes and what they do, buying and refunding, and the web window with its gestures.
-import { abyssOpen, renderAbyss } from "../abyss/abyss.js";
 import { sfx } from "../audio/sound.js";
 import { alive, hit } from "../combat/combat.js";
 import { cds } from "../skills/skills.js";
@@ -8,15 +7,14 @@ import { addEchoes, addGold } from "../progress/currency.js";
 import { S } from "../core/save.js";
 import { ST, cutBy, plus, statSource } from "../core/stats.js";
 import { $, fmt, starPts } from "../core/util.js";
-import { burst, novaFx } from "../fx/effects.js";
+import { NOVA_MS, burst, novaFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
 import { hero } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { ascGain, ascMin, doAscend, runStart, startStage } from "../progress/ascend.js";
-import { renderTrans, transOpen } from "../progress/transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
-import { action, confirmTap, panel } from "../ui/actions.js";
+import { action, confirmTap, panel, renderSheets, sheetTabs } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 import { refreshPanel, tab } from "../ui/windows.js";
@@ -44,7 +42,7 @@ export const TREE = [
   { id: "e5", br: "edge", x: 75, y: -190, s: "Echo tap", name: "Echoing Tap", max: 10, c: 2, desc: "+5% chance per rank for taps to strike twice", fx: { tap: (c, n) => { if (Math.random() < .05 * n) hit(c.base, 140, "tap"); } } },
   { id: "e6", br: "edge", x: -60, y: -250, s: "Execute", name: "Execute", max: 5, c: 3, desc: "+10% damage per rank to enemies under 30% health", fx: { deal: (h, n) => { if (h.e.hp / h.e.max < .3) h.dmg *= 1 + .1 * n; } } },
   { id: "e7", br: "edge", x: 60, y: -250, s: "Slayer", name: "Giant Slayer", max: 10, c: 3, desc: "+10% damage per rank to bosses", stats: n => ({ bossDmg: 1 + .1 * n }) },
-  { id: "e8", br: "edge", x: 0, y: -290, s: "Supernova", name: "Supernova", max: 1, c: 15, cap: true, desc: "Nova strikes twice", fx: { cast: c => { if (c.id === "nova") setTimeout(() => { if (alive()) { novaFx(); hit(c.dmg, 220, "nova"); } }, 350); } } },
+  { id: "e8", br: "edge", x: 0, y: -290, s: "Supernova", name: "Supernova", max: 1, c: 15, cap: true, desc: "Nova strikes twice", fx: { cast: c => { if (c.id === "nova") setTimeout(() => { if (alive()) { novaFx(); hit(c.dmg, NOVA_MS, "nova"); } }, 350); } } },
   { id: "w1", br: "ward", x: 70, y: 0, s: "Vital", name: "Vital Core", max: 20, c: 1, desc: "x1.10 health per rank, compounding", stats: n => ({ maxHp: Math.pow(1.1, n) }) },
   { id: "w2", br: "ward", x: 130, y: -45, s: "Spring", name: "Mana Spring", max: 10, c: 2, desc: "+10% max mana and mana regen per rank", stats: n => ({ maxMp: 1 + .1 * n, mpRegen: 1 + .1 * n }) },
   { id: "w3", br: "ward", x: 130, y: 45, s: "Thick", name: "Thick Shell", max: 10, c: 2, desc: "-3% damage taken per rank", stats: n => ({ dmgTaken: cutBy("armor", .03 * n) }) },
@@ -133,8 +131,7 @@ const owned = n => T(n.id) > 0;
 const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
 const nodeR = n => n.key ? 20 : n.cap ? 17 : n.id === "core" ? 16 : n.br === "bridge" ? 12 : n.c >= 2 ? 13 : 11;
 function renderTree() {
-  $("transBody").innerHTML = renderTrans();
-  $("abyssBody").innerHTML = renderAbyss();
+  renderSheets("tree");
   const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
   $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
     '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
@@ -181,7 +178,7 @@ function renderTree() {
 }
 panel("tree", {
   render: renderTree,
-  tabs: () => [["web", "Web"], ["asc", "Ascend"]].concat(transOpen() ? [["trans", "Transcend"]] : [], abyssOpen() ? [["abyss", "Abyss"]] : []),
+  tabs: () => [["web", "Web"], ["asc", "Ascend"]].concat(sheetTabs("tree")),
   fill: sub => sub === "web" ? "web" : "",
   shown: centerWeb
 });

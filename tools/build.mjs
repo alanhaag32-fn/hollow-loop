@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(ROOT, "src");
 
-const IMPORT = /^import \{([^}]*)\} from "([^"]+)";\n/gm;
+const IMPORT = /^import (?:\{([^}]*)\} from )?"([^"]+)";\n/gm;
 const DECL = /^(?:export )?(?:function\*? |const |let |class )([A-Za-z_$][\w$]*)/gm;
 
 export function bundle() {

@@ -102,7 +102,8 @@ export function switchMode(m) {
   clearFoes(false); m.enter(); setZone(true); recalc();
 }
 
-const KILLS = 8, MOMENTUM_KILLS = 3;
+export const KILLS = 8;
+const MOMENTUM_KILLS = 3;
 const killsNeeded = () => (isBoss(S.stage) ? 1 : momentum() ? MOMENTUM_KILLS : KILLS);
 
 // the button beside the stage title: push/farm in the main run, leave in the Abyss

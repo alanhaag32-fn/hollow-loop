@@ -63,6 +63,10 @@ export function refreshPanel() {
   if (PANELS[tab].refresh) PANELS[tab].refresh();
   applySub(tab);
 }
+// the open panel re-renders if an action or event marked it stale (the HUD calls this every tick)
+export function renderIfStale() {
+  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
+}
 function openWindow(id) {
   tab = id;
   const w = WINDOWS.find(x => x.id === id);

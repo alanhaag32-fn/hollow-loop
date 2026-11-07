@@ -7,10 +7,10 @@ import { arcD, hero, heroModel } from "../hero/hero.js";
 import { STATUS, st, stT } from "../hero/statuses.js";
 import { mode } from "../modes/modes.js";
 import { updateSkillbar } from "../skills/skills.js";
-import { PANELS } from "./actions.js";
 import { unread } from "./log.js";
 import { mechReadout } from "../enemies/enemies.js";
-import { refreshPanel, tab } from "./windows.js";
+import { renderIfStale, tab } from "./windows.js";
+import { bountyReady } from "../bounty/bounty.js";
 
 // shrink the stage title to fit beside the currency box instead of cutting it off
 let stageKey = "";
@@ -35,8 +35,8 @@ export function updateUI() {
   $("mode").textContent = hd.button;
   $("hpTxt").textContent = fmt(Math.max(0, hero.hp));
   $("mpTxt").textContent = fmt(Math.max(0, hero.mp));
-  const claim = S.bounties.some(b => !b.empty && b.prog >= b.n);
-  $("menuDot").className = claim ? "dot" : "";
+  const claim = bountyReady() ? "dot" : "";
+  $("menuDot").className = claim;
   $("dpsVal").textContent = fmt(dps());
   const hb = $("hBarrier");
   hb.style.display = hero.shield > 0 ? "" : "none";
@@ -49,7 +49,7 @@ export function updateUI() {
     if (Math.abs(v - f.mFrac) < .005) return;
     f.mFrac = v; f.el.mFg.setAttribute("d", v < .01 ? "" : arcD(f.mr, 40, 40 + 100 * v));
   });
-  $("boardDot").className = S.bounties.some(b => !b.empty && b.prog >= b.n) ? "dot" : "";
+  $("boardDot").className = claim;
   let chips = "";
   for (const k in STATUS) {
     const on = st(k); heroModel.classList.toggle("st-" + k, on);
@@ -59,5 +59,5 @@ export function updateUI() {
   $("mechTxt").textContent = mechReadout(enemy).text;
   $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
   updateSkillbar();
-  if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }
+  renderIfStale();
 }

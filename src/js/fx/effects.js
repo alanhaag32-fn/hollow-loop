@@ -3,11 +3,11 @@ import { eVerts } from "../enemies/enemies.js";
 import { F, heroDown } from "../combat/combat.js";
 import { S } from "../core/save.js";
 import { $, svgEl } from "../core/util.js";
-import { enemy } from "../enemies/foes.js";
+import { enemy, enemyCY } from "../enemies/foes.js";
 import { ARENA_C, anim, perf, reduce } from "./gfx.js";
 
 import { heroModel } from "../hero/hero.js";
-import { WEAPON, enemyCY, wType } from "../hero/orbitals.js";
+import { WEAPON, wType } from "../hero/orbitals.js";
 import { STATUS, st } from "../hero/statuses.js";
 import { VX1, view } from "../world/scene.js";
 
@@ -86,11 +86,13 @@ export function ring(x, y, col, from, to, ms, width) {
   tempFx(svgEl("circle", { cx: 0, cy: 0, r: 10, fill: "none", stroke: col, "stroke-width": width || 3 }), [{ transform: "translate(" + x + "px," + y + "px) scale(" + from + ")", opacity: 1 }, { transform: "translate(" + x + "px," + y + "px) scale(" + to + ")", opacity: 0 }], ms);
 }
 export function burst(x, y, col, n) { ringIfRoom(x, y, col, .5, 3, 450); sparks(x, y, n, col, 40); }
+// a Nova reaches the target this long after the cast: its hit and anything that follows it wait this long
+export const NOVA_MS = 220;
 export function novaFx() {
   ring(view.HERO_X, view.HERO_Y, "#effffc", 1, 17, 320, 4);
   ring(view.HERO_X, view.HERO_Y, "#7be0d0", .6, 15, 360, 8);
   const tg = enemy;
-  setTimeout(() => { if (tg && !tg.dead) { ring(tg.px, tg.py, "#effffc", .5, 4, 420, 3); sparks(tg.px, tg.py, 10, "#effffc", 40); } }, 220);
+  setTimeout(() => { if (tg && !tg.dead) { ring(tg.px, tg.py, "#effffc", .5, 4, 420, 3); sparks(tg.px, tg.py, 10, "#effffc", 40); } }, NOVA_MS);
 }
 export function dashFx(x0, y0, x1, y1) {
   if (reduce) return;
