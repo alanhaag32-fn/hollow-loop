@@ -148,7 +148,7 @@ export const SETS = [
   },
   { id: "star", name: "Starforged", col: "#ff5fa8", cv: "var(--c5)", myth: true,
     b2: { d: "+1% attack per Stardust you've earned (up to +100%)", stats: () => ({ atk: 1 + Math.min(1, .01 * (S.stardustTotal || 0)) }) },
-    b4: { d: "Every orbital fires 15% faster for each orbital you have equipped", stats: () => ({ orbRate: 1 + .15 * ORBITALS.filter(o => o.active()).length }) },
+    b4: { d: "Every orbital fires 15% faster for each orbital you have equipped", stats: () => ({ orbRate: 1 + .15 * ORBITALS.filter(o => o.i === 0 || S.equip[o.key]).length }) },
     b6: { d: "+25% red crit chance", stats: () => ({ redBonus: plus(.25) }) }
   }
 ];

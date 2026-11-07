@@ -1,4 +1,5 @@
 // The target's ring (health, boss timer, mechanic progress) and the name tag above it.
+import { mechReadout } from "../enemies/enemies.js";
 import { $, polyPts, svgEl } from "../core/util.js";
 import { enemy, targeting } from "../enemies/foes.js";
 import { reduce } from "../fx/gfx.js";
@@ -8,9 +9,6 @@ import { SC, SH, SW, VX1, VY1, view } from "../world/scene.js";
 
 const FR_A = [-45, 225];
 export let rEls = null, rV = [-1, -1, -1];
-export const mech = {
-  mechFrac: 0
-};
 export function buildReticle(t) {
   const r = $("reticle"); r.innerHTML = ""; rEls = null; rV = [-1, -1, -1];
   if (!t) return;
@@ -31,7 +29,7 @@ export function placeReticle(dt) {
   r.style.display = "";
   r.setAttribute("transform", "translate(" + view.ENEMY_X.toFixed(1) + " " + enemyCY().toFixed(1) + ")");
   rEls.ticks.setAttribute("fill", targeting.focus === enemy ? "#4fd3e4" : "rgba(255,255,255,.6)");
-  const e = enemy, t = [Math.max(0, e.hp / e.max), e.boss ? Math.max(0, e.timer / e.timerMax) : 0, mech.mechFrac];
+  const e = enemy, t = [Math.max(0, e.hp / e.max), e.boss ? Math.max(0, e.timer / e.timerMax) : 0, mechReadout(e).frac];
   const k = reduce ? 1 : Math.min(1, (dt || .016) * 12), els = [rEls.hp, rEls.tm, rEls.mech], rad = [e.ringR, e.ringR + 5, e.ringR + (e.boss ? 10 : 5)];
   for (let i = 0; i < 3; i++) {
     if (!els[i]) continue;

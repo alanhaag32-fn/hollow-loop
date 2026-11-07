@@ -48,7 +48,6 @@ function tick() {
   const now = Date.now(), dt = Math.min((now - prev) / 1000, .25);
   prev = now;
   if (!paused()) { step(dt); autoTick(dt); }
-  if (S.maxStage > (S.cyclePeak || 1)) S.cyclePeak = S.maxStage;
   gTimer += dt; saveT += dt; uiT += dt; lightT += dt; boardT += dt;
   if (gTimer >= 2) {
     S.gps = S.gps * .8 + (earned.gAcc / gTimer) * .2; earned.gAcc = 0;

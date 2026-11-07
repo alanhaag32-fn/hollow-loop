@@ -11,10 +11,12 @@ import { hero, heroModel, startDash } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
 import { clearStatuses } from "../hero/statuses.js";
 import { autoOn } from "../progress/automation.js";
-import { action, panel } from "../ui/actions.js";
+import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { T, TREE } from "../web/web.js";
 import { view } from "../world/scene.js";
+import { log } from "../ui/log.js";
+import { whenNewBest } from "../modes/modes.js";
 
 // smart: with Smart Cast on, auto-cast waits for a boss, an elite or this many enemies on screen.
 // reserve: auto-cast keeps enough mana for this skill while a boss or elite is up.
@@ -177,3 +179,4 @@ action("skup", id => {
 });
 action("skauto", id => { S.auto[id] = !S.auto[id]; });
 action("manaRes", id => { S.manaRes = Number(id); });
+whenNewBest((before, now, kind) => SKILLS.forEach(sk => { if (kind === "best" && before < sk.unlock && now >= sk.unlock) { log("Skill unlocked: " + sk.name, "r4"); sfx("chord", 0, 300); buildSkillbar(); markDirty("skills"); } }));

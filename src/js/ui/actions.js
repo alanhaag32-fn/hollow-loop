@@ -5,7 +5,8 @@
 // one re-renders), the game saves and the HUD refreshes; main wires this with whenActionsRun. An action returns
 // false when nothing changed (or the page is about to reload), or a function to run once the open panel re-rendered.
 export const PANELS = {}, ACTIONS = {};
-// def: { render(), refresh() for cheap updates while open (optional) }
+// def: { render(), and optionally: refresh() for cheap updates while open, tabs() its tab list,
+// bar() html for the tab row instead of tabs, fill(tab) to fill the sheet, shown() once it's on screen }
 export const panel = (id, def) => { PANELS[id] = Object.assign({ stale: true }, def); };
 export const action = (name, fn) => { ACTIONS[name] = fn; };
 export function markDirty(...k) { k.forEach(x => { PANELS[x].stale = true; }); }

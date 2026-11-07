@@ -9,7 +9,7 @@ import { mode } from "../modes/modes.js";
 import { updateSkillbar } from "../skills/skills.js";
 import { PANELS } from "./actions.js";
 import { unread } from "./log.js";
-import { mech } from "./reticle.js";
+import { mechReadout } from "../enemies/enemies.js";
 import { refreshPanel, tab } from "./windows.js";
 
 // shrink the stage title to fit beside the currency box instead of cutting it off
@@ -56,18 +56,7 @@ export function updateUI() {
     if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
   }
   if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
-  let mt = "", mb = -1;
-  if (enemy && !enemy.dead) {
-    const M = enemy.m;
-    if (enemy.stun > 0) mt = "Stunned";
-    else if (M && M.well && M.well.ch > 0) { mt = "Gravity Well: deal " + fmt(Math.max(0, M.well.need - M.well.dealt)) + " more to break it"; mb = Math.min(1, M.well.dealt / M.well.need); }
-    else if (M && M.facets && M.facets.n > 0) mt = "Facet shield: " + M.facets.n + " left, tap to break it";
-    else if (M && M.mirror && M.mirror.on > 0) mt = "Mirror: your hits reflect back";
-    else if (M && M.mirror && M.mirror.tele > 0) mt = "Mirror forming";
-    else if (M && M.motes && M.motes.n > 0) mt = M.motes.n + " motes healing the boss, tap them";
-  }
-  $("mechTxt").textContent = mt;
-  mech.mechFrac = mb >= 0 ? mb : 0;
+  $("mechTxt").textContent = mechReadout(enemy).text;
   $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
   updateSkillbar();
   if (tab && PANELS[tab].stale) { PANELS[tab].stale = false; PANELS[tab].render(); refreshPanel(); }

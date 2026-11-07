@@ -1,20 +1,15 @@
 // Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
-import { sfx } from "../audio/sound.js";
 import { bump } from "../bounty/bounty.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
 import { rnd } from "../core/util.js";
 import { makeEnemy } from "../enemies/enemies.js";
 import { clearFoes, foes, pickSpawnAngle, spawnFoe } from "../enemies/foes.js";
-import { fillOrbital } from "../gear/inventory.js";
 import { recalc } from "../hero/hero.js";
-import { ORBIT, SLOT2_AT } from "../hero/orbitals.js";
-import { TRANS_AT } from "../progress/transcend.js";
-import { SKILLS, buildSkillbar } from "../skills/skills.js";
-import { TRAIN } from "../train/train.js";
 import { action, markDirty } from "../ui/actions.js";
 import { log } from "../ui/log.js";
 import { setZone } from "../world/scene.js";
+import { TRANS_AT } from "../progress/transcend.js";
 
 // Momentum: stages below this cap fly by
 const momentumCap = () => (S.transcends || 0) >= 1 ? Math.floor((S.peak || 1) * ST.momentumAt) : 0;
@@ -27,6 +22,9 @@ export const spawn = {
 // Combat runs inside a mode: the main run (stages you push or farm, with Momentum after a Transcend) or the Abyss.
 // The mode says what stage the fight is at and owns spawning, kills, deaths, boss escapes and the stage readout.
 // S.stage is only ever the main run's stage.
+// things that open at a stage announce themselves: fn(before, now, "best" for this run's best stage | "peak" for the best ever)
+const NEW_BEST = [];
+export const whenNewBest = fn => NEW_BEST.push(fn);
 export const MAIN = {
   stage: () => S.stage,
   look() {
@@ -68,19 +66,10 @@ export const MAIN = {
     if (!S.push) return;
     S.stage++; bump("stage", 1);
     if (S.stage > S.maxStage) {
-      const before = S.maxStage; S.maxStage = S.stage; markDirty("tree");
-      SKILLS.forEach(sk => { if (before < sk.unlock && S.maxStage >= sk.unlock) { log("Skill unlocked: " + sk.name, "r4"); sfx("chord", 0, 300); buildSkillbar(); markDirty("skills"); } });
-      TRAIN.forEach(t => { if (before < t.unlock && S.maxStage >= t.unlock) { log("Training unlocked: " + t.name, "r3"); markDirty("train"); } });
+      const before = S.maxStage; S.maxStage = S.stage; S.cyclePeak = Math.max(S.cyclePeak || 1, S.maxStage); markDirty("tree");
+      NEW_BEST.forEach(fn => fn(before, S.maxStage, "best"));
     }
-    if (S.stage > S.peak) {
-      if (S.peak < SLOT2_AT && S.stage >= SLOT2_AT) {
-        log("Second orbital slot unlocked", "r4");
-        const best = S.autoEquip && fillOrbital(ORBIT.weapon2);
-        if (best) log("Equipped " + best.name + " as your second orbital", "r" + best.r);
-        S.peak = S.stage; recalc(); markDirty("gear", "pack");
-      }
-      S.peak = S.stage;
-    }
+    if (S.stage > S.peak) { const before = S.peak; S.peak = S.stage; NEW_BEST.forEach(fn => fn(before, S.peak, "peak")); }
   },
   death() {
     log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");

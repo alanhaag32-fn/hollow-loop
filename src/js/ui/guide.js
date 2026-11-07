@@ -95,7 +95,7 @@ function renderGuide() {
     '<div class="ctrls"><button class="btn" data-act="saveLoad">Load pasted code</button></div><p class="note" id="saveMsg"></p></div></div>' +
     '<div class="wsub" data-sub="help"><div class="guide">' + GUIDE.map((g, i) => "<details" + (i === 0 ? " open" : "") + "><summary>" + g[0] + '</summary><div class="gbody">' + g[1] + "</div></details>").join("") + "</div></div>";
 }
-panel("guide", { render: renderGuide });
+panel("guide", { render: renderGuide, tabs: () => [["set", "Settings"], ["save", "Save"], ["help", "Guide"]] });
 action("animMode", () => { S.anim = { auto: "on", on: "off", off: "auto" }[S.anim || "auto"]; applyGfx(); });
 action("perfMode", () => { S.perf = !S.perf; applyGfx(); });
 action("saver", () => { S.saver = !S.saver; });

@@ -98,6 +98,8 @@ function renderBoard() {
   if ($("boardDone")) $("boardDone").textContent = S.bountyDone;
 }
 panel("board", {
+  bar: () => '<div class="barInfo"><b id="boardDone">' + S.bountyDone + '</b> completed<br>New posting 5 min after a claim</div><button class="btn" type="button" id="rerollBtn" data-act="reroll">Reroll</button>',
+  fill: () => "board",
   render: renderBoard,
   refresh() {
     S.bounties.forEach((b, i) => {

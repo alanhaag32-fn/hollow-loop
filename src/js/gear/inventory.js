@@ -11,10 +11,11 @@ import { reduce } from "../fx/gfx.js";
 import { ARENA_C, PACK_CAP, RARITY, SET, SETS, SLOT, UNIQ, affText, implOf, noun, salvShards, salvValue, score } from "./items.js";
 import { forgeUI } from "./reforge.js";
 import { coronaSvg, evadeChance, hero, lensSvg, recalc, setCounts, shellSvg } from "../hero/hero.js";
-import { HERO_WEAPON, ORBIT, ORBITALS, WTRAIT, baseSlot, weaponType, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType } from "../hero/orbitals.js";
+import { HERO_WEAPON, ORBIT, ORBITALS, SLOT2_AT, WTRAIT, baseSlot, openOrbitals, orbRate, slotAtk, slotLabel, slotOpen, traitText, wType, weaponType } from "../hero/orbitals.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
+import { whenNewBest } from "../modes/modes.js";
 
 const SALV_LABEL = ["Off", "Common", "Up to Magic", "Up to Rare"];
 function salvage(it) { addGold(salvValue(it), false); addShards(salvShards(it)); bump("salvage", 1); }
@@ -108,7 +109,7 @@ function renderStats() {
     G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
     G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
 }
-panel("stats", { render: renderStats, refresh: renderStats });
+panel("stats", { render: renderStats, refresh: renderStats, tabs: () => [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"], ["jour", "Journey"]] });
 let gearSel = "weapon", gearPick = null;
 // a copy of your core as it looks in combat
 function coreSnap() {
@@ -154,7 +155,7 @@ function renderGear() {
     '<div class="setsum" style="margin-top:10px"><div><b>All sets</b></div>' + SETS.filter(x => !sc[x.id]).map(x => '<div style="margin-top:6px"><b style="color:' + x.cv + '">' + x.name + "</b>" + (x.myth ? " (Mythic only)" : "") + '</div><div class="off">2: ' + x.b2.d + '</div><div class="off">4: ' + x.b4.d + '</div><div class="off">6: ' + x.b6.d + "</div>").join("") + "</div></div>";
   $("gearBody").innerHTML = h;
 }
-panel("gear", { render: renderGear });
+panel("gear", { render: renderGear, tabs: () => [["equip", "Equipped"], ["sets", "Sets"]] });
 action("gSel", id => { gearSel = id; gearPick = null; });
 action("gPick", id => { gearPick = gearPick === Number(id) ? null : Number(id); if (gearPick != null) return scrollToDetail; });
 action("uneq", id => {
@@ -230,7 +231,7 @@ function renderPack() {
   $("autoEq").textContent = "Auto-equip: " + (S.autoEquip ? "On" : "Off");
   $("autoSv").textContent = "Auto-salvage: " + SALV_LABEL[S.salv];
 }
-panel("pack", { render: renderPack });
+panel("pack", { render: renderPack, tabs: () => [["items", "Items"], ["opts", "Options"]] });
 action("autoEq", () => { S.autoEquip = !S.autoEquip; });
 action("autoSv", () => { S.salv = (S.salv + 1) % SALV_LABEL.length; });
 action("salvAll", () => {
@@ -248,3 +249,10 @@ action("pkSel", id => { pkSel = pkSel === Number(id) ? null : Number(id); if (pk
 action("pkSlot", id => { pkView().slot = id; pkSel = null; });
 action("pkSort", id => { pkView().sort = id; });
 action("pkSet", id => { pkView().set = id; pkSel = null; });
+whenNewBest((before, now, kind) => {
+  if (kind !== "peak" || before >= SLOT2_AT || now < SLOT2_AT) return;
+  log("Second orbital slot unlocked", "r4");
+  const best = S.autoEquip && fillOrbital(ORBIT.weapon2);
+  if (best) log("Equipped " + best.name + " as your second orbital", "r" + best.r);
+  recalc(); markDirty("gear", "pack");
+});

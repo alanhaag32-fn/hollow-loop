@@ -1,5 +1,5 @@
 // The ascension web: nodes and what they do, buying and refunding, and the web window with its gestures.
-import { renderAbyss } from "../abyss/abyss.js";
+import { abyssOpen, renderAbyss } from "../abyss/abyss.js";
 import { sfx } from "../audio/sound.js";
 import { alive, hit } from "../combat/combat.js";
 import { cds } from "../skills/skills.js";
@@ -14,7 +14,7 @@ import { hero } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { ascGain, ascMin, doAscend, runStart, startStage } from "../progress/ascend.js";
-import { renderTrans } from "../progress/transcend.js";
+import { renderTrans, transOpen } from "../progress/transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { action, confirmTap, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
@@ -179,7 +179,12 @@ function renderTree() {
   $("nodeCard").innerHTML = '<div class="nodeCard" style="--bc:' + BR_COL[n.br] + '"><span class="n">' + n.name + '</span><button type="button" class="ncX" data-ncx aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><span class="rk">' + BR_NAME[n.br] + (n.id === "core" ? "" : ", rank " + r + " of " + n.max) + '</span><span class="ef">' + n.desc + '</span><span class="st">' +
     (n.id === "core" ? "Tap a tinted node next to the Core to start a path. You have " + S.echoes + " echoes." : !av ? "Not connected yet. Learn a neighboring node first." : maxed ? "Fully learned" : S.echoes < nodeCost(n) ? "Need " + nodeCost(n) + " echoes, you have " + S.echoes + ". Earn echoes by ascending at stage 20+ or from Gold seal bounties." : owned(n) ? "Owned. Tap the button to add a rank." : "Connected and ready to learn") + "</span>" + btn + "</div>";
 }
-panel("tree", { render: renderTree });
+panel("tree", {
+  render: renderTree,
+  tabs: () => [["web", "Web"], ["asc", "Ascend"]].concat(transOpen() ? [["trans", "Transcend"]] : [], abyssOpen() ? [["abyss", "Abyss"]] : []),
+  fill: sub => sub === "web" ? "web" : "",
+  shown: centerWeb
+});
 action("node", id => {
   const n = NODE[id], c = nodeCost(n);
   if (!avail(n) || (S.tree[id] || 0) >= n.max || S.echoes < c) return false;

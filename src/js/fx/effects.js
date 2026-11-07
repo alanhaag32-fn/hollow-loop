@@ -154,45 +154,11 @@ export function statusHitFx(id, big, from) {
   tempFx(g, [{ transform: "translate(0px,0px)", opacity: 1 }, { transform: "translate(" + (view.HERO_X - sx) + "px," + (view.HERO_Y - sy) + "px)", opacity: 1 }], 240);
   setTimeout(() => { ringIfRoom(view.HERO_X, view.HERO_Y, col, 1, big ? 3.6 : 2.4, 420, 3); sparks(view.HERO_X, view.HERO_Y, big ? 10 : 5, col, 36); }, 230);
 }
-function staticArcs() {
-  const g = $("hStatic"); g.innerHTML = "";
-  for (let k = 0; k < 3; k++) {
-    let a = Math.random() * Math.PI * 2, r = 13 + Math.random() * 4, d = "";
-    for (let i = 0; i < 5; i++) {
-      const x = Math.cos(a) * r, y = Math.sin(a) * r;
-      d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
-      a += .25 + Math.random() * .2; r += Math.random() * 6 - 1;
-    }
-    svgEl("path", { d }, g);
-  }
-}
 let stFxT = 0;
 export function statusFx(dt) {
   if (reduce || heroDown) return;
   stFxT -= dt;
   if (stFxT > 0) return;
   stFxT = .13;
-  if (st("static")) {
-    staticArcs();
-    if (Math.random() < .35) sparks(view.HERO_X + Math.random() * 30 - 15, view.HERO_Y + Math.random() * 30 - 15, 2, "#4fd3e4", 14);
-  }
-  if (st("dim") && Math.random() < .75) {
-    const x = view.HERO_X + Math.random() * 22 - 11, y = view.HERO_Y + Math.random() * 10 - 5;
-    tempFx(svgEl("circle", { cx: x, cy: y, r: 1.5 + Math.random() * 1.5, fill: "#c9c4dc" }), [{ transform: "translate(0px,0px)", opacity: .9 }, { transform: "translate(" + (Math.random() * 16 - 8).toFixed(1) + "px," + (-28 - Math.random() * 18).toFixed(1) + "px)", opacity: 0 }], 900);
-  }
-  if (st("gravity") && Math.random() < .7) {
-    const x = view.HERO_X + Math.random() * 44 - 22;
-    tempFx(svgEl("line", { x1: x, y1: view.HERO_Y - 34, x2: x, y2: view.HERO_Y - 24, stroke: "#b48cff", "stroke-width": 2, "stroke-linecap": "round" }), [{ transform: "translate(0px,0px)", opacity: 0 }, { transform: "translate(0px,30px)", opacity: .9, offset: .5 }, { transform: "translate(0px,62px)", opacity: 0 }], 520);
-  }
-  if (st("fracture") && Math.random() < .3) {
-    const a = Math.random() * Math.PI * 2, x = view.HERO_X + Math.cos(a) * 18, y = view.HERO_Y + Math.sin(a) * 18;
-    const g = svgEl("g", { transform: "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ")" });
-    const tri = svgEl("polygon", { points: "0,-3 3,2 -3,2", fill: "#ff8463" }, g);
-    tempFx(g, [{ opacity: 1 }, { opacity: 0 }], 750);
-    anim(tri, [{ transform: "translate(0px,0px) rotate(0deg)" }, { transform: "translate(" + (Math.cos(a) * 10).toFixed(1) + "px,36px) rotate(" + (Math.random() * 300 - 150).toFixed(0) + "deg)" }], { duration: 750, easing: "ease-in", fill: "forwards" });
-  }
-  if (st("eclipse") && Math.random() < .35) {
-    const a = Math.random() * Math.PI * 2;
-    tempFx(svgEl("line", { x1: view.HERO_X + Math.cos(a) * 13, y1: view.HERO_Y + Math.sin(a) * 13, x2: view.HERO_X + Math.cos(a) * 22, y2: view.HERO_Y + Math.sin(a) * 22, stroke: "#ffd04d", "stroke-width": 1.5, "stroke-linecap": "round" }), [{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 0 }], 500);
-  }
+  for (const id in STATUS) if (st(id)) STATUS[id].vfx();
 }

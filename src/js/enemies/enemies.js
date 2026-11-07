@@ -3,7 +3,7 @@ import { heroDown, hurt, trueDamage } from "../combat/combat.js";
 import { stageDmg, stageHp } from "../core/curves.js";
 import { S } from "../core/save.js";
 import { ST } from "../core/stats.js";
-import { pick, polyPts, rnd, svgEl, vertices } from "../core/util.js";
+import { fmt, pick, polyPts, rnd, svgEl, vertices } from "../core/util.js";
 import { burst, ringIfRoom, shake, warnRing } from "../fx/effects.js";
 import { ZONE_STATUS, applyStatus } from "../hero/statuses.js";
 import { FAM } from "../index/index.js";
@@ -54,6 +54,7 @@ const MOD_KEYS = Object.keys(MODS);
 const MECHS = {
   facets: {
     init: () => ({ t: 5, n: 0 }),
+    hud: F2 => F2.n > 0 ? { text: "Facet shield: " + F2.n + " left, tap to break it" } : null,
     draw(e) {
       if (!e || !e.el) return;
       const g = e.el.facets; g.innerHTML = "";
@@ -78,6 +79,7 @@ const MECHS = {
   },
   mirror: {
     init: () => ({ t: 7, tele: 0, on: 0 }),
+    hud: R => R.on > 0 ? { text: "Mirror: your hits reflect back" } : R.tele > 0 ? { text: "Mirror forming" } : null,
     fx: {
       // reflects a slice of each hit, scaled to your health so huge damage can't one-shot you
       struck(h, e) {
@@ -95,6 +97,7 @@ const MECHS = {
   },
   well: {
     init: () => ({ t: 9, ch: 0, dealt: 0, need: 1 }),
+    hud: W => W.ch > 0 ? { text: "Gravity Well: deal " + fmt(Math.max(0, W.need - W.dealt)) + " more to break it", frac: Math.min(1, W.dealt / W.need) } : null,
     fx: {
       struck(h, e) { const W = e.m.well; if (W.ch > 0) W.dealt += h.dmg; },
       bossTurn(c, e) {
@@ -118,6 +121,7 @@ const MECHS = {
   },
   motes: {
     init: () => ({ t: 6, n: 0 }),
+    hud: O => O.n > 0 ? { text: O.n + " motes healing the boss, tap them" } : null,
     draw(e) {
       if (!e || !e.el) return;
       const g = e.el.motes; g.innerHTML = "";
@@ -142,6 +146,13 @@ const MECHS = {
 };
 const MECH_IDS = Object.keys(MECHS);
 // an enemy's effects: its modifiers, then its boss mechanics, then any extra the run mode adds
+// what the target's mechanics are doing right now, for the HUD line and the reticle's third ring
+export function mechReadout(e) {
+  if (!e || e.dead) return { text: "", frac: 0 };
+  if (e.stun > 0) return { text: "Stunned", frac: 0 };
+  for (const k in e.m || {}) { const r = MECHS[k].hud(e.m[k]); if (r) return { text: r.text, frac: r.frac || 0 }; }
+  return { text: "", frac: 0 };
+}
 export const foeFx = (mods, m) => mods.map(k => MODS[k].fx).concat(m ? Object.keys(m).map(k => MECHS[k].fx) : []);
 // give an enemy a modifier after it was made (its hooks go with the other modifiers', before its boss mechanics)
 export function addMod(e, k) { if (e.mods.includes(k)) return; e.mods.push(k); e.fx.splice(e.mods.length - 1, 0, MODS[k].fx); }

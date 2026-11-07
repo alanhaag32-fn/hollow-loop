@@ -20,7 +20,7 @@ const FORGE = [
   { id: "gild", grp: "Gear", name: "Gilded Gear", max: 3, cost: r => [10, 25, 60][r] || 999, desc: r => ["No extra bonus stats yet", "Rare and better roll 1 extra bonus stat", "Magic items also roll 1 extra", "Legendaries roll another (5 total)"][r], nx: ["Rare+ +1 stat", "Magic +1 stat", "Legendary +1 more"], stats: r => ({ gild: plus(r) }) },
   { id: "craft", grp: "Gear", name: "Fine Craft", max: 5, cost: r => Math.ceil(4 * Math.pow(1.6, r)), desc: r => "+" + 10 * r + "% bonus stat values on new items", nx: "+10%", stats: r => ({ affixPow: 1 + .1 * r }) },
   { id: "head", grp: "Start", name: "Head Start", max: 13, cost: r => Math.ceil(5 * Math.pow(1.5, r)), desc: r => r ? "Each ascension starts at stage " + (1 + headStart(r)) + " with a Rare starter kit" : "Ascensions start at stage 1", nx: "+10 stages", stats: r => ({ startStage: plus(headStart(r)), starterKit: plus(r ? 1 : 0) }) },
-  { id: "orb3", grp: "Combat", name: "Third Orbital", max: 3, cost: r => [25, 50, 90][r] || 999, desc: r => r ? "A third orbital slot, firing at " + SLOT3_DMG[r] * 100 + "% damage" : "Opens a third orbital slot", nx: ["40% damage", "70% damage", "100% damage"] },
+  { id: "orb3", grp: "Combat", name: "Third Orbital", max: 3, cost: r => [25, 50, 90][r] || 999, desc: r => r ? "A third orbital slot, firing at " + SLOT3_DMG[r] * 100 + "% damage" : "Opens a third orbital slot", nx: r => SLOT3_DMG[r + 1] * 100 + "% damage", stats: r => ({ orbit3: plus(SLOT3_DMG[r]) }), bought: () => fillOrbital(ORBIT.weapon3) },
   { id: "boss", grp: "Combat", name: "Boss Hunter", max: 5, cost: r => Math.ceil(6 * Math.pow(1.6, r)), desc: r => "+" + 5 * r + "s boss timer and +" + 10 * r + "% damage to bosses", nx: "+5s, +10%", stats: r => ({ bossTime: plus(5 * r), bossDmg: 1 + .1 * r }) },
   { id: "ocd", grp: "Combat", name: "Overcharge Discount", max: 5, cost: r => Math.ceil(8 * Math.pow(1.6, r)), desc: r => "Each Overcharge level costs x" + (2 - .1 * r).toFixed(1) + " the last", nx: r => "x" + (1.9 - .1 * r).toFixed(1), stats: r => ({ ocGrowth: plus(-.1 * r) }) },
   { id: "bb", grp: "Economy", name: "Bounty Board+", max: 3, cost: r => [8, 16, 30][r] || 999, desc: r => r ? "+" + r + " bounty slot" + (r > 1 ? "s" : "") + ", new notices post " + 15 * r + "% faster" : "No extra bounty slots", nx: "+1 slot, 15% faster", stats: r => ({ bountySlots: plus(r), postTime: 1 - .15 * r }) },
@@ -89,7 +89,7 @@ action("forge", id => {
   const f = FG[id], r = FR(id), c = f.cost(r);
   if (r >= f.max || S.stardust < c) return false;
   S.stardust -= c; S.forge[id] = r + 1; sfx("chord", 0, 0);
-  if (id === "orb3") fillOrbital(ORBIT.weapon3);
+  if (f.bought) f.bought();
   buildSkillbar();
   log("Star Forge: " + f.name + " rank " + (r + 1), "r4");
 });

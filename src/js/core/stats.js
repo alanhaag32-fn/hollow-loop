@@ -10,7 +10,7 @@ const STATS = {
   atk: { base: 5, per: ["echoBonus"] }, maxHp: { base: 60, per: ["echoBonus"] }, hpRegen: { base: .01 }, healMult: {},
   maxMp: { base: 100 }, mpRegen: { base: .03 }, leech: { base: 0, max: .15 }, leechCap: {},
   spd: {}, orbRate: {}, orbDmg: {}, crit: { base: .05 }, critDmg: { base: 2 }, redPow: { base: 2 }, redBonus: { base: 0 }, tap: { base: .5 },
-  bossDmg: {}, eliteDmg: {}, burn: { base: 0 },
+  bossDmg: {}, eliteDmg: {}, orbit3Min: { base: 0 }, orbit3: { base: 0, min: "orbit3Min" }, burn: { base: 0 },
   block: { base: 0, max: .5 }, blockLeak: { base: .3 }, evaR: { base: 0 }, dmgTaken: { min: .3, cuts: { armor: .45, shape: 1, affix: .3 } },
   crushTaken: {}, aegis: {}, thorn: { base: 0 }, reflect: { base: 0 }, wake: { base: 0, max: .4 }, move: {},
   statusDur: { min: .4 }, shrug: { base: 0 },

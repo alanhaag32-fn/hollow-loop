@@ -1,5 +1,4 @@
 // The hero's orbitals: the three slots, weapon types and traits, firing, posing and their projectiles.
-import { abMile } from "../abyss/abyss.js";
 import { sfx } from "../audio/sound.js";
 import { heroDown, hit, land } from "../combat/combat.js";
 import { S } from "../core/save.js";
@@ -10,7 +9,7 @@ import { fx, fxBusy, moveFx, ringIfRoom, shake, tempFx, zigzag } from "../fx/eff
 import { reduce } from "../fx/gfx.js";
 import { ARENA_C, SLOT, noun } from "../gear/items.js";
 import { hero } from "./hero.js";
-import { FR, SLOT3_DMG, transOpen } from "../progress/transcend.js";
+import { transOpen } from "../progress/transcend.js";
 import { view } from "../world/scene.js";
 
 export const HERO_WEAPON = {
@@ -111,7 +110,7 @@ export function stepShots(now) {
 export const ORBITALS = [
   { key: "weapon", label: "Main orbital", nth: "main", share: () => 1, open: () => true, ids: ["hBladeOrbit", "hWpn1", "hWeapon"], cd0: .5, pose: { a: -1.57, r: 31, x: 0, y: -31, ux: 0, uy: -1, sp: 0 } },
   { key: "weapon2", label: "Second orbital", nth: "second", share: () => SLOT2_DMG, open: () => S.peak >= SLOT2_AT, lockTile: "Stage " + SLOT2_AT, lockRow: "Unlocks at stage " + SLOT2_AT, lockNote: () => "Unlocks permanently when you first reach stage " + SLOT2_AT + ".", ids: ["hBladeOrbit2", "hWpn2", "hWeapon2"], cd0: .9, pose: { a: 1.57, r: 37, x: 0, y: 37, ux: 0, uy: 1, sp: 0 } },
-  { key: "weapon3", label: "Third orbital", nth: "third", share: () => SLOT3_DMG[Math.max(FR("orb3"), abMile(5) ? 1 : 0)], open: () => FR("orb3") > 0 || abMile(5), lockTile: "Locked", lockNote: () => transOpen() ? "Open it with Third Orbital in the Star Forge (Transcend tab)." : "Unlocks after your first Transcend, through the Star Forge.", ids: ["hBladeOrbit3", "hWpn3", "hWeapon3"], cd0: .7, pose: { a: 3.14, r: 43, x: -43, y: 0, ux: -1, uy: 0, sp: 0 } }
+  { key: "weapon3", label: "Third orbital", nth: "third", share: () => ST.orbit3, open: () => ST.orbit3 > 0, lockTile: "Locked", lockNote: () => transOpen() ? "Open it with Third Orbital in the Star Forge (Transcend tab)." : "Unlocks after your first Transcend, through the Star Forge.", ids: ["hBladeOrbit3", "hWpn3", "hWeapon3"], cd0: .7, pose: { a: 3.14, r: 43, x: -43, y: 0, ux: -1, uy: 0, sp: 0 } }
 ];
 ORBITALS.forEach((o, i) => { o.i = i; o.cd = o.cd0; o.has = () => o.open() && !!S.equip[o.key]; o.active = () => i === 0 || o.has(); });
 export const ORBIT = Object.fromEntries(ORBITALS.map(o => [o.key, o]));

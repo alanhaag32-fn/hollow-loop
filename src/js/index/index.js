@@ -63,4 +63,4 @@ function renderIndex() {
   });
   $("indexBody").innerHTML = h;
 }
-panel("index", { render: renderIndex });
+panel("index", { render: renderIndex, tabs: () => [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) });

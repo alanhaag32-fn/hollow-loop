@@ -1,11 +1,7 @@
 // Windows and their tabs, and the menu.
-import { abyssOpen } from "../abyss/abyss.js";
 import { S } from "../core/save.js";
 import { $, polyPts } from "../core/util.js";
-import { FAMILIES } from "../index/index.js";
-import { transOpen } from "../progress/transcend.js";
 import { PANELS, runAction } from "./actions.js";
-import { centerWeb } from "../web/web.js";
 
 const WINDOWS = [
   { id: "log", name: "Log", d: "Everything that happened", icon: "M5 4 L19 4 L19 20 L5 20 Z M8 8 L16 8 L16 9.5 L8 9.5 Z M8 11.5 L16 11.5 L16 13 L8 13 Z M8 15 L13 15 L13 16.5 L8 16.5 Z" },
@@ -38,16 +34,8 @@ const TI = {
   help: "M3 4 L11 5.5 L11 21 L3 19.5 Z M13 5.5 L21 4 L21 19.5 L13 21 Z",
   bonus: "M12 1.5 L14.6 9 L22.5 9.2 L16.2 14 L18.5 21.6 L12 17.1 L5.5 21.6 L7.8 14 L1.5 9.2 L9.4 9 Z"
 };
-const SUBS = {
-  stats: [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"], ["jour", "Journey"]],
-  gear: [["equip", "Equipped"], ["sets", "Sets"]],
-  pack: [["items", "Items"], ["opts", "Options"]],
-  train: [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"]],
-  tree: [["web", "Web"], ["asc", "Ascend"]],
-  guide: [["set", "Settings"], ["save", "Save"], ["help", "Guide"]],
-  index: null
-};
-const subList = win => win === "tree" ? SUBS.tree.concat(transOpen() ? [["trans", "Transcend"]] : [], abyssOpen() ? [["abyss", "Abyss"]] : []) : win === "index" ? [["bonus", "Bonuses"]].concat(FAMILIES.map(f => ["f" + f.sides, f.name.length > 6 ? f.name.slice(0, 5) : f.name, f.sides])) : SUBS[win];
+// a panel's tabs: [id, label, sides (a polygon icon for shape families)], from its tabs() (none: no tab row)
+const subList = win => PANELS[win].tabs ? PANELS[win].tabs() : null;
 const curSub = {};
 const subIcon = (id, sides) => sides ? '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="' + polyPts(sides, 9.5, 0, 12, 12.5) + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'
   : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + (TI[id] || TI.equip) + '" fill="currentColor" fill-rule="evenodd"/></svg>';
@@ -55,15 +43,17 @@ function buildWinTabs(win) {
   const list = subList(win) || [];
   if (!curSub[win] && list.length) curSub[win] = list[0][0];
   $("winTabs").parentElement.classList.toggle("dense", list.length > 5);
-  if (win === "board") { $("winTabs").innerHTML = '<div class="barInfo"><b id="boardDone">' + S.bountyDone + '</b> completed<br>New posting 5 min after a claim</div><button class="btn" type="button" id="rerollBtn">Reroll</button>'; return; }
+  if (PANELS[win].bar) { $("winTabs").innerHTML = PANELS[win].bar(); return; }
   $("winTabs").innerHTML = list.length > 1 ? list.map(([id, name, sides]) => '<button type="button" role="tab" class="wt chf' + (curSub[win] === id ? " on" : "") + '" data-sub="' + id + '" aria-selected="' + (curSub[win] === id) + '">' + subIcon(id, sides) + "<span>" + name + "</span></button>").join("") : "";
 }
 function applySub(win) {
   if (!win) return;
   const list = subList(win), cur = curSub[win];
   $("p-" + win).querySelectorAll(".wsub").forEach(el => el.classList.toggle("on", !list || list.length < 2 || el.dataset.sub === cur));
-  $("sheetInner").classList.toggle("fill", (win === "tree" && cur === "web") || win === "board");
-  $("sheetInner").classList.toggle("fillBoard", win === "board");
+  // a panel can fill the whole sheet (the web, the board) instead of scrolling
+  const fill = PANELS[win].fill ? PANELS[win].fill(cur) : "";
+  $("sheetInner").classList.toggle("fill", !!fill);
+  $("sheetInner").classList.toggle("fillBoard", fill === "board");
 }
 export let tab = null;
 const CURRENCY = { echo: () => S.echoes, shard: () => S.shards, dust: () => S.stardust || 0, gold: () => S.gold };
@@ -86,7 +76,7 @@ function openWindow(id) {
   $("sheet").hidden = false; document.body.classList.add("locked");
   $("sheetBody").scrollTop = 0;
   PANELS[id].stale = false; PANELS[id].render(); refreshPanel();
-  if (id === "tree") requestAnimationFrame(centerWeb);
+  if (PANELS[id].shown) requestAnimationFrame(PANELS[id].shown);
   $("sheetClose").focus();
 }
 export function closeWindow() { $("sheetInner").classList.remove("fill", "fillBoard"); $("sheet").hidden = true; document.body.classList.remove("locked"); tab = null; document.querySelectorAll("#menuDrop [data-win]").forEach(b => b.classList.remove("on")); }
@@ -96,13 +86,13 @@ function closeMenu() { $("menuDrop").hidden = true; $("menuBtn").setAttribute("a
 
 export function initWindows() {
   $("winTabs").addEventListener("click", e => {
-    if (e.target.closest("#rerollBtn")) { runAction("reroll"); return; }
+    const a = e.target.closest("[data-act]"); if (a) { if (!a.disabled) runAction(a.dataset.act, a.dataset.id, a); return; }
     const b = e.target.closest("[data-sub]"); if (!b || !tab) return;
     curSub[tab] = b.dataset.sub;
     $("winTabs").querySelectorAll(".wt").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); });
     $("sheetBody").scrollTop = 0;
     applySub(tab);
-    if (tab === "tree") requestAnimationFrame(centerWeb);
+    if (PANELS[tab].shown) requestAnimationFrame(PANELS[tab].shown);
   });
   (function buildMenu() {
     let bi = 0;

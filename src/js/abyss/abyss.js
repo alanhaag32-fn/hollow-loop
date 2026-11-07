@@ -59,7 +59,7 @@ const ALT = {};
 statSource(give => ALTAR.forEach(a => give(a, AL(a.id))));
  ALTAR.forEach(a => ALT[a.id] = a);
 const AB_MILES = [
-  [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge"],
+  [5, "Abyssal Orbital", "Your third orbital slot opens (40% damage) even without the Star Forge", { stats: () => ({ orbit3Min: plus(.4) }) }],
   [10, "Void Step", "Dash tears a rift along its path that deals 300% attack", { fx: {
     dash(c) {
       const { x0, y0 } = c;

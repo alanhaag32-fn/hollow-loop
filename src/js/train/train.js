@@ -7,6 +7,8 @@ import { $, fmt } from "../core/util.js";
 import { recalc } from "../hero/hero.js";
 import { action, markDirty, panel } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
+import { log } from "../ui/log.js";
+import { whenNewBest } from "../modes/modes.js";
 
 // oc (Overcharge): once a capped upgrade is maxed it keeps going with no level limit.
 // Stats already at a hard ceiling get a related bonus instead.
@@ -90,6 +92,7 @@ function renderTrain() {
   }).join("") + "</div>").join("");
 }
 panel("train", {
+  tabs: () => [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"]],
   render: renderTrain,
   refresh() {
     if (buyN !== "max") return;
@@ -120,3 +123,4 @@ export function autoTrain() {
   }
   if (bought) { recalc(); markDirty("train", "skills"); }
 }
+whenNewBest((before, now, kind) => TRAIN.forEach(t => { if (kind === "best" && before < t.unlock && now >= t.unlock) { log("Training unlocked: " + t.name, "r3"); markDirty("train"); } }));
