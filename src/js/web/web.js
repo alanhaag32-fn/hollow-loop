@@ -69,7 +69,7 @@ export const TREE = [
   { id: "f9", br: "fortune", x: -190, y: 0, s: "Trophy", name: "Trophy Hunter", max: 10, c: 2, desc: "+10% lumen from elites and bosses per rank", stats: n => ({ bigGold: plus(.1 * n) }) },
   { id: "f6", br: "fortune", x: -190, y: 75, s: "Bounty", name: "Bounty Hunter", max: 10, c: 2, desc: "+20% bounty lumen per rank", stats: n => ({ bountyGold: 1 + .2 * n }) },
   { id: "f5", br: "fortune", x: -250, y: -60, s: "Set seek", name: "Set Seeker", max: 5, c: 3, desc: "+10% set item chance per rank", stats: n => ({ setChance: 1 + .1 * n }) },
-  { id: "f7", br: "fortune", x: -250, y: 60, s: "Head start", name: "Head Start", max: 5, c: 3, desc: "Start each ascension 5 stages further per rank", stats: n => ({ startStage: plus(5 * n) }) },
+  { id: "f14", br: "fortune", x: -250, y: 60, s: "Prospect", name: "Prospector", max: 5, c: 3, desc: "+10% shards from kills per rank", stats: n => ({ shardF: 1 + .1 * n }) },
   { id: "f8", br: "fortune", x: -292, y: 0, s: "Echoes", name: "Echo Chamber", max: 1, c: 15, cap: true, desc: "+25% echoes from ascending", stats: n => ({ echoGain: 1.25 }) },
   { id: "b1", br: "bridge", x: 100, y: -100, s: "Bladeward", name: "Bladeward", max: 10, c: 2, desc: "+5% attack and +5% health per rank", stats: n => ({ atk: 1 + .05 * n, maxHp: 1 + .05 * n }) },
   { id: "b2", br: "bridge", x: 100, y: 100, s: "Steady", name: "Steady Pulse", max: 10, c: 2, desc: "+10% health regen per rank", stats: n => ({ hpRegen: 1 + .1 * n }) },
@@ -112,13 +112,13 @@ const EDGES = [
   ["e1", "e2"], ["e1", "e4"], ["e2", "e3"], ["e4", "e5"], ["e2", "e9"], ["e4", "e9"], ["e3", "e6"], ["e5", "e7"], ["e6", "e8"], ["e7", "e8"], ["e9", "e8"],
   ["w1", "w2"], ["w1", "w3"], ["w2", "w4"], ["w3", "w10"], ["w2", "w9"], ["w3", "w9"], ["w4", "w6"], ["w10", "w5"], ["w9", "w7"], ["w6", "w8"], ["w5", "w8"], ["w7", "w8"],
   ["d1", "d2"], ["d1", "d4"], ["d2", "d3"], ["d4", "d6"], ["d2", "d9"], ["d4", "d9"], ["d3", "d5"], ["d6", "d7"], ["d5", "d8"], ["d7", "d8"], ["d9", "d8"],
-  ["f1", "f2"], ["f1", "f4"], ["f2", "f3"], ["f4", "f6"], ["f2", "f9"], ["f4", "f9"], ["f3", "f5"], ["f6", "f7"], ["f5", "f8"], ["f7", "f8"], ["f9", "f8"],
+  ["f1", "f2"], ["f1", "f4"], ["f2", "f3"], ["f4", "f6"], ["f2", "f9"], ["f4", "f9"], ["f3", "f5"], ["f6", "f14"], ["f5", "f8"], ["f14", "f8"], ["f9", "f8"],
   ["e4", "b1"], ["w2", "b1"], ["w3", "b2"], ["d4", "b2"], ["d2", "b3"], ["f4", "b3"], ["f2", "b4"], ["e2", "b4"],
   ["e5", "o1"], ["w4", "o1"], ["w10", "o2"], ["d6", "o2"], ["d3", "o3"], ["f6", "o3"], ["f3", "o4"], ["e3", "o4"],
   ["e6", "e11"], ["e7", "e12"], ["e6", "e10"], ["e11", "e10"], ["e7", "e13"], ["e12", "e13"], ["e10", "k1"], ["e13", "k1"], ["e8", "k1"],
   ["w6", "w11"], ["w5", "w12"], ["w6", "w13"], ["w11", "w13"], ["w5", "w14"], ["w12", "w14"], ["w13", "k2"], ["w14", "k2"], ["w8", "k2"],
   ["d7", "d10"], ["d5", "d11"], ["d7", "d12"], ["d10", "d12"], ["d5", "d13"], ["d11", "d13"], ["d12", "k3"], ["d13", "k3"], ["d8", "k3"],
-  ["f5", "f10"], ["f7", "f12"], ["f5", "f11"], ["f10", "f11"], ["f7", "f13"], ["f12", "f13"], ["f11", "k4"], ["f13", "k4"], ["f8", "k4"],
+  ["f5", "f10"], ["f14", "f12"], ["f5", "f11"], ["f10", "f11"], ["f14", "f13"], ["f12", "f13"], ["f11", "k4"], ["f13", "k4"], ["f8", "k4"],
   ["e12", "x1"], ["w11", "x1"], ["o1", "x1"], ["w12", "x2"], ["d10", "x2"], ["o2", "x2"], ["d11", "x3"], ["f12", "x3"], ["o3", "x3"], ["f10", "x4"], ["e11", "x4"], ["o4", "x4"]
 ];
 const NEIGH = {};

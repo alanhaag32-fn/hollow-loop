@@ -104,6 +104,16 @@ test("a save made inside the Abyss by an older version gets its main stage back"
   assert.deepEqual(s, [88, 3, false]);
 });
 
+test("a save with ranks in the web's old Head Start gets those echoes back, and Prospector adds shards", async () => {
+  const page = await open(baseSave({ echoes: 2, tree: { f1: 1, f7: 3 } }));
+  const r = await game(page, ["core/save.js", "core/stats.js", "hero/hero.js"], m => {
+    const S = m.save.S, out = { echoes: S.echoes, f7: S.tree.f7, start: m.stats.ST.startStage };
+    S.tree.f14 = 2; m.hero.recalc(); out.shards = m.stats.ST.shardF; return out;
+  });
+  assert.deepEqual(r, { echoes: 20, f7: undefined, start: 1, shards: 1.2 });
+  assert.deepEqual(page.errors, []);
+});
+
 test("an unreadable save is kept aside and the game starts fresh", async () => {
   const page = await open("{not json");
   const s = await page.evaluate(k => [localStorage.getItem(k + ".broken"), document.getElementById("stageLbl").textContent], KEY);

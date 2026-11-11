@@ -23,7 +23,7 @@ function migrateItem(it, from) {
 // economy versions: rescale gear to the exponential curve and repost bounties with the new rewards;
 // refund automation bought in the Star Forge (it's free after a Transcend now); Siphon became Dash
 function migrateEco() {
-  if (S.forge) { let back = 0; for (const k in AUTO_REFUND) if (S.forge[k]) { back += AUTO_REFUND[k]; delete S.forge[k]; } if (back) { S.stardust = (S.stardust || 0) + back; S.refundNote = back; } }
+  if (S.forge) { let back = 0; for (const k in AUTO_REFUND) if (S.forge[k]) { back += AUTO_REFUND[k]; delete S.forge[k]; } if (back) { S.stardust = (S.stardust || 0) + back; S.refundNote = "Automation is now free once you Transcend: refunded " + back + " Stardust"; } }
   if ((S.eco || 0) === 6) S.eco = ECO;
   if (S.skill && S.skill.siphon) { S.skill.dash = Math.max(S.skill.dash || 0, S.skill.siphon); delete S.skill.siphon; }
   if (S.auto && "siphon" in S.auto) { S.auto.dash = S.auto.siphon; delete S.auto.siphon; }
@@ -41,6 +41,16 @@ function migrateEco() {
   S.bounties.forEach(b => { if (!b.empty && !b.eff) { b.eff = b.type === "gold" ? b.n / lumenAt(S.maxStage) : EFFORT[b.type] ? EFFORT[b.type](b.n) : b.n; delete b.gold; } });
   S.eco = ECO;
 }
+// web nodes that no longer exist give their echoes back (rank r of a node costing c cost c * r in echoes)
+const RETIRED_NODES = { f7: { c: 3, note: "Head Start left the web (the Star Forge has it); Prospector took its place" } };
+function retireNodes() {
+  for (const id in RETIRED_NODES) {
+    const r = S.tree[id], o = RETIRED_NODES[id];
+    if (!r) continue;
+    const back = o.c * r * (r + 1) / 2;
+    delete S.tree[id]; S.echoes = (S.echoes || 0) + back; S.refundNote = o.note + ": refunded " + back + " echoes";
+  }
+}
 function trimTraining() { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); }
 export function load() {
   const d = readSave();
@@ -53,6 +63,7 @@ export function load() {
   S.train = d.train || {};
   if (from === 2 && d.train && d.train.essence) { S.train.vigor = d.train.essence; S.train.essence = 0; }
   S.tree = d.tree || {};
+  retireNodes();
   S.oc = d.oc || {};
   S.forge = d.forge || {};
   S.abyss = Object.assign(KEPT().abyss, d.abyss || {}); S.abyss.altar = S.abyss.altar || {};

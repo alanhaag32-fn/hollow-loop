@@ -83,7 +83,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { re
 requestAnimationFrame(frame);
 buildSkillbar();
 log("The loop begins.", "r0");
-if (S.refundNote) { log("Automation is now free once you Transcend: refunded " + S.refundNote + " Stardust", "r4"); delete S.refundNote; }
+if (S.refundNote) { log(S.refundNote, "r4"); delete S.refundNote; }
 if (!S.seenIntro) showIntro();
 else showOffline((Date.now() - S.last) / 1000);
 updateUI();
