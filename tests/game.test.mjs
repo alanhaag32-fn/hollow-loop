@@ -54,6 +54,20 @@ test("Last Stand: under 30% health you take 40% less damage", async () => {
   assert.ok(Math.abs(ratio - .6) < 1e-9, String(ratio));
 });
 
+test("Dash goes where the stick points, even with a shape on that side", async () => {
+  const page = await open(baseSave({ stage: 5, maxStage: 5 }));
+  const moved = await game(page, ["hero/hero.js", "enemies/enemies.js", "enemies/foes.js", "world/scene.js"], async m => {
+    m.foes.clearFoes();
+    const V = m.scene.view, e = m.foes.spawnFoe(m.enemies.makeEnemy(5, false));
+    e.px = V.HERO_X + 80; e.py = V.HERO_Y;
+    const x0 = V.HERO_X; m.hero.hero.joyX = 1; m.hero.hero.joyY = 0;
+    m.hero.startDash(1);
+    await new Promise(r => setTimeout(r, 150));
+    return V.HERO_X - x0;
+  });
+  assert.ok(moved > 20, String(moved));
+});
+
 test("Void Step (Abyss depth 10): a dash leaves a rift that hits shapes along its path when it ends", async () => {
   const lost = [];
   for (const best of [0, 15]) {

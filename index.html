@@ -3207,8 +3207,10 @@ function startDash(L) {
   if (kx || ky) { dx = kx; dy = ky; }
   // a second finger on the button can briefly interrupt the stick, so fall back to the last steered direction
   if (Math.hypot(dx, dy) < .2 && performance.now() - lastDT < 900) { dx = lastDX; dy = lastDY; }
-  if (Math.hypot(dx, dy) < .2) { dx = hvx; dy = hvy; }
-  if (Math.hypot(dx, dy) < 5) {
+  // not steering: the drift counts only when it's a real movement (hvx, hvy are px/s; the stick is 0 to 1)
+  const steering = Math.hypot(dx, dy) >= .2;
+  if (!steering) { dx = hvx; dy = hvy; }
+  if (!steering && Math.hypot(dx, dy) < 5) {
     let best = null, bd = 1e9; for (const f of foes) { if (f.dead) continue; const d = Math.hypot(f.px - view.HERO_X, f.py - view.HERO_Y); if (d < bd) { bd = d; best = f; } }
     if (best) { dx = view.HERO_X - best.px; dy = view.HERO_Y - best.py; } else { dx = 0; dy = -1; }
   }
