@@ -25,6 +25,7 @@ const BOUNTY_T = [
   { type: "block", w: 1.3, n: () => 20 + rnd(21), text: n => "Block " + n + " attacks" },
   { type: "salvage", w: .8, n: () => 15 + rnd(16), text: n => "Salvage " + n + " items" },
   { type: "stage", w: 1.5, n: () => 5 + rnd(6), text: n => "Clear " + n + " stages" },
+  { type: "wisp", w: 1.2, n: () => 2 + rnd(2), text: n => "Catch " + n + " wisps" },
   { type: "gold", w: 1, n: () => Math.ceil(goldScale() * (100 + rnd(101))), text: n => "Earn " + fmt(n) + " lumen" }
 ];
 const BT = {};
@@ -32,7 +33,7 @@ const BT = {};
 // a finished bounty waits on the board to be claimed
 export const bountyReady = () => S.bounties.some(b => !b.empty && b.prog >= b.n);
 // effort in "kills worth of time" for each bounty type; rewards are worth well over the time spent
-export const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n };
+export const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n, wisp: n => 90 * n };
 export const bountyShards = tier => (3 + 3 * tier) * shardAmt(S.maxStage);
 function newBounty() {
   const t = pick(BOUNTY_T), roll = Math.random(), tier = roll < .04 ? 2 : roll < .19 ? 1 : 0, n = t.n();

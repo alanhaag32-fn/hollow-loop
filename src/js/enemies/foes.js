@@ -8,7 +8,7 @@ import { FAR_RATE, enemyAttack } from "./shots.js";
 import { ringIfRoom, shake, sparks, warnRing } from "../fx/effects.js";
 import { ARENA_C, anim, reduce } from "../fx/gfx.js";
 
-import { RING_R, arcD } from "../hero/hero.js";
+import { RING_R, arcD, dashT } from "../hero/hero.js";
 import { STATUS } from "../hero/statuses.js";
 import { fightStage, mode } from "../modes/modes.js";
 import { floatText } from "../ui/floats.js";
@@ -182,6 +182,8 @@ export function newWaypoint(e, first) {
 const pace = () => 1 + Math.min(.55, (fightStage() - 1) * .008);
 const sporadic = () => Math.min(1.05, .45 + fightStage() * .01);
 let bumpFxT = 0;
+// how close shapes may come to the core's center while it dashes (its ring normally keeps them RING_R away)
+const DASH_RING = 16;
 export function moveFoes(dt) { while (dt > 1e-4) { const h = Math.min(dt, .05); moveStep(h); dt -= h; } }
 function moveStep(dt) {
   moveT += dt; bumpFxT -= dt;
@@ -250,7 +252,8 @@ function moveStep(dt) {
         if (bumpFxT <= 0 && rv < -15 && !document.hidden) { bumpFxT = .15; sparks(a.px + nx * a.R, a.py + ny * a.R, 3, "#fff", 10); }
       }
     }
-    const hx = a.px - view.HERO_X, hy = a.py - view.HERO_Y, hd = Math.hypot(hx, hy) || .01, mh = RING_R + a.R + 4;
+    // a dashing core slips through shapes instead of shoving them ahead of it, so the dash can slice what it crosses
+    const hx = a.px - view.HERO_X, hy = a.py - view.HERO_Y, hd = Math.hypot(hx, hy) || .01, mh = (dashT > 0 ? DASH_RING : RING_R) + a.R + 4;
     if (hd < mh) {
       const nx = hx / hd, ny = hy / hd;
       a.px = view.HERO_X + nx * mh; a.py = view.HERO_Y + ny * mh;

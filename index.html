@@ -128,6 +128,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 .trait b { color: var(--accent); }
 .od #hCore { fill: #ffe9a8; filter: drop-shadow(0 0 12px #ffd04d); }
 .pulse { animation: pulse 1.8s ease-in-out infinite; }
+.wisp .spinSlow { animation-duration: 5s; }
 @keyframes bob { 50% { transform: translateY(-1.5px); } }
 @keyframes hover { 50% { transform: translateY(-4px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -401,6 +402,8 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 #nodeCard .nodeCard .ef { font-size: 13px; }
 #nodeCard .nodeCard .st { font-size: 12px; }
 #nodeCard .nodeCard .btn { grid-column: 2; grid-row: 2 / span 3; align-self: center; }
+#nodeCard .nodeCard .ncBtns { grid-column: 2; grid-row: 2 / span 3; align-self: center; display: grid; gap: 6px; }
+#nodeCard .nodeCard .ncBtns .btn { grid-column: 1; grid-row: auto; }
 #nodeCard .ncX { grid-column: 2; grid-row: 1; justify-self: end; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.06); color: var(--muted); display: grid; place-items: center; }
 #nodeCard .ncX svg { width: 12px; height: 12px; }
 .panel[hidden] { display: none; }
@@ -622,6 +625,7 @@ body.perf .pulse { animation: none; }
           </g>
         </g>
         <g id="foes"></g>
+        <g id="wisps"></g>
         <g id="inds"></g>
         <g id="reticle" style="display:none"></g>
         <g id="fx"></g>
@@ -701,7 +705,7 @@ body.perf .pulse { animation: none; }
         <section class="panel" id="p-tree" hidden>
           <div class="wsub" data-sub="asc"><div id="ascTop"></div>
           <div class="legend"><span><i style="background:var(--c3)"></i>Edge</span><span><i style="background:var(--c1)"></i>Ward</span><span><i style="background:var(--c2)"></i>Drive</span><span><i style="background:var(--c4)"></i>Fortune</span><span><i style="background:var(--hero)"></i>Bridge</span></div>
-          <p class="note">The web keeps every node you learn through ascensions. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
+          <p class="note">The web keeps every node you learn, through ascensions and Transcends alike. Branch colors: Edge is damage, Ward is defense and mana, Drive is speed and skills, Fortune is loot and lumen, and Bridges link branches together.</p></div>
           <div class="wsub" data-sub="trans"><div id="transBody"></div></div>
           <div class="wsub" data-sub="abyss"><div id="abyssBody"></div></div>
           <div class="wsub" data-sub="web">
@@ -740,14 +744,16 @@ body.perf .pulse { animation: none; }
 
 const KEY = "hollow-loop-v4";
 // Every saved field, grouped by how long it lasts: RUN fields reset when you ascend, CYCLE fields when you transcend,
-// and KEPT fields (settings, records, Stardust, the Star Forge, the Abyss) are never reset.
+// and KEPT fields (settings, records, echoes and the web, Stardust, the Star Forge, stars, the Abyss) are never reset.
 const RUN = () => ({
   gold: 0, shards: 0, stage: 1, maxStage: 1, kills: 0, push: true, runStart: undefined, kps: undefined, last: Date.now(),
   train: {}, oc: {}, skill: {}, equip: {}, inv: [], bounties: [], rerollAt: 0
 });
-const CYCLE = () => ({ echoes: 0, echoesTotal: 0, tree: {}, ascensions: 0, cyclePeak: 1 });
+// echoesTotal is what you earned this cycle (it sets echo power and Stardust); echoMemory is the share of earlier
+// cycles' echoes that still counts toward echo power
+const CYCLE = () => ({ echoesTotal: 0, ascensions: 0, cyclePeak: 1 });
 const KEPT = () => ({
-  v: 4, eco: 7, stardust: 0, stardustTotal: 0, forge: {}, transcends: 0,
+  v: 4, eco: 7, stardust: 0, stardustTotal: 0, forge: {}, transcends: 0, echoes: 0, tree: {}, echoMemory: 0, stars: {},
   abyss: { best: 0, depth: 1, stone: 0, total: 0, altar: {}, seed: 0 },
   autoCfg: { trainOn: true, train: {}, push: 60, ascAt: 0, ascStall: false, smart: true }, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
   anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false,
@@ -925,8 +931,8 @@ const STATS = {
   gold: {}, bigGold: {}, drop: { base: .3, max: .95 }, luck: {}, setChance: { base: .2 }, salv: {}, shardF: {},
   killHeal: { base: .05 }, killMana: { base: 0 }, bossLoot: { base: 0 }, bossShards: {}, eliteSpoils: { base: 0 }, bonusDrop: { base: 0 },
   mythChance: {}, gild: { base: 0 }, affixPow: {}, trainCap: { base: 0 }, ocGrowth: { base: 2 },
-  bossTime: { base: 0 }, homing: { base: 0 }, startStage: { base: 1 }, starterKit: { base: 0 }, echoGain: {}, momentumAt: { base: .5, max: .75 }, stoneGain: {},
-  bountyGold: {}, bountySlots: { base: 3 }, postTime: {}, offRate: { base: .5 }, offHours: { base: 8 }
+  bossTime: { base: 0 }, homing: { base: 0 }, startStage: { base: 1 }, starterKit: { base: 0 }, echoGain: {}, echoKeep: { base: .25, max: 1 }, momentumAt: { base: .5, max: .75 }, stoneGain: {},
+  bountyGold: {}, bountySlots: { base: 3 }, postTime: {}, offRate: { base: .5 }, offHours: { base: 8 }, wispPull: { base: 0 }, boonTime: {}
 };
 const plus = v => ({ plus: v }), onBase = v => ({ base: v }), cutBy = (g, v) => ({ cut: g, v });
 const STAT_SOURCES = [];
@@ -1077,6 +1083,14 @@ function applyGfx() {
   document.body.classList.toggle("perf", perf);
 }
 const anim = (el, frames, opts) => (!reduce && el && el.animate) ? el.animate(frames, typeof opts === "number" ? { duration: opts } : opts) : null;
+
+// ---- js/core/events.js
+// Things that happened in play (a kill, a crit, a cast, a stage cleared...), for features that keep count of them
+// (bounties, the Index) without the code where they happen knowing those features.
+const LISTENERS = [];
+// fn(type, n, detail)
+const listen = fn => LISTENERS.push(fn);
+const tell = (type, n = 1, detail) => LISTENERS.forEach(fn => fn(type, n, detail));
 
 // ---- js/gear/reforge.js
 // Honing and reforging affixes after a Transcend.
@@ -1352,14 +1366,6 @@ function applyCam() {
 // logical arena coordinates, recomputed to fill the screen
 let VW = 360, VH = 780, SC = 1, ENGAGE = 105, SW = 390, SH = 844;
 
-// ---- js/core/events.js
-// Things that happened in play (a kill, a crit, a cast, a stage cleared...), for features that keep count of them
-// (bounties, the Index) without the code where they happen knowing those features.
-const LISTENERS = [];
-// fn(type, n, detail)
-const listen = fn => LISTENERS.push(fn);
-const tell = (type, n = 1, detail) => LISTENERS.forEach(fn => fn(type, n, detail));
-
 // ---- js/modes/modes.js
 // Run modes: the main run and the Abyss share combat; the current mode owns stage, spawns, kills and deaths.
 
@@ -1427,11 +1433,13 @@ const MAIN = {
   death() {
     log(S.stage > 1 ? "Your core collapsed. Back to stage " + (S.stage - 1) + ", now farming" : "Your core collapsed. Trying again", "bad");
     S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0; spawn.stageSpawned = 0;
+    tell("setback", 1);
   },
   escape() {
     log("The boss escaped. Back to stage " + Math.max(1, S.stage - 1) + ", now farming", "bad");
     S.push = S.stage <= 1 ? S.push : false; S.stage = Math.max(1, S.stage - 1); S.kills = 0;
     clearFoes(true); spawn.spawnT = 1; spawn.stageSpawned = 0;
+    tell("setback", 1);
   },
   hud() {
     const need = killsNeeded();
@@ -1547,7 +1555,7 @@ function renderStats() {
     G("Defense", [["Health", fmt(Math.max(0, hero.hp)) + " / " + fmt(ST.maxHp)], ["Health regen", pct(ST.hpRegen) + " per second"], ["Block chance", pct(ST.block) + ", blocks " + Math.round((1 - ST.blockLeak) * 100) + "% of a hit"], ["Evasion rating", fmt(ST.evaR)], ["Chance to evade here", pct(evadeChance())], ["Damage taken", pct(ST.dmgTaken, 0)], ["Move speed", pct(ST.move, 0)], ["Status effect duration", pct(ST.statusDur, 0)]], "def") +
     G("Mana and skills", [["Mana", fmt(Math.max(0, hero.mp)) + " / " + fmt(ST.maxMp)], ["Mana regen", pct(ST.mpRegen) + " per second"], ["Skill power", pct(ST.skillPow, 0)], ["Cooldowns", pct(ST.cdr, 0) + " of base"], ["Mana costs", pct(ST.costMult, 0) + " of base"]], "mana") +
     G("Fortune", [["Lumen gain", pct(ST.gold, 0)], ["Loot drop chance", pct(ST.drop)], ["Rare luck", pct(ST.luck, 0)], ["Set item chance at Rare+", pct(ST.setChance)], ["Salvage value", pct(ST.salv, 0)]], "fort") +
-    G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], ["Echoes earned", S.echoesTotal], ["Ascensions", S.ascensions || 0]], "jour");
+    G("Journey", [["Highest stage ever", S.peak], ["Enemies destroyed", fmt(S.totalKills)], ["Bounties completed", S.bountyDone], [S.transcends ? "Echoes earned this cycle" : "Echoes earned", S.echoesTotal], S.transcends ? ["Echoes remembered from earlier cycles", S.echoMemory || 0] : null, ["Ascensions" + (S.transcends ? " this cycle" : ""), S.ascensions || 0], S.transcends ? ["Transcends", S.transcends] : null], "jour");
 }
 panel("stats", { render: renderStats, refresh: renderStats, tabs: () => [["off", "Offense"], ["def", "Defense"], ["mana", "Mana"], ["fort", "Fortune"], ["jour", "Journey"]] });
 let gearSel = "weapon", gearPick = null;
@@ -1712,6 +1720,7 @@ const BOUNTY_T = [
   { type: "block", w: 1.3, n: () => 20 + rnd(21), text: n => "Block " + n + " attacks" },
   { type: "salvage", w: .8, n: () => 15 + rnd(16), text: n => "Salvage " + n + " items" },
   { type: "stage", w: 1.5, n: () => 5 + rnd(6), text: n => "Clear " + n + " stages" },
+  { type: "wisp", w: 1.2, n: () => 2 + rnd(2), text: n => "Catch " + n + " wisps" },
   { type: "gold", w: 1, n: () => Math.ceil(goldScale() * (100 + rnd(101))), text: n => "Earn " + fmt(n) + " lumen" }
 ];
 const BT = {};
@@ -1719,7 +1728,7 @@ const BT = {};
 // a finished bounty waits on the board to be claimed
 const bountyReady = () => S.bounties.some(b => !b.empty && b.prog >= b.n);
 // effort in "kills worth of time" for each bounty type; rewards are worth well over the time spent
-const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n };
+const EFFORT = { kill: n => n, elite: n => 8 * n, boss: n => 60 * n, tap: n => n / 6, cast: n => 3 * n, rare: n => 40 * n, crit: n => 1.2 * n, evade: n => 4 * n, block: n => 4 * n, salvage: n => 3 * n, stage: n => 8 * n, wisp: n => 90 * n };
 const bountyShards = tier => (3 + 3 * tier) * shardAmt(S.maxStage);
 function newBounty() {
   const t = pick(BOUNTY_T), roll = Math.random(), tier = roll < .04 ? 2 : roll < .19 ? 1 : 0, n = t.n();
@@ -1929,6 +1938,88 @@ function autoTrain() {
 }
 whenNewBest((before, now, kind) => TRAIN.forEach(t => { if (kind === "best" && before < t.unlock && now >= t.unlock) { log("Training unlocked: " + t.name, "r3"); markDirty("train"); } }));
 
+// ---- js/wisp/wisp.js
+// Wisps: stray lights that drift across the arena now and then. Tap one before it leaves and it bursts into a boon.
+
+// they start appearing once you've reached this stage; a tap this close catches one; how fast they cross the screen
+const WISP_FROM = 3, WISP_REACH = 34, WISP_SPEED = 55, WISP_COL = "#ffe9a8";
+const wispGap = () => 70 + Math.random() * 50;
+// What a wisp can hold. w: how likely; run(): an instant boon, returns what it gave;
+// time: a timed boon instead, with stats or fx like any other bonus; ok(): whether it can come up yet
+const BOONS = [
+  { id: "cache", w: 3, run() { const g = Math.ceil(lumenAt(fightStage()) * 40 * ST.gold); addGold(g, true); return "+" + fmt(g) + " lumen"; } },
+  { id: "shards", w: 2, run() { const n = Math.max(1, Math.round(6 * shardAmt(fightStage()) * ST.shardF)); addShards(n); return "+" + n + " shards"; } },
+  { id: "frenzy", w: 2, time: 20, name: "Frenzy", desc: "double attack speed", fx: { attackSpeed: c => { c.v *= 2; } } },
+  { id: "gild", w: 2, time: 30, name: "Gilded", desc: "triple lumen", stats: () => ({ gold: 3 }) },
+  { id: "renew", w: 2, run() { hero.hp = ST.maxHp; hero.mp = ST.maxMp; for (const k in cds) cds[k] = 0; return "Renewed: full health and mana, every skill ready"; } },
+  { id: "gift", w: 1, run() { const it = receive(makeItem(fightStage(), false, 2), true); return RARITY[it.r].name + " " + it.name; } },
+  { id: "echo", w: .4, ok: () => (S.peak || 1) >= 20, run() { addEchoes(1); return "+1 echo"; } }
+];
+// seconds left on each timed boon
+const boonLeft = {};
+const boonOn = b => boonLeft[b.id] > 0;
+function startBoon(b) {
+  const fresh = !boonOn(b);
+  boonLeft[b.id] = b.time * ST.boonTime;
+  if (b.stats && fresh) recalc();
+  return b.name + ": " + b.desc + " for " + Math.round(boonLeft[b.id]) + "s";
+}
+// timed boons run down with the fight, like statuses
+const BOON_CLOCK = { tick(c) { for (const b of BOONS) if (boonOn(b) && (boonLeft[b.id] -= c.dt) <= 0) { boonLeft[b.id] = 0; if (b.stats) recalc(); } } };
+effectSource(() => [BOON_CLOCK].concat(BOONS.filter(b => b.fx && boonOn(b)).map(b => b.fx)));
+statSource(give => BOONS.forEach(b => { if (b.stats && boonOn(b)) give(b); }));
+// the chips under your mana bar for the boons running now
+const boonChips = () => BOONS.filter(boonOn).map(b => '<span class="stChip" style="--sc:' + WISP_COL + '" title="' + b.desc + '">' + b.name + " " + Math.ceil(boonLeft[b.id]) + "s</span>").join("");
+
+// the wisp on screen, if any. sx, sy: where it is on the screen (in scene units), so it stays in view while you move
+let wisp = null, wispIn = 45, wispSeen = false;
+const wispX = () => view.VX0 + wisp.sx, wispY = () => view.VY0 + wisp.sy;
+function placeWisp() { wisp.el.setAttribute("transform", "translate(" + wispX().toFixed(1) + " " + wispY().toFixed(1) + ")"); }
+function spawnWisp() {
+  if (wisp) return;
+  const dir = Math.random() < .5 ? 1 : -1, y0 = ARENA_T + 70 + Math.random() * Math.max(40, ARENA_B - ARENA_T - 170);
+  const el = svgEl("g", { class: "wisp" }, $("wisps"));
+  svgEl("circle", { r: 15, fill: WISP_COL, opacity: .22, class: "pulse" }, el);
+  svgEl("polygon", { points: starPts(4, 12, 4.5), fill: WISP_COL, stroke: "#fff", "stroke-width": 1 }, svgEl("g", { class: "spinSlow" }, el));
+  wisp = { el, dir, sx: dir > 0 ? -24 : VW + 24, sy: y0, y0, t: 0 };
+  placeWisp(); sfx("shard", 0, 0);
+  if (!wispSeen) { wispSeen = true; log("A wisp of stray light drifts in. Tap it before it leaves for a boon", "r4"); }
+}
+function endWisp() { wisp.el.remove(); wisp = null; wispIn = wispGap(); }
+function catchWisp() {
+  const x = wispX(), y = wispY(), pool = BOONS.filter(b => !b.ok || b.ok());
+  endWisp();
+  let r = Math.random() * pool.reduce((a, b) => a + b.w, 0), got = pool[0];
+  for (const b of pool) { r -= b.w; if (r <= 0) { got = b; break; } }
+  const text = got.time ? startBoon(got) : got.run();
+  burst(x, y, WISP_COL, 12); sfx("loot", 2, 0);
+  floatText(text, "info", "hero", WISP_COL); log("Wisp: " + text, "r4");
+  tell("wisp", 1);
+}
+// a tap at this spot in the arena: catches the wisp if it's there
+function tapWisp(x, y) {
+  if (!wisp || Math.hypot(wispX() - x, wispY() - y) > WISP_REACH) return false;
+  catchWisp(); return true;
+}
+// each frame: the wait for the next wisp, and the one on screen drifting across (or flying to the core with Lodestar)
+function stepWisp(dt) {
+  if (!wisp) {
+    if (heroDown || (S.peak || 1) < WISP_FROM) return;
+    wispIn -= dt; if (wispIn <= 0) spawnWisp();
+    return;
+  }
+  wisp.t += dt;
+  if (ST.wispPull > 0 && wisp.t > 1.2) {
+    const dx = view.HERO_X - wispX(), dy = view.HERO_Y - wispY(), d = Math.hypot(dx, dy) || 1, go = Math.min(d, 260 * dt);
+    wisp.sx += dx / d * go; wisp.sy += dy / d * go;
+    if (d < 30) { catchWisp(); return; }
+  } else {
+    wisp.sx += wisp.dir * WISP_SPEED * dt; wisp.sy = wisp.y0 + Math.sin(wisp.t * 1.6) * 34;
+    if (wisp.sx < -40 || wisp.sx > VW + 40) { endWisp(); return; }
+  }
+  placeWisp();
+}
+
 // ---- js/ui/hud.js
 // The heads-up display: stage title, currencies, health and mana text, statuses and boss mechanic readout.
 
@@ -1975,6 +2066,7 @@ function updateUI() {
     const on = st(k); heroModel.classList.toggle("st-" + k, on);
     if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
   }
+  chips += boonChips();
   if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
   $("mechTxt").textContent = mechReadout(enemy).text;
   $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";
@@ -2117,6 +2209,8 @@ EDGES.forEach(([a, b]) => { NEIGH[a].push(b); NEIGH[b].push(a); });
 const T = id => id === "core" ? 1 : (S.tree[id] || 0);
 let treeSel = null;
 const nodeCost = n => n.c * ((S.tree[n.id] || 0) + 1);
+// how many more ranks of a node this many echoes buy (each rank costs one more times the node's cost)
+function ranksFor(n, echoes) { let r = S.tree[n.id] || 0, k = 0; while (r + k < n.max && echoes >= n.c * (r + k + 1)) { echoes -= n.c * (r + k + 1); k++; } return k; }
 const owned = n => T(n.id) > 0;
 const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
 const nodeR = n => n.key ? 20 : n.cap ? 17 : n.id === "core" ? 16 : n.br === "bridge" ? 12 : n.c >= 2 ? 13 : 11;
@@ -2124,9 +2218,10 @@ function renderTree() {
   renderSheets("tree");
   const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
   $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
-    '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
+    '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + (S.echoMemory ? fmt(S.echoesTotal || 0) + " echoes earned this cycle and " + fmt(S.echoMemory) + " remembered from earlier cycles" : fmt(echoPowerFrom()) + " echoes earned in total") + " (+1% each, never capped).</div>" +
     '<div class="note" style="margin:0">' + (can ? "Ascend to gain " + g + " echoes" + (runStart() > 1 ? " (only stages past " + runStart() + ", where this run began, count)" : "") + ". You restart at stage " + startStage() + " and lose lumen, gear, training and skill levels. The web and bounties stay. Skills relock and return as you reach their stages again. Each ascension also gives enemies more modifiers and you +5% echoes."
       : "Reach stage " + ascMin() + " to ascend" + (ascMin() > 20 ? " (10 stages past where this run began)" : "") + ". Highest this run: stage " + S.maxStage + ".") + "</div>" +
+    (transOpen() && !S.transcends ? '<div class="note" style="margin:0"><b>Stuck near stage 150?</b> Enemies past it outgrow what ascending alone gives. Transcend (next tab) to break through. You keep your web and echoes.</div>' : "") +
     '<div class="ctrls" style="margin:0"><button class="btn go' + (can ? "" : " dim") + '" data-act="ascend">' + "Ascend" + '</button><button class="btn" data-act="refund">Refund web</button></div></div>';
   let h = "";
   EDGES.forEach(([a, b]) => {
@@ -2162,7 +2257,11 @@ function renderTree() {
   let btn;
   if (n.id === "core") btn = '<button class="btn" disabled>Owned</button>';
   else if (maxed) btn = '<button class="btn" disabled>Maxed</button>';
-  else btn = '<button class="btn echoc" data-act="node" data-id="' + n.id + '" data-cost="' + nodeCost(n) + '" data-cur="echo"' + (av ? "" : " disabled") + ">" + nodeCost(n) + " echo" + (nodeCost(n) > 1 ? "es" : "") + "</button>";
+  else {
+    const many = av ? ranksFor(n, S.echoes) : 0;
+    btn = '<button class="btn echoc" data-act="node" data-id="' + n.id + '" data-cost="' + nodeCost(n) + '" data-cur="echo"' + (av ? "" : " disabled") + ">" + nodeCost(n) + " echo" + (nodeCost(n) > 1 ? "es" : "") + "</button>";
+    if (many > 1) btn = '<span class="ncBtns">' + btn + '<button class="btn echoc afford" data-act="nodeMax" data-id="' + n.id + '">+' + many + " ranks</button></span>";
+  }
   $("nodeCard").innerHTML = '<div class="nodeCard" style="--bc:' + BR_COL[n.br] + '"><span class="n">' + n.name + '</span><button type="button" class="ncX" data-ncx aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><span class="rk">' + BR_NAME[n.br] + (n.id === "core" ? "" : ", rank " + r + " of " + n.max) + '</span><span class="ef">' + n.desc + '</span><span class="st">' +
     (n.id === "core" ? "Tap a tinted node next to the Core to start a path. You have " + S.echoes + " echoes." : !av ? "Not connected yet. Learn a neighboring node first." : maxed ? "Fully learned" : S.echoes < nodeCost(n) ? "Need " + nodeCost(n) + " echoes, you have " + S.echoes + ". Earn echoes by ascending at stage 20+ or from Gold seal bounties." : owned(n) ? "Owned. Tap the button to add a rank." : "Connected and ready to learn") + "</span>" + btn + "</div>";
 }
@@ -2176,6 +2275,12 @@ action("node", id => {
   const n = NODE[id], c = nodeCost(n);
   if (!avail(n) || (S.tree[id] || 0) >= n.max || S.echoes < c) return false;
   sfx("chord", 0, 0); S.echoes -= c; S.tree[id] = (S.tree[id] || 0) + 1; buildSkillbar();
+});
+action("nodeMax", id => {
+  const n = NODE[id], k = avail(n) ? ranksFor(n, S.echoes) : 0;
+  if (!k) return false;
+  for (let i = 0; i < k; i++) { S.echoes -= nodeCost(n); S.tree[id] = (S.tree[id] || 0) + 1; }
+  sfx("chord", 0, 0); buildSkillbar();
 });
 action("refund", () => {
   let back = 0;
@@ -2465,11 +2570,12 @@ function startRun() {
   S.bounties.forEach(b => { b.shards = bountyShards(b.tier); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
   burst(view.HERO_X, view.HERO_Y, "#ffd04d", 14); equipFlash(4);
 }
+// finished bounties wait on the board through an ascension or a Transcend
+const finishedBounties = () => S.bounties.filter(b => !b.empty && b.prog >= b.n);
 function doAscend() {
   const g = ascGain();
   if (S.maxStage < ascMin() || g < 1) return false;
-  const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
-  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB });
+  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: finishedBounties() });
   startRun();
   log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
   log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");
@@ -2482,6 +2588,93 @@ const startStage = () => ST.startStage;
 const runStart = () => Math.min(S.maxStage, S.runStart || startStage());
 const ascMin = () => Math.max(20, runStart() + 10);
 const ascGain = () => Math.floor(ECHO_K * (Math.pow(S.maxStage, 1.5) - Math.pow(runStart(), 1.5)) * (1 + .05 * (S.ascensions || 0)) * ST.echoGain);
+
+// ---- js/progress/stars.js
+// Stars: permanent perks that awaken at Stardust milestones. You choose which one each time.
+
+const STAR_COL = "#ffe7a3";
+// total Stardust earned at which each star awakens (the first comes with your first Transcend)
+const STAR_AT = [1, 60, 130, 220, 330, 460, 620, 800, 1000];
+const PULSE_EVERY = 4, COMET_EVERY = 20, COMET_R = 110, HORIZON_R = 130, STARFALL_EVERY = 12;
+// a comet lands on the current target and hits everything near it
+function cometStrike() {
+  if (!alive()) return;
+  const x = enemy.px, y = enemy.py;
+  if (!reduce) tempFx(svgEl("line", { x1: x + 80, y1: y - 230, x2: x, y2: y, stroke: STAR_COL, "stroke-width": 5, "stroke-linecap": "round" }), [{ opacity: 0 }, { opacity: 1, offset: .6 }, { opacity: 0 }], 260);
+  ring(x, y, STAR_COL, .5, COMET_R / 10, 380, 4); shake(5, 220);
+  foes.forEach(f => { if (!f.dead && Math.hypot(f.px - x, f.py - y) < COMET_R + f.R) land(f, ST.atk * 10, "aoe"); });
+}
+// a star shard drops onto one enemy
+function shardStrike(f) {
+  if (f.dead) return;
+  if (!reduce) tempFx(svgEl("polygon", { points: starPts(4, 9, 3.5), fill: STAR_COL }), [{ transform: "translate(" + f.px.toFixed(1) + "px," + (f.py - 150).toFixed(1) + "px)", opacity: 0 }, { transform: "translate(" + f.px.toFixed(1) + "px," + f.py.toFixed(1) + "px)", opacity: 1 }], 160);
+  land(f, ST.atk * 3, "aoe");
+}
+const STARS = [
+  { id: "afterglow", name: "Afterglow", desc: "Transcending keeps 50% of your echo power instead of 25%", stats: () => ({ echoKeep: plus(.25) }) },
+  { id: "pulsar", name: "Pulsar", desc: "Every " + PULSE_EVERY + " seconds in a fight your core pulses, hitting every enemy in view for 200% attack", fx: {
+    t: 0,
+    tick(c) {
+      if (!alive()) return;
+      this.t += c.dt;
+      if (this.t < PULSE_EVERY) return;
+      this.t = 0; ring(view.HERO_X, view.HERO_Y, STAR_COL, 1, 24, 480, 3);
+      foes.forEach(f => { if (!f.dead && inView(f)) land(f, ST.atk * 2, "aoe"); });
+    }
+  } },
+  { id: "comet", name: "Comet", desc: "Every " + COMET_EVERY + "th kill calls a comet down on your target: 1000% attack to it and everything near it", fx: { n: 0, kill() { if (++this.n % COMET_EVERY === 0) setTimeout(cometStrike, 250); } } },
+  { id: "quasar", name: "Quasar", desc: "Casting a skill charges your next 4 orbital hits: they always crit and deal 50% more", fx: {
+    order: -1, n: 0,
+    cast() { this.n = 4; },
+    crit(h) { if (h.kind === "blade" && this.n > 0) { this.n--; h.crit = true; h.charged = true; } },
+    deal(h) { if (h.charged) h.dmg *= 1.5; }
+  } },
+  { id: "aurora", name: "Aurora", desc: "When a hit leaves you under 35% health, a shield worth 40% of your health forms for 6 seconds (once every 30 seconds)", fx: {
+    t: 0,
+    hurt() {
+      const pn = performance.now(), amt = ST.maxHp * .4;
+      if (pn <= this.t || hero.hp <= 0 || hero.hp >= ST.maxHp * .35 || hero.shield >= amt) return;
+      this.t = pn + 30000; hero.shield = hero.shieldMax = amt; hero.shieldT = Math.max(hero.shieldT, 6);
+      floatText("Aurora", "info", "hero", STAR_COL); ring(view.HERO_X, view.HERO_Y, STAR_COL, 1, 4, 320, 3);
+    }
+  } },
+  { id: "horizon", name: "Event Horizon", desc: "Enemies close to your core take 40% more damage, so moving in on them pays", fx: { deal(h) { if (Math.hypot(h.e.px - view.HERO_X, h.e.py - view.HERO_Y) < HORIZON_R + h.e.R) h.dmg *= 1.4; } } },
+  { id: "starfall", name: "Starfall", desc: "Every " + STARFALL_EVERY + "th tap rains star shards on up to 5 enemies in view for 300% attack each", fx: {
+    tap(c) {
+      if (c.count % STARFALL_EVERY) return;
+      foes.filter(f => !f.dead && inView(f)).slice(0, 5).forEach((f, i) => setTimeout(() => shardStrike(f), 60 * i));
+    }
+  } },
+  { id: "slip", name: "Slipstream", desc: "Momentum carries 15% further up the stages before the real climb starts", stats: () => ({ momentumAt: plus(.15) }) },
+  { id: "lode", name: "Lodestar", desc: "Wisps fly to your core on their own, and their timed boons last twice as long", stats: () => ({ wispPull: plus(1), boonTime: 2 }) }
+];
+const STAR = {};
+statSource(give => STARS.forEach(s => { if (S.stars[s.id]) give(s, 1); }));
+ STARS.forEach(s => STAR[s.id] = s);
+const starsOwned = () => STARS.filter(s => S.stars[s.id]).length;
+const starsDue = () => Math.min(STARS.length, STAR_AT.filter(t => (S.stardustTotal || 0) >= t).length);
+// stars you may choose right now
+const starPoints = () => Math.max(0, starsDue() - starsOwned());
+// the Stars section of the Transcend tab
+function renderStars() {
+  const pts = starPoints(), next = STAR_AT[starsDue()];
+  let h = '<h4 class="forgeH">Stars</h4><p class="note" style="margin-top:0">' + (pts ? '<b class="dustC">' + pts + " star" + (pts > 1 ? "s" : "") + " to choose.</b> " : "") +
+    "Stars are permanent and cost nothing. " + (!(S.stardustTotal > 0) ? "Your first Transcend awakens one, and more follow as your total Stardust grows. You choose which."
+      : next ? "The next one awakens at " + next + " Stardust earned in total (you have " + Math.floor(S.stardustTotal) + "). You choose which." : "Every star has awakened.") + "</p>";
+  STARS.forEach(s => {
+    const has = !!S.stars[s.id];
+    h += '<div class="row forge"><span class="n">' + s.name + (has ? " ✓" : "") + '</span><span class="d"' + (has || pts ? "" : ' style="opacity:.6"') + ">" + s.desc + "</span>" +
+      (has ? "" : '<div class="side"><button class="btn dustb' + (pts ? " afford" : "") + '" data-act="star" data-id="' + s.id + '"' + (pts ? "" : " disabled") + ">Choose</button></div>") + "</div>";
+  });
+  return h;
+}
+action("star", (id, b) => {
+  const s = STAR[id];
+  if (!s || S.stars[id] || !starPoints()) return false;
+  if (!confirmTap(b, "Tap again to keep")) return false;
+  S.stars[id] = 1; sfx("chord", 0, 0);
+  log("Star chosen: " + s.name, "r4");
+});
 
 // ---- js/progress/transcend.js
 // Transcending: Stardust, Star Power, the Star Forge, and the Transcend tab.
@@ -2512,30 +2705,39 @@ const starEcho = () => 1 + .02 * starEff();
 const TRANS_AT = 150;
 const ECHO_K = .09;
 const transOpen = () => (S.peak || 1) >= TRANS_AT || (S.stardustTotal || 0) > 0;
-// echoes past a fair amount for your best stage (about 8 full ascensions there) count only 5% toward Stardust,
-// so echoes farmed from an exploit or endless grinding can't inflate a Transcend
 // every Transcend needs stage 150 reached in the current cycle, not just once ever
 const cycleBest = () => Math.max(S.cyclePeak || 1, S.maxStage || 1);
 const canTrans = () => cycleBest() >= TRANS_AT && dustGain() >= 1;
-const dustEchoCap = () => Math.round(8 * ECHO_K * starEcho() * Math.pow(Math.max(S.cyclePeak || 1, S.maxStage || 1), 1.5));
-const dustEchoes = () => { const E = S.echoesTotal || 0, C = dustEchoCap(); return Math.min(E, C) + Math.max(0, E - C) * .05; };
-const dustGain = () => Math.floor(Math.sqrt(dustEchoes()) * Math.max(S.cyclePeak || 1, S.maxStage || 1) / TRANS_AT);
+// Stardust follows the echoes earned this cycle. Up to a fair amount for your best stage (about 8 full ascensions
+// there) it grows in step with them, so several small Transcends pay the same as one big one. Echoes past that
+// count only 5%, so echoes farmed from an exploit or endless grinding can't inflate a Transcend
+const dustEchoCap = best => Math.round(8 * ECHO_K * starEcho() * Math.pow(best, 1.5));
+const dustAt = best => { const E = S.echoesTotal || 0, C = dustEchoCap(best); return Math.floor((E < C ? E / Math.sqrt(C) : Math.sqrt(C + .05 * (E - C))) * best / TRANS_AT); };
+const dustGain = () => dustAt(cycleBest());
+// the share of this cycle's echoes that keeps counting toward echo power after a Transcend
+const echoKept = () => Math.floor(ST.echoKeep * (S.echoesTotal || 0));
+// A Transcend resets what an ascension does plus this cycle's echo power and ascension count.
+// The web, unspent echoes and finished bounties stay (they are KEPT fields)
 function doTranscend() {
-  const g = dustGain();
+  const g = dustGain(), kept = echoKept();
   if (!transOpen() || !canTrans()) return false;
-  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1 });
+  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1, echoMemory: (S.echoMemory || 0) + kept, bounties: finishedBounties() });
   startRun();
   log("Transcended for " + g + " Stardust. Spend it in the Star Forge", "r4"); sfx("ascend", 0, 0);
-  log("Echoes, the web and ascension modifiers have reset. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
+  log("Your web and echoes came with you, and " + fmt(kept) + " echoes stay in your echo power for good. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
+  if (starPoints()) log("A star has awakened. Choose it in the Transcend tab", "r4");
   return true;
 }
 function renderTrans() {
   if (!transOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to unlock Transcend.</p>";
-  const g = dustGain(), bestC = Math.max(S.cyclePeak || 1, S.maxStage);
+  // before stage 150 this cycle, the tab shows what a Transcend there would pay
+  const g = dustGain(), bestC = cycleBest(), E = S.echoesTotal || 0, C = dustEchoCap(Math.max(bestC, TRANS_AT));
   let h = '<div class="ascTop transTop"><div><b class="dustC">' + fmt(S.stardust || 0) + " Stardust</b> to spend · " + fmt(S.stardustTotal || 0) + " earned in total</div>" +
     '<div class="note" style="margin:0"><b class="dustC">Star Power</b>: +' + Math.round((starPow() - 1) * 100) + "% attack and health, +" + Math.round((starEcho() - 1) * 100) + "% echo gain" + ((S.stardustTotal || 0) > 50 ? " (Stardust past 50 counts half)" : "") + "</div>" +
-    '<div class="note" style="margin:0">' + (bestC < TRANS_AT ? "<b>Reach stage " + TRANS_AT + " this cycle to transcend</b> (best this cycle: " + bestC + "). " : "") + (bestC < TRANS_AT ? "At stage " + TRANS_AT + " you would get about " : "Transcend now for ") + '<b class="dustC">' + (bestC < TRANS_AT ? Math.floor(Math.sqrt(dustEchoes()) * TRANS_AT / TRANS_AT) : g) + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(S.echoesTotal || 0) + " echoes earned" + ((S.echoesTotal || 0) > dustEchoCap() ? "; echoes past " + fmt(dustEchoCap()) + " count only 5% at this stage" : "") + "). You restart at stage " + (1 + headStart(FR("head"))) + " and lose everything an ascension does, plus <b>all echoes, the whole web and echo power</b>, and your ascension count (enemy modifiers reset). You keep Stardust, the Star Forge, Index bonuses, records and settings.</div>" +
+    '<div class="note" style="margin:0">' + (bestC < TRANS_AT ? "<b>Reach stage " + TRANS_AT + " this cycle to transcend</b> (best this cycle: " + bestC + "). " : "") + (bestC < TRANS_AT ? "At stage " + TRANS_AT + " you would get about " : "Transcend now for ") + '<b class="dustC">' + (bestC < TRANS_AT ? dustAt(TRANS_AT) : g) + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(E) + " echoes earned this cycle" + (E > C ? "; echoes past " + fmt(C) + " count only 5% at this stage" : "; Stardust grows with them up to " + fmt(C) + " echoes, and with your best stage") + ").</div>" +
+    '<div class="note" style="margin:0"><b>You keep</b> your whole web, your unspent echoes, ' + Math.round(ST.echoKeep * 100) + "% of this cycle's echo power for good" + (E ? " (" + fmt(echoKept()) + " of " + fmt(E) + " echoes)" : "") + ", finished bounties, Stardust, the Star Forge, your stars, the Index and the Abyss. <b>You lose</b> what an ascension resets (lumen, gear, training and skill levels), the rest of this cycle's echo power, and your ascension count, so enemy modifiers start over. You restart at stage " + (1 + headStart(FR("head"))) + ".</div>" +
     '<div class="ctrls" style="margin:0"><button class="btn go' + (canTrans() ? "" : " dim") + '" data-act="transcend">' + "Transcend" + "</button></div></div>";
+  h += renderStars();
   let grp = "";
   FORGE.forEach(f => {
     if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
@@ -2553,6 +2755,18 @@ function renderTrans() {
   return h;
 }
 sheet("tree", "trans", { label: "Transcend", at: 1, open: () => transOpen(), body: "transBody", render: renderTrans });
+whenNewBest((before, now, kind) => {
+  if (kind !== "peak" || before >= TRANS_AT || now < TRANS_AT) return;
+  log("Stage " + TRANS_AT + " reached: Transcend is open in the Tree window. Enemies grow faster from here, and transcending is how you outgrow them", "r4");
+  floatText("Transcend unlocked", "info", "hero", "#ffe7a3"); sfx("chord", 0, 300); markDirty("tree");
+});
+// a nudge, once a session, for anyone falling back near the wall who hasn't transcended yet
+let nudged = false;
+listen(type => {
+  if (type !== "setback" || nudged || (S.transcends || 0) > 0 || (S.peak || 1) < TRANS_AT || S.maxStage < TRANS_AT - 10) return;
+  nudged = true;
+  log("Stuck around stage " + TRANS_AT + "? Enemies past it outgrow what ascending alone gives. Transcend in the Tree window: you keep your web and echoes", "r4");
+});
 action("transcend", (id, b) => {
   if (!transOpen() || !canTrans()) return false;
   if (!confirmTap(b, "Tap again to transcend")) return false;
@@ -3100,8 +3314,10 @@ function setCounts() {
   Object.values(S.equip).forEach(it => { if (it && it.set) c[it.set] = (c[it.set] || 0) + 1; });
   return c;
 }
-// echo power never caps, so each ascension pushes you further even once the web is full
-statSource(give => give(() => ({ echoBonus: onBase(.01 * (S.echoesTotal || 0)) })));
+// echo power never caps, so each ascension pushes you further even once the web is full.
+// It counts this cycle's echoes and the echoes remembered from earlier cycles
+const echoPowerFrom = () => (S.echoesTotal || 0) + (S.echoMemory || 0);
+statSource(give => give(() => ({ echoBonus: onBase(.01 * echoPowerFrom()) })));
 const evadeChance = () => Math.min(.5, ST.evaR / (ST.evaR + 6 * itemPow(fightStage())));
 // the hero's temporary combat state goes back to rest: buffs, shield and statuses
 function resetCombat() {
@@ -4539,6 +4755,8 @@ function newWaypoint(e, first) {
 const pace = () => 1 + Math.min(.55, (fightStage() - 1) * .008);
 const sporadic = () => Math.min(1.05, .45 + fightStage() * .01);
 let bumpFxT = 0;
+// how close shapes may come to the core's center while it dashes (its ring normally keeps them RING_R away)
+const DASH_RING = 16;
 function moveFoes(dt) { while (dt > 1e-4) { const h = Math.min(dt, .05); moveStep(h); dt -= h; } }
 function moveStep(dt) {
   moveT += dt; bumpFxT -= dt;
@@ -4607,7 +4825,8 @@ function moveStep(dt) {
         if (bumpFxT <= 0 && rv < -15 && !document.hidden) { bumpFxT = .15; sparks(a.px + nx * a.R, a.py + ny * a.R, 3, "#fff", 10); }
       }
     }
-    const hx = a.px - view.HERO_X, hy = a.py - view.HERO_Y, hd = Math.hypot(hx, hy) || .01, mh = RING_R + a.R + 4;
+    // a dashing core slips through shapes instead of shoving them ahead of it, so the dash can slice what it crosses
+    const hx = a.px - view.HERO_X, hy = a.py - view.HERO_Y, hd = Math.hypot(hx, hy) || .01, mh = (dashT > 0 ? DASH_RING : RING_R) + a.R + 4;
     if (hd < mh) {
       const nx = hx / hd, ny = hy / hd;
       a.px = view.HERO_X + nx * mh; a.py = view.HERO_Y + ny * mh;
@@ -4877,6 +5096,7 @@ const GUIDE = [
     <p>The Pushing button controls progress. Pushing moves to the next stage after each clear. Farming repeats the current stage, which is handy for lumen and loot when you're stuck.</p>
     <p>Sound effects, music, volume, animation and performance settings are at the top of this Guide window.</p>
     <p><b>Dodging</b>: enemy shots you can see on screen are real projectiles. Darts are fast and aim where you're heading, saws curve after you, mortars land where you're about to be, and a Lance's aim line follows you then locks solid just before the beam fires, so change direction at the right moment. Deeper stages, elites and bosses aim and track better. Dash makes you untouchable for a moment. Shots fired from off screen still land, softer.</p>
+    <p><b>Wisps</b>: every minute or two (once you've reached stage 3) a small golden star drifts across the arena. Tap it before it leaves and it bursts into a boon: a cache of lumen, a handful of shards, a Rare or better item, a full refill of health and mana with every skill ready, 20 seconds of double attack speed, or 30 seconds of triple lumen. From stage 20 it can also hold an echo. Timed boons show as gold chips under your mana bar.</p>
     <p><b>Offline</b>: while the game is closed or in the background, your core keeps farming your current stage at half speed, for up to 8 hours (Offline Mastery in the Star Forge raises both). You collect lumen, shards and a few items when you come back.</p>
     <p><b>Moving</b>: press anywhere in the arena and drag to move your core with a floating joystick (WASD or arrow keys on a keyboard). The plane is endless, so roam as far as you like; the camera follows you. Enemies chase you, so you can kite them, reposition, or step out of a boss Crush.</p>
     <p>Everything else lives in the dropdown behind the <b>menu button</b> at the top left. Each opens in its own window: Stats, Gear, Pack, Skills, Train, Index, Board, the ascension Tree, this Guide and the <b>Log</b> of everything that has happened. A gold dot on the menu button means a bounty is ready to claim.</p>`],
@@ -4921,17 +5141,19 @@ const GUIDE = [
   ["Ascension and the web", `<p>From stage 20 you can <b>ascend</b> in the Tree window. You restart at stage 1 and lose lumen, gear, training and skills. In return you earn <b>echoes</b> based on the highest stage you reached. Echoes and the web are permanent.</p>
     <p>Spend echoes on the web. You can only learn a node connected to one you already own, starting from the Core. The four branches are Edge (damage), Ward (survival), Drive (speed and skills) and Fortune (loot and lumen). Bridge nodes link neighboring branches.</p>
     <p>Look for <b>attunements</b>, which unlock skills from stage 1 and start them at higher levels, and the four <b>keystones</b> at the branch tips. Refunding the web is free.</p>
-    <p><b>Echo power</b>: every echo you have ever earned also gives +1% attack and health, permanently, with no cap. Spending echoes doesn't lower it, so every ascension keeps making you stronger even once the web is full.</p>
-    <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now.</p>`],
+    <p><b>Echo power</b>: every echo you earn also gives +1% attack and health, with no cap. Spending echoes doesn't lower it, so every ascension keeps making you stronger even once the web is full. A Transcend keeps a quarter of it for good.</p>
+    <p>Most nodes have several ranks. The ring of notches around a node fills in as you rank it up, and a gold <b>+</b> badge means you can afford another rank right now. When you can afford several ranks of a node, a second button buys them all at once.</p>`],
   ["The Abyss", `<p>Reaching stage 150 opens <b>the Abyss</b>, a second mode in the Tree window. It's an endless climb by <b>depth</b> that never resets, not even when you transcend. Each depth is 3 waves of <b>Void shapes</b> (irregular enemies that blink around you) and then a <b>Guardian</b>. Clear it and you go one depth deeper. Die and you fall back 2 depths.</p>
     <p>Every depth from 2 adds a <b>rule</b> (denser enemies, homing shots, poison pools, halved healing and more); after twelve they start stacking. Guardians pay <b>Voidstone</b> (triple the first time you clear a depth) and can drop Mythics. Spend Voidstone in the <b>Abyss Altar</b> on permanent power: attack and health, echo gain, attack per best depth, Mythic chance, a longer Momentum and more Voidstone. Depth milestones at 5, 10, 25, 50 and 100 unlock lasting perks.</p>
     <p><b>Momentum</b>: once you've transcended, stages below half your best ever fly by: enemies barely have health and each stage needs only 3 kills, so re-climbs take minutes.</p>`],
-  ["Transcend and the Star Forge", `<p>Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. You need to reach stage ${150} again in every cycle before you can transcend. Transcending is a deeper reset than ascending: on top of everything an ascension resets, you lose <b>all echoes, the whole web and echo power</b>, and your ascension count goes back to 0, so enemy modifiers are gone again.</p>
-    <p>In return you earn <b>Stardust</b>: the square root of the echoes you earned this cycle, times your best stage this cycle divided by 150. Echoes beyond about 8 full ascensions' worth at your best stage count only 5%, so endless grinding at a low stage doesn't pay. The Transcend tab shows exactly how much you'd get before you commit.</p>
+  ["Transcend, stars and the Star Forge", `<p>Past stage ${150} enemy health grows faster (30% a stage instead of 23%), so ascending alone slows to a crawl there. Transcending is how you outgrow it. Once you reach stage ${150}, a <b>Transcend</b> tab appears in the Tree window. You need to reach stage ${150} again in every cycle before you can transcend.</p>
+    <p>A Transcend resets what an ascension does (lumen, gear, training and skill levels), plus the echo power you built this cycle and your ascension count, so enemy modifiers are gone again. <b>You keep your whole web, your unspent echoes and a quarter of this cycle's echo power</b>, which stays for good and adds up from cycle to cycle. Finished bounties stay on the board too.</p>
+    <p>In return you earn <b>Stardust</b>. It grows with the echoes you earned this cycle and with your best stage this cycle. Up to about 8 full ascensions' worth of echoes at your best stage it grows in step with them, so two small Transcends pay the same as one big one. Echoes beyond that count only 5%, so endless grinding at a low stage doesn't pay. The Transcend tab shows exactly how much you'd get, and what you keep, before you commit.</p>
     <p><b>Star Power</b>: every Stardust you've ever earned gives +3% attack and health and +2% echo gain, permanently, whether you spend it or not. Past 50 Stardust, each one counts half.</p>
+    <p><b>Stars</b>: your first Transcend awakens a star, and more awaken when your total Stardust reaches 60, 130, 220, 330, 460, 620, 800 and 1,000. Each time you choose one. Stars are free and permanent: <b>Afterglow</b> (keep half your echo power instead of a quarter), <b>Pulsar</b> (your core pulses every 4 seconds, hitting every enemy in view), <b>Comet</b> (every 20th kill calls down a comet), <b>Quasar</b> (casting a skill charges your next 4 orbital hits to crit harder), <b>Aurora</b> (a shield forms when you drop under 35% health), <b>Event Horizon</b> (enemies close to your core take 40% more damage), <b>Starfall</b> (every 12th tap rains star shards), <b>Slipstream</b> (Momentum carries 15% further) and <b>Lodestar</b> (wisps fly to you on their own and their timed boons last twice as long).</p>
     <p>Spend Stardust in the <b>Star Forge</b>: <b>Expanded Training</b> (+10 level cap on capped training per rank), <b>Skill Mastery</b> (+5 skill level cap), <b>Gilded Gear</b> (extra bonus stats on items), <b>Fine Craft</b> (stronger bonus stats), <b>Head Start</b> (each ascension starts 10 stages further in with a Rare starter kit; echoes only count the stages you climb past your start, and you must climb at least 10 before ascending), <b>Third Orbital</b> (a third weapon slot at 40%, 70%, then 100% damage), <b>Boss Hunter</b> (+5s boss timer and +10% boss damage per rank), <b>Overcharge Discount</b> (cheaper Overcharge growth), <b>Bounty Board+</b> (an extra bounty slot per rank, faster postings) and <b>Offline Mastery</b> (offline farming up to full speed and 24 hours).</p>
     <p>Your first Transcend also unlocks <b>automation</b> for free: <b>Auto-Train</b>, <b>Auto-Push</b>, <b>Auto-Ascend</b> and <b>Smart Cast</b>. Their settings are at the bottom of the Transcend tab.</p>`],
-  ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li></ul>`]
+  ["Tips for a first run", `<ul><li>Put early lumen into Might and Vigor, and aim for their x2 milestones at levels 25, 50 and 100.</li><li>Push until you start dying, then switch to Farming for a few stages of lumen and gear.</li><li>Unlock Barrier before the stage 10 boss and keep it on auto-cast.</li><li>Ascend when you hit a wall, usually somewhere past stage 40. Echoes grow quickly with your best stage, and your first ones are worth a lot.</li><li>When ascending stops moving you forward around stage 150, Transcend. You keep your web, and the Abyss (same window) gives power that never resets.</li></ul>`]
 ];
 const INTRO = [
   ["Welcome to Hollow Loop", "You're a glowing core fighting through endless geometric enemies. Enemies float in from every direction, your core fires at them as they approach, and you can tap anywhere to strike for extra damage. The DPS number at the top is your damage per second."],
@@ -5019,6 +5241,7 @@ function initInput() {
   document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
   $("scene").addEventListener("pointerdown", e => {
     const rc = arena.getBoundingClientRect(), lx = (e.clientX - rc.left) / SC + view.VX0, ly = (e.clientY - rc.top) / SC + view.VY0;
+    if (tapWisp(lx, ly)) { e.preventDefault(); ripple(e.clientX, e.clientY); return; }
     let near = null, nd = 1e9;
     foes.forEach(f => { if (f.dead || !inView(f)) return; const d = Math.hypot(f.px - lx, f.py - ly); if (d < f.R + 26 && d < nd) { nd = d; near = f; } });
     if (near && near !== targeting.focus) { targeting.focus = near; pickTarget(); }
@@ -5323,6 +5546,10 @@ function renderAbyss() {
   return h;
 }
 sheet("tree", "abyss", { label: "Abyss", at: 2, open: () => abyssOpen(), body: "abyssBody", render: renderAbyss });
+whenNewBest((before, now, kind) => {
+  if (kind !== "peak" || before >= TRANS_AT || now < TRANS_AT) return;
+  log("The Abyss has opened in the Tree window: an endless climb whose rewards are never reset", "r5"); markDirty("tree");
+});
 action("abEnter", () => enterAbyss());
 action("abLeave", () => { exitAbyss(); closeWindow(); });
 action("abDown", () => { S.abyss.depth = Math.max(1, S.abyss.depth - 5); });
@@ -5343,7 +5570,7 @@ function frame(now) {
   const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
   stepHero(dt);
   if (!paused() && !heroDown) moveFoes(dt);
-  if (!paused()) stepEShots(dt);
+  if (!paused()) { stepEShots(dt); stepWisp(dt); }
   for (const f of foes) poseFoe(f, paused() ? 0 : dt);
   drawRing(dt);
   poseOrbitals(dt);
@@ -5393,6 +5620,7 @@ requestAnimationFrame(frame);
 buildSkillbar();
 log("The loop begins.", "r0");
 if (S.refundNote) { log(S.refundNote, "r4"); delete S.refundNote; }
+if (starPoints()) log("You have " + starPoints() + " star" + (starPoints() > 1 ? "s" : "") + " to choose in the Transcend tab of the Tree window", "r4");
 if (!S.seenIntro) showIntro();
 else showOffline((Date.now() - S.last) / 1000);
 updateUI();

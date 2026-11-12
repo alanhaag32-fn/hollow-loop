@@ -1,15 +1,19 @@
 // Transcending: Stardust, Star Power, the Star Forge, and the Transcend tab.
 import { sfx } from "../audio/sound.js";
+import { listen } from "../core/events.js";
 import { CYCLE, RUN, S } from "../core/save.js";
-import { plus, statSource } from "../core/stats.js";
+import { ST, plus, statSource } from "../core/stats.js";
 import { fmt } from "../core/util.js";
 import { fillOrbital } from "../gear/inventory.js";
 import { ORBIT } from "../hero/orbitals.js";
-import { startRun } from "./ascend.js";
+import { whenNewBest } from "../modes/modes.js";
+import { finishedBounties, startRun } from "./ascend.js";
 import { autoOn } from "./automation.js";
+import { renderStars, starPoints } from "./stars.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { TRAIN } from "../train/train.js";
-import { action, confirmTap, sheet } from "../ui/actions.js";
+import { action, confirmTap, markDirty, sheet } from "../ui/actions.js";
+import { floatText } from "../ui/floats.js";
 import { log } from "../ui/log.js";
 
 const FR = id => (S.forge && S.forge[id]) || 0;
@@ -38,30 +42,39 @@ const starEcho = () => 1 + .02 * starEff();
 export const TRANS_AT = 150;
 export const ECHO_K = .09;
 export const transOpen = () => (S.peak || 1) >= TRANS_AT || (S.stardustTotal || 0) > 0;
-// echoes past a fair amount for your best stage (about 8 full ascensions there) count only 5% toward Stardust,
-// so echoes farmed from an exploit or endless grinding can't inflate a Transcend
 // every Transcend needs stage 150 reached in the current cycle, not just once ever
 export const cycleBest = () => Math.max(S.cyclePeak || 1, S.maxStage || 1);
 const canTrans = () => cycleBest() >= TRANS_AT && dustGain() >= 1;
-const dustEchoCap = () => Math.round(8 * ECHO_K * starEcho() * Math.pow(Math.max(S.cyclePeak || 1, S.maxStage || 1), 1.5));
-const dustEchoes = () => { const E = S.echoesTotal || 0, C = dustEchoCap(); return Math.min(E, C) + Math.max(0, E - C) * .05; };
-const dustGain = () => Math.floor(Math.sqrt(dustEchoes()) * Math.max(S.cyclePeak || 1, S.maxStage || 1) / TRANS_AT);
+// Stardust follows the echoes earned this cycle. Up to a fair amount for your best stage (about 8 full ascensions
+// there) it grows in step with them, so several small Transcends pay the same as one big one. Echoes past that
+// count only 5%, so echoes farmed from an exploit or endless grinding can't inflate a Transcend
+const dustEchoCap = best => Math.round(8 * ECHO_K * starEcho() * Math.pow(best, 1.5));
+const dustAt = best => { const E = S.echoesTotal || 0, C = dustEchoCap(best); return Math.floor((E < C ? E / Math.sqrt(C) : Math.sqrt(C + .05 * (E - C))) * best / TRANS_AT); };
+const dustGain = () => dustAt(cycleBest());
+// the share of this cycle's echoes that keeps counting toward echo power after a Transcend
+const echoKept = () => Math.floor(ST.echoKeep * (S.echoesTotal || 0));
+// A Transcend resets what an ascension does plus this cycle's echo power and ascension count.
+// The web, unspent echoes and finished bounties stay (they are KEPT fields)
 function doTranscend() {
-  const g = dustGain();
+  const g = dustGain(), kept = echoKept();
   if (!transOpen() || !canTrans()) return false;
-  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1 });
+  Object.assign(S, CYCLE(), RUN(), { stardust: (S.stardust || 0) + g, stardustTotal: (S.stardustTotal || 0) + g, transcends: (S.transcends || 0) + 1, echoMemory: (S.echoMemory || 0) + kept, bounties: finishedBounties() });
   startRun();
   log("Transcended for " + g + " Stardust. Spend it in the Star Forge", "r4"); sfx("ascend", 0, 0);
-  log("Echoes, the web and ascension modifiers have reset. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
+  log("Your web and echoes came with you, and " + fmt(kept) + " echoes stay in your echo power for good. Star Power: +" + Math.round((starPow() - 1) * 100) + "% attack and health", "r3");
+  if (starPoints()) log("A star has awakened. Choose it in the Transcend tab", "r4");
   return true;
 }
 function renderTrans() {
   if (!transOpen()) return '<p class="note">Reach stage ' + TRANS_AT + " to unlock Transcend.</p>";
-  const g = dustGain(), bestC = Math.max(S.cyclePeak || 1, S.maxStage);
+  // before stage 150 this cycle, the tab shows what a Transcend there would pay
+  const g = dustGain(), bestC = cycleBest(), E = S.echoesTotal || 0, C = dustEchoCap(Math.max(bestC, TRANS_AT));
   let h = '<div class="ascTop transTop"><div><b class="dustC">' + fmt(S.stardust || 0) + " Stardust</b> to spend · " + fmt(S.stardustTotal || 0) + " earned in total</div>" +
     '<div class="note" style="margin:0"><b class="dustC">Star Power</b>: +' + Math.round((starPow() - 1) * 100) + "% attack and health, +" + Math.round((starEcho() - 1) * 100) + "% echo gain" + ((S.stardustTotal || 0) > 50 ? " (Stardust past 50 counts half)" : "") + "</div>" +
-    '<div class="note" style="margin:0">' + (bestC < TRANS_AT ? "<b>Reach stage " + TRANS_AT + " this cycle to transcend</b> (best this cycle: " + bestC + "). " : "") + (bestC < TRANS_AT ? "At stage " + TRANS_AT + " you would get about " : "Transcend now for ") + '<b class="dustC">' + (bestC < TRANS_AT ? Math.floor(Math.sqrt(dustEchoes()) * TRANS_AT / TRANS_AT) : g) + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(S.echoesTotal || 0) + " echoes earned" + ((S.echoesTotal || 0) > dustEchoCap() ? "; echoes past " + fmt(dustEchoCap()) + " count only 5% at this stage" : "") + "). You restart at stage " + (1 + headStart(FR("head"))) + " and lose everything an ascension does, plus <b>all echoes, the whole web and echo power</b>, and your ascension count (enemy modifiers reset). You keep Stardust, the Star Forge, Index bonuses, records and settings.</div>" +
+    '<div class="note" style="margin:0">' + (bestC < TRANS_AT ? "<b>Reach stage " + TRANS_AT + " this cycle to transcend</b> (best this cycle: " + bestC + "). " : "") + (bestC < TRANS_AT ? "At stage " + TRANS_AT + " you would get about " : "Transcend now for ") + '<b class="dustC">' + (bestC < TRANS_AT ? dustAt(TRANS_AT) : g) + " Stardust</b> (best stage this cycle " + bestC + ", " + fmt(E) + " echoes earned this cycle" + (E > C ? "; echoes past " + fmt(C) + " count only 5% at this stage" : "; Stardust grows with them up to " + fmt(C) + " echoes, and with your best stage") + ").</div>" +
+    '<div class="note" style="margin:0"><b>You keep</b> your whole web, your unspent echoes, ' + Math.round(ST.echoKeep * 100) + "% of this cycle's echo power for good" + (E ? " (" + fmt(echoKept()) + " of " + fmt(E) + " echoes)" : "") + ", finished bounties, Stardust, the Star Forge, your stars, the Index and the Abyss. <b>You lose</b> what an ascension resets (lumen, gear, training and skill levels), the rest of this cycle's echo power, and your ascension count, so enemy modifiers start over. You restart at stage " + (1 + headStart(FR("head"))) + ".</div>" +
     '<div class="ctrls" style="margin:0"><button class="btn go' + (canTrans() ? "" : " dim") + '" data-act="transcend">' + "Transcend" + "</button></div></div>";
+  h += renderStars();
   let grp = "";
   FORGE.forEach(f => {
     if (f.grp !== grp) { grp = f.grp; h += '<h4 class="forgeH">' + grp + "</h4>"; }
@@ -79,6 +92,18 @@ function renderTrans() {
   return h;
 }
 sheet("tree", "trans", { label: "Transcend", at: 1, open: () => transOpen(), body: "transBody", render: renderTrans });
+whenNewBest((before, now, kind) => {
+  if (kind !== "peak" || before >= TRANS_AT || now < TRANS_AT) return;
+  log("Stage " + TRANS_AT + " reached: Transcend is open in the Tree window. Enemies grow faster from here, and transcending is how you outgrow them", "r4");
+  floatText("Transcend unlocked", "info", "hero", "#ffe7a3"); sfx("chord", 0, 300); markDirty("tree");
+});
+// a nudge, once a session, for anyone falling back near the wall who hasn't transcended yet
+let nudged = false;
+listen(type => {
+  if (type !== "setback" || nudged || (S.transcends || 0) > 0 || (S.peak || 1) < TRANS_AT || S.maxStage < TRANS_AT - 10) return;
+  nudged = true;
+  log("Stuck around stage " + TRANS_AT + "? Enemies past it outgrow what ascending alone gives. Transcend in the Tree window: you keep your web and echoes", "r4");
+});
 action("transcend", (id, b) => {
   if (!transOpen() || !canTrans()) return false;
   if (!confirmTap(b, "Tap again to transcend")) return false;

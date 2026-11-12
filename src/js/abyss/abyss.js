@@ -9,7 +9,7 @@ import { clearFoes, foes, newWaypoint, pickSpawnAngle, setFoePos, spawnFoe } fro
 import { ringIfRoom, tempFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
 import { dashIT, recalc } from "../hero/hero.js";
-import { MAIN, mode, spawn, switchMode } from "../modes/modes.js";
+import { MAIN, mode, spawn, switchMode, whenNewBest } from "../modes/modes.js";
 import { TRANS_AT } from "../progress/transcend.js";
 import { action, markDirty, sheet } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
@@ -230,6 +230,10 @@ function renderAbyss() {
   return h;
 }
 sheet("tree", "abyss", { label: "Abyss", at: 2, open: () => abyssOpen(), body: "abyssBody", render: renderAbyss });
+whenNewBest((before, now, kind) => {
+  if (kind !== "peak" || before >= TRANS_AT || now < TRANS_AT) return;
+  log("The Abyss has opened in the Tree window: an endless climb whose rewards are never reset", "r5"); markDirty("tree");
+});
 action("abEnter", () => enterAbyss());
 action("abLeave", () => { exitAbyss(); closeWindow(); });
 action("abDown", () => { S.abyss.depth = Math.max(1, S.abyss.depth - 5); });

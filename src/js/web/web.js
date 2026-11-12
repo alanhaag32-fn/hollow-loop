@@ -9,10 +9,11 @@ import { ST, cutBy, plus, statSource } from "../core/stats.js";
 import { $, fmt, starPts } from "../core/util.js";
 import { NOVA_MS, burst, novaFx } from "../fx/effects.js";
 import { reduce } from "../fx/gfx.js";
-import { hero } from "../hero/hero.js";
+import { echoPowerFrom, hero } from "../hero/hero.js";
 import { throwBlade, wDelay } from "../hero/orbitals.js";
 import { fightStage } from "../modes/modes.js";
 import { ascGain, ascMin, doAscend, runStart, startStage } from "../progress/ascend.js";
+import { transOpen } from "../progress/transcend.js";
 import { buildSkillbar } from "../skills/skills.js";
 import { action, confirmTap, panel, renderSheets, sheetTabs } from "../ui/actions.js";
 import { floatText } from "../ui/floats.js";
@@ -127,6 +128,8 @@ EDGES.forEach(([a, b]) => { NEIGH[a].push(b); NEIGH[b].push(a); });
 export const T = id => id === "core" ? 1 : (S.tree[id] || 0);
 let treeSel = null;
 const nodeCost = n => n.c * ((S.tree[n.id] || 0) + 1);
+// how many more ranks of a node this many echoes buy (each rank costs one more times the node's cost)
+function ranksFor(n, echoes) { let r = S.tree[n.id] || 0, k = 0; while (r + k < n.max && echoes >= n.c * (r + k + 1)) { echoes -= n.c * (r + k + 1); k++; } return k; }
 const owned = n => T(n.id) > 0;
 const avail = n => n.id === "core" || NEIGH[n.id].some(id => T(id) > 0);
 const nodeR = n => n.key ? 20 : n.cap ? 17 : n.id === "core" ? 16 : n.br === "bridge" ? 12 : n.c >= 2 ? 13 : 11;
@@ -134,9 +137,10 @@ function renderTree() {
   renderSheets("tree");
   const g = ascGain(), can = S.maxStage >= ascMin() && g >= 1;
   $("ascTop").innerHTML = '<div class="ascTop"><div><b>' + S.echoes + ' echoes</b> to spend. Every node must connect to one you own.</div>' +
-    '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + fmt(S.echoesTotal || 0) + " echoes earned in total (+1% each, never capped).</div>" +
+    '<div class="note" style="margin:0"><b style="color:#b48cff">Echo power +' + fmt(Math.round(ST.echoBonus * 100)) + '%</b> attack and health, from ' + (S.echoMemory ? fmt(S.echoesTotal || 0) + " echoes earned this cycle and " + fmt(S.echoMemory) + " remembered from earlier cycles" : fmt(echoPowerFrom()) + " echoes earned in total") + " (+1% each, never capped).</div>" +
     '<div class="note" style="margin:0">' + (can ? "Ascend to gain " + g + " echoes" + (runStart() > 1 ? " (only stages past " + runStart() + ", where this run began, count)" : "") + ". You restart at stage " + startStage() + " and lose lumen, gear, training and skill levels. The web and bounties stay. Skills relock and return as you reach their stages again. Each ascension also gives enemies more modifiers and you +5% echoes."
       : "Reach stage " + ascMin() + " to ascend" + (ascMin() > 20 ? " (10 stages past where this run began)" : "") + ". Highest this run: stage " + S.maxStage + ".") + "</div>" +
+    (transOpen() && !S.transcends ? '<div class="note" style="margin:0"><b>Stuck near stage 150?</b> Enemies past it outgrow what ascending alone gives. Transcend (next tab) to break through. You keep your web and echoes.</div>' : "") +
     '<div class="ctrls" style="margin:0"><button class="btn go' + (can ? "" : " dim") + '" data-act="ascend">' + "Ascend" + '</button><button class="btn" data-act="refund">Refund web</button></div></div>';
   let h = "";
   EDGES.forEach(([a, b]) => {
@@ -172,7 +176,11 @@ function renderTree() {
   let btn;
   if (n.id === "core") btn = '<button class="btn" disabled>Owned</button>';
   else if (maxed) btn = '<button class="btn" disabled>Maxed</button>';
-  else btn = '<button class="btn echoc" data-act="node" data-id="' + n.id + '" data-cost="' + nodeCost(n) + '" data-cur="echo"' + (av ? "" : " disabled") + ">" + nodeCost(n) + " echo" + (nodeCost(n) > 1 ? "es" : "") + "</button>";
+  else {
+    const many = av ? ranksFor(n, S.echoes) : 0;
+    btn = '<button class="btn echoc" data-act="node" data-id="' + n.id + '" data-cost="' + nodeCost(n) + '" data-cur="echo"' + (av ? "" : " disabled") + ">" + nodeCost(n) + " echo" + (nodeCost(n) > 1 ? "es" : "") + "</button>";
+    if (many > 1) btn = '<span class="ncBtns">' + btn + '<button class="btn echoc afford" data-act="nodeMax" data-id="' + n.id + '">+' + many + " ranks</button></span>";
+  }
   $("nodeCard").innerHTML = '<div class="nodeCard" style="--bc:' + BR_COL[n.br] + '"><span class="n">' + n.name + '</span><button type="button" class="ncX" data-ncx aria-label="Close details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3 L13 13 M13 3 L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><span class="rk">' + BR_NAME[n.br] + (n.id === "core" ? "" : ", rank " + r + " of " + n.max) + '</span><span class="ef">' + n.desc + '</span><span class="st">' +
     (n.id === "core" ? "Tap a tinted node next to the Core to start a path. You have " + S.echoes + " echoes." : !av ? "Not connected yet. Learn a neighboring node first." : maxed ? "Fully learned" : S.echoes < nodeCost(n) ? "Need " + nodeCost(n) + " echoes, you have " + S.echoes + ". Earn echoes by ascending at stage 20+ or from Gold seal bounties." : owned(n) ? "Owned. Tap the button to add a rank." : "Connected and ready to learn") + "</span>" + btn + "</div>";
 }
@@ -186,6 +194,12 @@ action("node", id => {
   const n = NODE[id], c = nodeCost(n);
   if (!avail(n) || (S.tree[id] || 0) >= n.max || S.echoes < c) return false;
   sfx("chord", 0, 0); S.echoes -= c; S.tree[id] = (S.tree[id] || 0) + 1; buildSkillbar();
+});
+action("nodeMax", id => {
+  const n = NODE[id], k = avail(n) ? ranksFor(n, S.echoes) : 0;
+  if (!k) return false;
+  for (let i = 0; i < k; i++) { S.echoes -= nodeCost(n); S.tree[id] = (S.tree[id] || 0) + 1; }
+  sfx("chord", 0, 0); buildSkillbar();
 });
 action("refund", () => {
   let back = 0;

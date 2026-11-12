@@ -11,6 +11,7 @@ import { floatText } from "./floats.js";
 import { tab } from "./windows.js";
 import { SC, keys, view } from "../world/scene.js";
 import { tell } from "../core/events.js";
+import { tapWisp } from "../wisp/wisp.js";
 
 let lastTapFx = 0, tapCount = 0, combo = 0, lastTapT = 0;
 
@@ -21,6 +22,7 @@ export function initInput() {
   document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
   $("scene").addEventListener("pointerdown", e => {
     const rc = arena.getBoundingClientRect(), lx = (e.clientX - rc.left) / SC + view.VX0, ly = (e.clientY - rc.top) / SC + view.VY0;
+    if (tapWisp(lx, ly)) { e.preventDefault(); ripple(e.clientX, e.clientY); return; }
     let near = null, nd = 1e9;
     foes.forEach(f => { if (f.dead || !inView(f)) return; const d = Math.hypot(f.px - lx, f.py - ly); if (d < f.R + 26 && d < nd) { nd = d; near = f; } });
     if (near && near !== targeting.focus) { targeting.focus = near; pickTarget(); }

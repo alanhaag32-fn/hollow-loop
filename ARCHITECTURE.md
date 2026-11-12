@@ -13,13 +13,13 @@ HTML page (the published game and the GitHub Pages site); `tools/serve.mjs` serv
 | `enemies/` | Variants, modifiers, boss mechanics (`enemies.js`), enemies on the field (`foes.js`), enemy shots |
 | `combat/` | The hit pipeline both ways, deaths and kills |
 | `modes/` | The main run; `abyss/` holds the Abyss mode |
-| `gear/` `train/` `skills/` `web/` `index/` `bounty/` `progress/` | One feature each, with its data, rules, window and actions |
+| `gear/` `train/` `skills/` `web/` `index/` `bounty/` `wisp/` `progress/` | One feature each, with its data, rules, window and actions (`progress/` holds ascending, transcending with the Star Forge, stars and automation) |
 
 ## The few ideas everything follows
 
 **Bonuses declare themselves.** Anything that changes a number (a web node, an Index tier, training and its
-Overcharge, an affix, a shape bonus, a set bonus, a unique, Star Power, the Altar, Abyss milestones and rules, the Star
-Forge) has a `stats` function next to its description and is registered with `statSource()`. `computeStats()` folds
+Overcharge, an affix, a shape bonus, a set bonus, a unique, Star Power, a star, a wisp's boon, the Altar, Abyss
+milestones and rules, the Star Forge) has a `stats` function next to its description and is registered with `statSource()`. `computeStats()` folds
 them using the definitions in `STATS` and knows none of the sources. To add a bonus, add it where it's described.
 
 **Behaviour is effect hooks.** Anything that changes how play works has an `fx` object of named hooks (`deal`, `hit`,
@@ -48,7 +48,8 @@ new bests.
 **Pausing.** Full-screen cards `hold` the game (`core/pause.js`); the loop asks `paused()`.
 
 **Save fields have a lifetime.** `RUN` fields reset when you ascend, `CYCLE` fields when you transcend, `KEPT` fields
-never. Old saves are upgraded in one place, `core/load.js`.
+never (the web and echoes are `KEPT`: a Transcend only resets the echo power earned that cycle, and moves a share of
+it into `echoMemory`). Old saves are upgraded in one place, `core/load.js`.
 
 ## Rules the build checks
 

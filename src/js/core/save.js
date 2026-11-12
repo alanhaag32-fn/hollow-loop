@@ -2,14 +2,16 @@
 
 const KEY = "hollow-loop-v4";
 // Every saved field, grouped by how long it lasts: RUN fields reset when you ascend, CYCLE fields when you transcend,
-// and KEPT fields (settings, records, Stardust, the Star Forge, the Abyss) are never reset.
+// and KEPT fields (settings, records, echoes and the web, Stardust, the Star Forge, stars, the Abyss) are never reset.
 export const RUN = () => ({
   gold: 0, shards: 0, stage: 1, maxStage: 1, kills: 0, push: true, runStart: undefined, kps: undefined, last: Date.now(),
   train: {}, oc: {}, skill: {}, equip: {}, inv: [], bounties: [], rerollAt: 0
 });
-export const CYCLE = () => ({ echoes: 0, echoesTotal: 0, tree: {}, ascensions: 0, cyclePeak: 1 });
+// echoesTotal is what you earned this cycle (it sets echo power and Stardust); echoMemory is the share of earlier
+// cycles' echoes that still counts toward echo power
+export const CYCLE = () => ({ echoesTotal: 0, ascensions: 0, cyclePeak: 1 });
 export const KEPT = () => ({
-  v: 4, eco: 7, stardust: 0, stardustTotal: 0, forge: {}, transcends: 0,
+  v: 4, eco: 7, stardust: 0, stardustTotal: 0, forge: {}, transcends: 0, echoes: 0, tree: {}, echoMemory: 0, stars: {},
   abyss: { best: 0, depth: 1, stone: 0, total: 0, altar: {}, seed: 0 },
   autoCfg: { trainOn: true, train: {}, push: 60, ascAt: 0, ascStall: false, smart: true }, auto: { nova: true, barrier: true, overdrive: true, storm: true, dash: true, shatter: true },
   anim: "auto", perf: false, sound: true, vol: "med", music: true, mvol: "med", seenIntro: false,

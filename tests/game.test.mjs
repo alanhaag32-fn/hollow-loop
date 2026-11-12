@@ -77,7 +77,9 @@ test("Void Step (Abyss depth 10): a dash leaves a rift that hits shapes along it
       Math.random = () => .99;
       const e = m.foes.spawnFoe(m.enemies.makeEnemy(5, false));
       e.v = Object.assign({}, e.v, { eva: 0 }); e.fresh = false; e.max = e.hp = 1e15;
-      e.px = m.scene.view.HERO_X; e.py = m.scene.view.HERO_Y + 50;
+      // the dash is steered straight through the shape, so the rift's path crosses it wherever it drifts meanwhile
+      e.px = m.scene.view.HERO_X; e.py = m.scene.view.HERO_Y + 90; e.stun = 9; e.vx = e.vy = 0;
+      m.hero.hero.joyX = 0; m.hero.hero.joyY = 1;
       m.hero.startDash(1);
       await new Promise(r => setTimeout(r, 600));
       return 1e15 - e.hp;
@@ -95,12 +97,111 @@ test("ascending resets the run but keeps Stardust, the Star Forge and the Abyss"
   assert.ok(s.echoes > 2);
 });
 
-test("transcending resets the web and echoes and pays Stardust", async () => {
-  const page = await open(baseSave({ stage: 150, maxStage: 150, peak: 150, cyclePeak: 150, echoes: 50, echoesTotal: 5000, tree: { e1: 3 } }));
+test("transcending keeps the web, unspent echoes and a quarter of echo power, and pays Stardust", async () => {
+  const page = await open(baseSave({ gold: 1e6, stage: 150, maxStage: 150, peak: 150, cyclePeak: 150, echoes: 50, echoesTotal: 5000, ascensions: 9, tree: { e1: 3 } }));
   await press(page, "tree", "trans", "transcend", 2);
-  const s = await game(page, ["core/save.js"], m => { const S = m.save.S; return { tree: Object.keys(S.tree).length, echoes: S.echoesTotal, dust: S.stardust, t: S.transcends }; });
-  assert.deepEqual([s.tree, s.echoes, s.t], [0, 0, 1]);
+  const s = await game(page, ["core/save.js", "core/stats.js"], m => { const S = m.save.S; return { tree: S.tree, echoes: S.echoes, earned: S.echoesTotal, memory: S.echoMemory, power: m.stats.ST.echoBonus, gold: S.gold, stage: S.stage, asc: S.ascensions, dust: S.stardust, t: S.transcends }; });
+  assert.deepEqual([s.tree, s.echoes, s.earned, s.memory, s.power], [{ e1: 3 }, 50, 0, 1250, 12.5]);
+  assert.deepEqual([s.gold, s.stage, s.asc, s.t], [0, 1, 0, 1]);
   assert.ok(s.dust >= 1);
+  assert.deepEqual(page.errors, []);
+});
+
+test("Stardust grows in step with this cycle's echoes up to the cap, so splitting a Transcend gains nothing", async () => {
+  const dust = [];
+  for (const echoesTotal of [330, 660, 1320, 50000]) {
+    const page = await open(baseSave({ stage: 150, maxStage: 150, peak: 150, cyclePeak: 150, echoesTotal }));
+    await press(page, "tree", "trans", "transcend", 2);
+    dust.push(await game(page, ["core/save.js"], m => m.save.S.stardust));
+  }
+  // 1323 echoes is the cap at stage 150: a quarter and a half of it pay a quarter and a half of the Stardust
+  assert.deepEqual(dust.slice(0, 3), [9, 18, 36]);
+  assert.ok(dust[3] > 36 && dust[3] < 80, String(dust));
+});
+
+test("a star awakens with the first Transcend, is chosen once, and its bonus applies", async () => {
+  const page = await open(baseSave({ stage: 150, maxStage: 150, peak: 150, cyclePeak: 150, echoesTotal: 2000 }));
+  const before = await game(page, ["progress/stars.js", "core/stats.js"], m => [m.stars.starPoints(), m.stats.ST.echoKeep]);
+  await press(page, "tree", "trans", "transcend", 2);
+  await page.evaluate(() => { const b = document.querySelector('#sheetBody [data-act="star"][data-id="afterglow"]'); b.click(); b.click(); });
+  const after = await game(page, ["progress/stars.js", "core/stats.js", "core/save.js"], m => [m.stars.starPoints(), m.stats.ST.echoKeep, m.save.S.stars, document.querySelectorAll('#sheetBody [data-act="star"]:not([disabled])').length]);
+  assert.deepEqual(before, [0, .25]);
+  assert.deepEqual(after, [0, .5, { afterglow: 1 }, 0]);
+  assert.deepEqual(page.errors, []);
+});
+
+test("Pulsar hits every shape in view, and Quasar turns orbital hits after a cast into stronger crits", async () => {
+  const page = await open(baseSave({ stage: 5, maxStage: 5, stardustTotal: 60, transcends: 2, stars: { pulsar: 1, quasar: 1 } }));
+  const r = await game(page, ["core/stats.js", "enemies/enemies.js", "enemies/foes.js", "combat/combat.js", "world/scene.js"], m => {
+    m.foes.clearFoes();
+    Math.random = () => .99;
+    const V = m.scene.view, mk = dx => { const e = m.foes.spawnFoe(m.enemies.makeEnemy(5, false)); e.v = Object.assign({}, e.v, { eva: 0 }); e.fresh = false; e.max = e.hp = 1e15; e.px = V.HERO_X + dx; e.py = V.HERO_Y - 300; e.stun = 9; e.vx = e.vy = 0; return e; };
+    const a = mk(-60), b = mk(60), lost = e => { const d = 1e15 - e.hp; e.hp = 1e15; return d; };
+    m.foes.pickTarget();
+    m.stats.emit("tick", { dt: 4.1, moving: false });
+    const pulse = [lost(a), lost(b)];
+    m.combat.land(a, 100, "blade"); const plain = lost(a);
+    m.stats.emit("cast", { id: "nova", cost: 0, dmg: 0 });
+    m.combat.land(a, 100, "blade"); const charged = lost(a);
+    return { pulse, ratio: charged / plain, atk: m.stats.ST.atk, critDmg: m.stats.ST.critDmg };
+  });
+  // .99 rolls make every hit 109.8% of its base and never a natural crit
+  assert.ok(r.pulse.every(d => Math.abs(d - r.atk * 2 * 1.098) < .2), JSON.stringify(r));
+  assert.ok(Math.abs(r.ratio - r.critDmg * 1.5) < .01, JSON.stringify(r));
+  assert.deepEqual(page.errors, []);
+});
+
+test("reaching stage 150 for the first time announces Transcend and the Abyss", async () => {
+  const page = await open(baseSave({ stage: 149, maxStage: 149, peak: 149, kills: 7 }));
+  const log = await game(page, ["core/save.js", "modes/modes.js", "enemies/enemies.js"], m => {
+    m.modes.MAIN.kill(m.enemies.makeEnemy(149, false), {});
+    document.getElementById("menuBtn").click(); document.querySelector('#menuDrop [data-win="log"]').click();
+    return [m.save.S.peak, document.getElementById("feed").textContent];
+  });
+  assert.equal(log[0], 150);
+  assert.match(log[1], /Transcend is open/); assert.match(log[1], /The Abyss has opened/);
+});
+
+test("tapping a wisp catches it for a boon and counts toward a wisp bounty", async () => {
+  const page = await open(baseSave({ stage: 5, maxStage: 5, peak: 5, bounties: [{ type: "wisp", n: 2, prog: 0, tier: 0, poster: "x", eff: 180, shards: 3 }] }));
+  // every roll 0: the wisp enters from the left and holds the first boon, a lumen cache
+  const at = await game(page, ["wisp/wisp.js", "core/save.js"], m => {
+    Math.random = () => 0; m.wisp.spawnWisp(); m.wisp.stepWisp(2);
+    const r = document.querySelector("#wisps .wisp").getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, gold: m.save.S.gold };
+  });
+  await page.mouse.click(at.x, at.y);
+  const s = await game(page, ["core/save.js"], m => ({ gold: m.save.S.gold, left: document.querySelectorAll("#wisps .wisp").length, prog: m.save.S.bounties[0].prog }));
+  assert.ok(s.gold > at.gold + 100, JSON.stringify([at, s]));
+  assert.deepEqual([s.left, s.prog], [0, 1]);
+  assert.deepEqual(page.errors, []);
+});
+
+test("a wisp's Frenzy doubles attack speed until it runs out", async () => {
+  const page = await open(baseSave({ stage: 5, maxStage: 5, peak: 5 }));
+  const r = await game(page, ["wisp/wisp.js", "combat/combat.js", "core/stats.js", "ui/hud.js"], m => {
+    const base = m.combat.effSpd();
+    // a roll of .5 lands on Frenzy, the third boon by weight
+    Math.random = () => .5; m.wisp.spawnWisp(); m.wisp.stepWisp(2);
+    const [x, y] = document.querySelector("#wisps .wisp").getAttribute("transform").match(/-?[\d.]+/g).map(Number);
+    const caught = m.wisp.tapWisp(x, y), fast = m.combat.effSpd() / base;
+    m.hud.updateUI(); const chip = document.getElementById("stRow").textContent;
+    m.stats.emit("tick", { dt: 21, moving: false });
+    return { caught, fast, chip, after: m.combat.effSpd() / base };
+  });
+  assert.deepEqual([r.caught, r.fast, r.after], [true, 2, 1]);
+  assert.match(r.chip, /Frenzy 20s/);
+});
+
+test("Lodestar: a wisp flies to the core and is caught without a tap", async () => {
+  const page = await open(baseSave({ stage: 5, maxStage: 5, peak: 5, stardustTotal: 1, transcends: 1, stars: { lode: 1 } }));
+  const s = await game(page, ["wisp/wisp.js", "core/save.js"], m => {
+    const gold = m.save.S.gold;
+    Math.random = () => 0; m.wisp.spawnWisp();
+    for (let i = 0; i < 200 && document.querySelector("#wisps .wisp"); i++) m.wisp.stepWisp(.05);
+    return [m.save.S.gold > gold + 100, document.querySelectorAll("#wisps .wisp").length];
+  });
+  assert.deepEqual(s, [true, 0]);
 });
 
 test("the Abyss fights deeper stages without touching the main run's stage", async () => {

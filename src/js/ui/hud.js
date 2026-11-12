@@ -11,6 +11,7 @@ import { unread } from "./log.js";
 import { mechReadout } from "../enemies/enemies.js";
 import { renderIfStale, tab } from "./windows.js";
 import { bountyReady } from "../bounty/bounty.js";
+import { boonChips } from "../wisp/wisp.js";
 
 // shrink the stage title to fit beside the currency box instead of cutting it off
 let stageKey = "";
@@ -55,6 +56,7 @@ export function updateUI() {
     const on = st(k); heroModel.classList.toggle("st-" + k, on);
     if (on) chips += '<span class="stChip" style="--sc:' + STATUS[k].col + '" title="' + STATUS[k].desc + '">' + STATUS[k].name + " " + Math.ceil(stT[k]) + "s</span>";
   }
+  chips += boonChips();
   if ($("stRow").innerHTML !== chips) $("stRow").innerHTML = chips;
   $("mechTxt").textContent = mechReadout(enemy).text;
   $("logN").innerHTML = unread && tab !== "log" ? '<span class="badge">' + (unread > 99 ? "99+" : unread) + "</span>" : "";

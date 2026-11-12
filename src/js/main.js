@@ -12,6 +12,7 @@ import { drawRing, initHero, recalc, stepHero } from "./hero/hero.js";
 import { poseOrbitals, stepShots } from "./hero/orbitals.js";
 import { resumeRun } from "./modes/modes.js";
 import { autoTick } from "./progress/automation.js";
+import { starPoints } from "./progress/stars.js";
 import { buildSkillbar } from "./skills/skills.js";
 import { PANELS, markDirty, whenActionsRun } from "./ui/actions.js";
 import { initGuide, showIntro } from "./ui/guide.js";
@@ -24,6 +25,7 @@ import { initWindows, refreshPanel } from "./ui/windows.js";
 // the Abyss only registers itself (its mode, tab, actions and bonuses); nothing else needs to call into it
 import "./abyss/abyss.js";
 import { initWeb } from "./web/web.js";
+import { stepWisp } from "./wisp/wisp.js";
 import { layout } from "./world/scene.js";
 import { paused } from "./core/pause.js";
 
@@ -34,7 +36,7 @@ function frame(now) {
   const dt = Math.min(.05, (now - (lastFrame || now)) / 1000); lastFrame = now;
   stepHero(dt);
   if (!paused() && !heroDown) moveFoes(dt);
-  if (!paused()) stepEShots(dt);
+  if (!paused()) { stepEShots(dt); stepWisp(dt); }
   for (const f of foes) poseFoe(f, paused() ? 0 : dt);
   drawRing(dt);
   poseOrbitals(dt);
@@ -84,6 +86,7 @@ requestAnimationFrame(frame);
 buildSkillbar();
 log("The loop begins.", "r0");
 if (S.refundNote) { log(S.refundNote, "r4"); delete S.refundNote; }
+if (starPoints()) log("You have " + starPoints() + " star" + (starPoints() > 1 ? "s" : "") + " to choose in the Transcend tab of the Tree window", "r4");
 if (!S.seenIntro) showIntro();
 else showOffline((Date.now() - S.last) / 1000);
 updateUI();

@@ -19,8 +19,8 @@ const STATS = {
   gold: {}, bigGold: {}, drop: { base: .3, max: .95 }, luck: {}, setChance: { base: .2 }, salv: {}, shardF: {},
   killHeal: { base: .05 }, killMana: { base: 0 }, bossLoot: { base: 0 }, bossShards: {}, eliteSpoils: { base: 0 }, bonusDrop: { base: 0 },
   mythChance: {}, gild: { base: 0 }, affixPow: {}, trainCap: { base: 0 }, ocGrowth: { base: 2 },
-  bossTime: { base: 0 }, homing: { base: 0 }, startStage: { base: 1 }, starterKit: { base: 0 }, echoGain: {}, momentumAt: { base: .5, max: .75 }, stoneGain: {},
-  bountyGold: {}, bountySlots: { base: 3 }, postTime: {}, offRate: { base: .5 }, offHours: { base: 8 }
+  bossTime: { base: 0 }, homing: { base: 0 }, startStage: { base: 1 }, starterKit: { base: 0 }, echoGain: {}, echoKeep: { base: .25, max: 1 }, momentumAt: { base: .5, max: .75 }, stoneGain: {},
+  bountyGold: {}, bountySlots: { base: 3 }, postTime: {}, offRate: { base: .5 }, offHours: { base: 8 }, wispPull: { base: 0 }, boonTime: {}
 };
 export const plus = v => ({ plus: v }), onBase = v => ({ base: v }), cutBy = (g, v) => ({ cut: g, v });
 const STAT_SOURCES = [];

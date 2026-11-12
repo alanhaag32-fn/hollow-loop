@@ -111,6 +111,7 @@ body.noanim .bladeOrbit2 { animation: none; }
 .trait b { color: var(--accent); }
 .od #hCore { fill: #ffe9a8; filter: drop-shadow(0 0 12px #ffd04d); }
 .pulse { animation: pulse 1.8s ease-in-out infinite; }
+.wisp .spinSlow { animation-duration: 5s; }
 @keyframes bob { 50% { transform: translateY(-1.5px); } }
 @keyframes hover { 50% { transform: translateY(-4px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -384,6 +385,8 @@ body.noanim #nodeCard .nodeCard { animation: none; }
 #nodeCard .nodeCard .ef { font-size: 13px; }
 #nodeCard .nodeCard .st { font-size: 12px; }
 #nodeCard .nodeCard .btn { grid-column: 2; grid-row: 2 / span 3; align-self: center; }
+#nodeCard .nodeCard .ncBtns { grid-column: 2; grid-row: 2 / span 3; align-self: center; display: grid; gap: 6px; }
+#nodeCard .nodeCard .ncBtns .btn { grid-column: 1; grid-row: auto; }
 #nodeCard .ncX { grid-column: 2; grid-row: 1; justify-self: end; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.06); color: var(--muted); display: grid; place-items: center; }
 #nodeCard .ncX svg { width: 12px; height: 12px; }
 .panel[hidden] { display: none; }

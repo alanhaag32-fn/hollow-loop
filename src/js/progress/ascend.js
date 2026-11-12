@@ -32,11 +32,12 @@ export function startRun() {
   S.bounties.forEach(b => { b.shards = bountyShards(b.tier); }); ensureBoard(); markDirty(...Object.keys(PANELS)); buildSkillbar();
   burst(view.HERO_X, view.HERO_Y, "#ffd04d", 14); equipFlash(4);
 }
+// finished bounties wait on the board through an ascension or a Transcend
+export const finishedBounties = () => S.bounties.filter(b => !b.empty && b.prog >= b.n);
 export function doAscend() {
   const g = ascGain();
   if (S.maxStage < ascMin() || g < 1) return false;
-  const doneB = S.bounties.filter(b => !b.empty && b.prog >= b.n);
-  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: doneB });
+  Object.assign(S, RUN(), { echoes: S.echoes + g, echoesTotal: S.echoesTotal + g, ascensions: (S.ascensions || 0) + 1, bounties: finishedBounties() });
   startRun();
   log("Ascended with " + g + " new echoes. Spend them in the web", "r4"); sfx("ascend", 0, 0);
   log("Ascension " + S.ascensions + ": enemies now carry stronger modifiers", "r3");

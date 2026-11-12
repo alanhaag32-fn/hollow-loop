@@ -33,8 +33,10 @@ export function setCounts() {
   Object.values(S.equip).forEach(it => { if (it && it.set) c[it.set] = (c[it.set] || 0) + 1; });
   return c;
 }
-// echo power never caps, so each ascension pushes you further even once the web is full
-statSource(give => give(() => ({ echoBonus: onBase(.01 * (S.echoesTotal || 0)) })));
+// echo power never caps, so each ascension pushes you further even once the web is full.
+// It counts this cycle's echoes and the echoes remembered from earlier cycles
+export const echoPowerFrom = () => (S.echoesTotal || 0) + (S.echoMemory || 0);
+statSource(give => give(() => ({ echoBonus: onBase(.01 * echoPowerFrom()) })));
 export const evadeChance = () => Math.min(.5, ST.evaR / (ST.evaR + 6 * itemPow(fightStage())));
 // the hero's temporary combat state goes back to rest: buffs, shield and statuses
 export function resetCombat() {
