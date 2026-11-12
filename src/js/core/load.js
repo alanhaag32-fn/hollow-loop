@@ -6,6 +6,8 @@ import { KEPT, S, fresh, readSave, setSave } from "./save.js";
 const ECO = KEPT().eco;
 import { AFF, LEGACY, RARITY, SLOT, rollAffix } from "../gear/items.js";
 import { AUTO_REFUND } from "../progress/automation.js";
+import { ECHO_K, TRANS_AT } from "../progress/transcend.js";
+import { TREE } from "../web/web.js";
 import { TRAIN } from "../train/train.js";
 
 // item names and affixes from older versions
@@ -51,6 +53,19 @@ function retireNodes() {
     delete S.tree[id]; S.echoes = (S.echoes || 0) + back; S.refundNote = o.note + ": refunded " + back + " echoes";
   }
 }
+// Transcends used to wipe the web and every echo. A save that transcended back then (it has no echoMemory yet) gets
+// back about what its last Transcend took: the echoes that cycle earned, worked out from the Stardust it paid
+// (at stage 150, under the old formula), to spend on the web again, and the quarter of echo power a Transcend keeps now
+function repayOldTranscend(d) {
+  const n = d.transcends || 0;
+  if (!n || d.echoMemory !== undefined) return;
+  const g = (d.stardustTotal || 0) / n, cap = Math.round(8 * ECHO_K * Math.pow(TRANS_AT, 1.5));
+  const earned = g * g <= cap ? g * g : cap + (g * g - cap) / .05;
+  const web = TREE.reduce((a, t) => a + t.c * t.max * (t.max + 1) / 2, 0), back = Math.round(Math.min(earned, web));
+  if (back < 1) return;
+  S.echoes = (S.echoes || 0) + back; S.echoMemory = Math.floor(.25 * back);
+  S.refundNote = (S.refundNote ? S.refundNote + ". " : "") + "Transcending keeps your web now. Yours was wiped by the old rules, so " + back + " echoes are back to rebuild it, and " + S.echoMemory + " count toward echo power for good";
+}
 function trimTraining() { TRAIN.forEach(t => { if (t.max && S.train[t.id] > t.max) S.train[t.id] = t.max; }); }
 export function load() {
   const d = readSave();
@@ -80,4 +95,5 @@ export function load() {
   Object.values(S.equip).forEach(it => migrateItem(it, from));
   S.inv.forEach(it => migrateItem(it, from));
   migrateEco();
+  repayOldTranscend(d);
 }

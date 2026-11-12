@@ -229,6 +229,17 @@ test("a save with ranks in the web's old Head Start gets those echoes back, and 
   assert.deepEqual(page.errors, []);
 });
 
+test("a save that lost its web to an old Transcend gets those echoes back, once", async () => {
+  const page = await open(baseSave({ stage: 30, maxStage: 30, peak: 150, echoes: 12, echoesTotal: 300, tree: { e1: 2 }, stardust: 38, stardustTotal: 38, transcends: 1 }));
+  const first = await game(page, ["core/save.js"], m => { m.save.save(); return [m.save.S.echoes, m.save.S.echoMemory, m.save.S.echoesTotal, m.save.S.tree]; });
+  await page.reload(); await page.waitForTimeout(300);
+  const again = await game(page, ["core/save.js"], m => [m.save.S.echoes, m.save.S.echoMemory]);
+  // 38 Stardust at stage 150 under the old formula took about 3743 echoes
+  assert.deepEqual(first, [3755, 935, 300, { e1: 2 }]);
+  assert.deepEqual(again, [3755, 935]);
+  assert.deepEqual(page.errors, []);
+});
+
 test("an unreadable save is kept aside and the game starts fresh", async () => {
   const page = await open("{not json");
   const s = await page.evaluate(k => [localStorage.getItem(k + ".broken"), document.getElementById("stageLbl").textContent], KEY);
